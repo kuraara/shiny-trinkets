@@ -1,0 +1,4 @@
+# local run data (uploads, jobs, models) — never commit
+/data/
+/bin/
+*.tmp
