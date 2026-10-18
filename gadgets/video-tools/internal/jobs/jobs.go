@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/storage"
@@ -77,6 +78,8 @@ type Manager struct {
 	runners map[string]Runner
 	queue   chan string
 	saved   map[string]time.Time
+	running sync.WaitGroup
+	stop    atomic.Bool
 }
 
 func NewManager(store *storage.Store, ttl time.Duration) *Manager {
@@ -276,10 +279,12 @@ func (m *Manager) Start(ctx context.Context, workers int) {
 func (m *Manager) run(parent context.Context, id string) {
 	m.mu.Lock()
 	j, ok := m.jobs[id]
-	if !ok || j.Status != Queued {
+	if !ok || j.Status != Queued || m.stop.Load() {
 		m.mu.Unlock()
 		return
 	}
+	m.running.Add(1) // under the lock, so Shutdown can't miss a job that is starting
+	defer m.running.Done()
 	ctx, cancel := context.WithCancel(parent)
 	m.cancels[id] = cancel
 	j.Status, j.Message, j.Error, j.Updated = Running, "starting", "", time.Now()
@@ -312,6 +317,8 @@ func (m *Manager) run(parent context.Context, id string) {
 		m.mu.Unlock()
 		go func() { time.Sleep(10 * time.Second); m.queue <- id }()
 		return
+	case m.stop.Load() && err != nil:
+		j.Status, j.Error, j.Message = Failed, "interrupted by a restart — please run it again", "failed"
 	case j.Status == Cancelled || ctx.Err() != nil && errors.Is(err, context.Canceled):
 		j.Status, j.Message = Cancelled, "cancelled"
 	case err != nil:
@@ -329,6 +336,24 @@ func (m *Manager) run(parent context.Context, id string) {
 	// scratch space never outlives the run, whatever happened
 	_ = os.RemoveAll(m.WorkDir(id))
 	_ = os.MkdirAll(m.WorkDir(id), 0o755)
+}
+
+// Shutdown stops every running job (killing its ffmpeg/worker processes) and waits up to timeout
+// for them to exit, so nothing is left running after the server stops.
+func (m *Manager) Shutdown(timeout time.Duration) {
+	m.mu.Lock()
+	m.stop.Store(true)
+	for _, c := range m.cancels {
+		c()
+	}
+	m.mu.Unlock()
+	done := make(chan struct{})
+	go func() { m.running.Wait(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(timeout):
+		log.Printf("shutdown: jobs still stopping after %s", timeout)
+	}
 }
 
 // janitor deletes finished jobs and unused uploads older than the TTL, every 10 minutes.

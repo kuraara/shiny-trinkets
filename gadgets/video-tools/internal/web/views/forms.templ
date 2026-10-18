@@ -1,0 +1,138 @@
+package views
+
+import "github.com/kuraara/clowd-docker-stuff/video-tools/internal/storage"
+
+templ FilePicker(files []storage.File, name string) {
+	if len(files) > 0 {
+		<label class="field">
+			<span>Or use a clip that’s already here</span>
+			<select name={ name } data-existing>
+				<option value="">Choose a clip…</option>
+				for _, f := range files {
+					<option value={ f.ID } data-name={ f.Name } data-size={ human(f.Size) }>{ fileOption(f) }</option>
+				}
+			</select>
+		</label>
+	}
+}
+
+templ PanelNew(p Page, files []storage.File, maxUpload string, maxSecs int) {
+	@Layout(p) {
+		<h1 class="page">Panel transcript</h1>
+		<p class="lede">Upload a clip with people talking. You’ll check who said each line before the image is made.</p>
+		<form class="work" method="post" action="/panel" enctype="multipart/form-data" data-upload>
+			<div class="drop" data-drop>
+				<input type="file" name="file" id="panel-file" accept="video/*,.mov,.mkv,.mts" data-file/>
+				<label for="panel-file">
+					<strong>Choose a clip</strong> or drop it here
+					<span class="hint">Up to { maxUpload } per upload; clips up to { itoa(maxSecs / 60) } minutes long.</span>
+				</label>
+				<p class="picked" data-picked></p>
+			</div>
+			@FilePicker(files, "file_id")
+			<fieldset class="choice">
+				<legend>Which moments become panels?</legend>
+				<label class="radio"><input type="radio" name="frames" value="auto" checked/> One panel per line of dialogue</label>
+				<label class="radio"><input type="radio" name="frames" value="times" data-times-toggle/> At these times</label>
+				<label class="field times" data-times-field>
+					<span>Times in seconds, or minutes:seconds</span>
+					<input type="text" name="times" placeholder="1.0, 2.5, 7.2" inputmode="decimal" autocomplete="off"/>
+				</label>
+			</fieldset>
+			<details class="more">
+				<summary>Scene-cut sensitivity</summary>
+				<label class="field">
+					<span>Lower finds more cuts. Default 0.3.</span>
+					<input type="number" name="scene_threshold" min="0.05" max="0.95" step="0.05" value="0.3"/>
+				</label>
+			</details>
+			<div class="actions">
+				<button class="btn" type="submit">Analyse clip</button>
+				<progress class="up" max="100" value="0" hidden data-progress></progress>
+				<span class="up-text" data-progress-text></span>
+			</div>
+			<p class="flash flash-bad" role="alert" hidden data-error></p>
+		</form>
+	}
+}
+
+templ JoinNew(p Page, files []storage.File, maxUpload string, maxFiles int) {
+	@Layout(p) {
+		<h1 class="page">Join clips</h1>
+		<p class="lede">Clips are joined in the order listed. Matching clips with no transition are joined without re-encoding.</p>
+		<form class="work" method="post" action="/join" enctype="multipart/form-data" data-upload data-join>
+			<div class="drop" data-drop>
+				<input type="file" name="files" id="join-files" accept="video/*,.mov,.mkv,.mts" multiple data-file/>
+				<label for="join-files">
+					<strong>Choose clips</strong> or drop them here
+					<span class="hint">Up to { itoa(maxFiles) } clips, { maxUpload } per upload in total.</span>
+				</label>
+			</div>
+			if len(files) > 0 {
+				<div class="field add-existing">
+					<label for="join-existing">Or add a clip that’s already here</label>
+					<div class="row">
+						<select id="join-existing" data-existing>
+							<option value="">Choose a clip…</option>
+							for _, f := range files {
+								<option value={ f.ID } data-name={ f.Name } data-size={ human(f.Size) }>{ fileOption(f) }</option>
+							}
+						</select>
+						<button class="btn btn-quiet" type="button" data-add-existing>Add</button>
+					</div>
+				</div>
+			}
+			<ol class="order" data-order aria-label="Clips in join order"></ol>
+			<p class="empty" data-order-empty>No clips yet.</p>
+			<input type="hidden" name="order" data-order-field/>
+			<fieldset class="choice segmented">
+				<legend>Transition between clips</legend>
+				<label><input type="radio" name="transition" value="none" checked/> None</label>
+				<label><input type="radio" name="transition" value="fade"/> Fade through black</label>
+				<label><input type="radio" name="transition" value="crossfade"/> Crossfade</label>
+			</fieldset>
+			<div class="grid2">
+				<label class="field">
+					<span>Transition length (seconds)</span>
+					<input type="number" name="seconds" min="0.1" max="5" step="0.1" value="0.5"/>
+				</label>
+				<label class="field">
+					<span>Output file name</span>
+					<input type="text" name="name" value="joined" autocomplete="off"/>
+				</label>
+			</div>
+			<label class="check"><input type="checkbox" name="fade_edges" value="true"/> Also fade in at the start and out at the end</label>
+			<details class="more">
+				<summary>Encoding</summary>
+				<fieldset class="choice">
+					<legend class="sr">Encoding</legend>
+					<label class="radio"><input type="radio" name="mode" value="auto" checked/> Automatic: no re-encoding when the clips allow it</label>
+					<label class="radio"><input type="radio" name="mode" value="copy"/> Never re-encode (fails if the clips don’t match)</label>
+					<label class="radio"><input type="radio" name="mode" value="reencode"/> Always re-encode to H.264</label>
+				</fieldset>
+			</details>
+			<div class="actions">
+				<button class="btn" type="submit">Join clips</button>
+				<progress class="up" max="100" value="0" hidden data-progress></progress>
+				<span class="up-text" data-progress-text></span>
+			</div>
+			<p class="flash flash-bad" role="alert" hidden data-error></p>
+		</form>
+	}
+}
+
+templ Login(p Page, bad bool) {
+	@Layout(p) {
+		<h1 class="page">Sign in</h1>
+		<form class="work narrow" method="post" action="/login">
+			<label class="field">
+				<span>Access token (the AUTH_TOKEN this container was started with)</span>
+				<input type="password" name="token" autocomplete="current-password" required/>
+			</label>
+			if bad {
+				<p class="flash flash-bad" role="alert">That token doesn’t match.</p>
+			}
+			<div class="actions"><button class="btn" type="submit">Sign in</button></div>
+		</form>
+	}
+}

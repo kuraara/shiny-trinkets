@@ -1,0 +1,64 @@
+package views
+
+import (
+	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/app"
+	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/config"
+)
+
+type Limit struct{ Name, Value, Env string }
+
+templ StatusPage(p Page, st app.Status, cfg config.Config, limits []Limit, mcpURL string) {
+	@Layout(p) {
+		<h1 class="page">Status</h1>
+		<section class="block">
+			<h2>Storage</h2>
+			<meter min="0" max="100" low="70" high="90" optimum="10" value={ pct(st.DataTotal-st.DataFree, st.DataTotal) } aria-label="Data volume used"></meter>
+			<p>{ human(st.DataFree) } free of { human(st.DataTotal) } on the data volume. Jobs use { human(st.JobsBytes) } and uploads { human(st.FilesBytes) }.</p>
+		</section>
+		<section class="block">
+			<h2>Speech models</h2>
+			switch st.ModelsState {
+				case "ready":
+					<p>Ready.</p>
+				case "downloading":
+					<p>Downloading: { st.ModelsDetail }</p>
+				default:
+					<p class="flash flash-bad">{ st.ModelsState }: { st.ModelsDetail }</p>
+			}
+			<p class="dim">Whisper small.en for the words, Vosk small-en for word timings, and Praat for voice pitch. Stored in { cfg.ModelsDir }.</p>
+		</section>
+		<section class="block">
+			<h2>Queue</h2>
+			<p>{ itoa(st.Running) } running, { itoa(st.Queued) } waiting, { itoa(st.Total) } kept.</p>
+		</section>
+		<section class="block">
+			<h2>Limits</h2>
+			<table class="limits">
+				<thead><tr><th scope="col">Setting</th><th scope="col">Value</th><th scope="col">Environment variable</th></tr></thead>
+				<tbody>
+					for _, l := range limits {
+						<tr><td>{ l.Name }</td><td>{ l.Value }</td><td><code>{ l.Env }</code></td></tr>
+					}
+				</tbody>
+			</table>
+		</section>
+		<section class="block" id="agents">
+			<h2>Use with agents (MCP)</h2>
+			<p>This container serves an MCP endpoint, so Claude and other agents can make panel transcripts and join clips themselves. They can also look at the frames and name the speakers.</p>
+			<p>Endpoint: <code>{ mcpURL }</code></p>
+			<p>Claude Code:</p>
+			<pre class="copy" data-copy>
+				if cfg.AuthToken != "" {
+					{ "claude mcp add --transport http video-tools " + mcpURL + " --header \"Authorization: Bearer <AUTH_TOKEN>\"" }
+				} else {
+					{ "claude mcp add --transport http video-tools " + mcpURL }
+				}
+			</pre>
+			<p>Agents upload clips with <code>POST /api/files</code>, or read them from the inbox folder, then call the tools. The tool descriptions explain the workflow. The JSON API is described at <a href="/api">/api</a>.</p>
+		</section>
+		<section class="block">
+			<h2>Source code</h2>
+			<p>The full source ships inside the image at <code>{ cfg.SourceDir }</code>. <a href="/source.tar.gz">Download it as a .tar.gz</a>.</p>
+		</section>
+	}
+}

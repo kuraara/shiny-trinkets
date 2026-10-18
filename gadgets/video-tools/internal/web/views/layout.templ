@@ -1,0 +1,56 @@
+package views
+
+templ Layout(p Page) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ p.Title } – Video tools</title>
+			<link rel="stylesheet" href="/static/app.css"/>
+			<link rel="icon" href="/static/icon.svg" type="image/svg+xml"/>
+			<script src="/static/htmx.min.js" defer></script>
+			<script src="/static/app.js" defer></script>
+		</head>
+		<body>
+			<a class="skip" href="#main">Skip to content</a>
+			<header class="top">
+				<a class="brand" href="/">Video tools</a>
+				<nav aria-label="Main">
+					<a href="/panel" aria-current?={ p.Nav == "panel" }>Panel transcript</a>
+					<a href="/join" aria-current?={ p.Nav == "join" }>Join clips</a>
+					<a href="/jobs" aria-current?={ p.Nav == "jobs" }>Jobs</a>
+					<a href="/status" aria-current?={ p.Nav == "status" }>Status</a>
+				</nav>
+			</header>
+			if p.ModelsState == "downloading" {
+				<p class="banner">Speech models are downloading (first start only). Joining clips works now; panel transcripts start as soon as the download finishes.</p>
+			} else if p.ModelsState == "failed" {
+				<p class="banner banner-bad">Speech models couldn’t be downloaded, so panel transcripts won’t run. The <a href="/status">Status</a> page shows why.</p>
+			}
+			<main id="main">
+				{ children... }
+			</main>
+			<footer class="foot">
+				<span>Version { p.Version }</span>
+				<a href="/source.tar.gz">Download source</a>
+				<a href="/api">API</a>
+				<a href="/status#agents">Use with agents (MCP)</a>
+			</footer>
+			<dialog id="lightbox" aria-label="Enlarged image">
+				<form method="dialog"><button class="close" aria-label="Close">Close</button></form>
+				<img alt=""/>
+			</dialog>
+		</body>
+	</html>
+}
+
+templ Flash(msg string, bad bool) {
+	if msg != "" {
+		if bad {
+			<p class="flash flash-bad" role="alert">{ msg }</p>
+		} else {
+			<p class="flash" role="status">{ msg }</p>
+		}
+	}
+}

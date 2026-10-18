@@ -1,0 +1,55 @@
+package views
+
+import "github.com/kuraara/clowd-docker-stuff/video-tools/internal/jobs"
+
+templ Home(p Page, recent []jobs.Job) {
+	@Layout(p) {
+		<section class="hero">
+			<h1 class="subline"><span class="who">Video tools:</span> “Turn a clip into subtitled stills, or join clips into one.”</h1>
+		</section>
+		<section class="tools">
+			<div class="tool">
+				<h2>Panel transcript</h2>
+				<p>Pulls stills from a clip, transcribes what’s said, and stacks the stills into one image with each line burned in as a subtitle. Pick the moments yourself or let it take one per line of dialogue. You add the speaker names before it renders.</p>
+				<a class="btn" href="/panel">Start a panel transcript</a>
+			</div>
+			<div class="tool">
+				<h2>Join clips</h2>
+				<p>Joins clips end to end. Clips that already match are joined without re-encoding, so nothing is lost and it takes seconds. Add fades or crossfades, or mix formats, and it converts everything to one common format first.</p>
+				<a class="btn" href="/join">Join clips</a>
+			</div>
+		</section>
+		<section class="recent">
+			<h2>Recent jobs</h2>
+			if len(recent) == 0 {
+				<p class="empty">Nothing yet. Start a panel transcript or join some clips and it will show up here.</p>
+			} else {
+				@JobTable(recent)
+				<p><a href="/jobs">All jobs</a></p>
+			}
+		</section>
+	}
+}
+
+templ JobTable(list []jobs.Job) {
+	<table class="jobs">
+		<thead>
+			<tr><th scope="col">Job</th><th scope="col">Type</th><th scope="col">Status</th><th scope="col">Started</th><th scope="col" class="num">Output</th></tr>
+		</thead>
+		<tbody>
+			for _, j := range list {
+				<tr>
+					<td><a href={ jobURL(j.ID) }>{ j.Title }</a></td>
+					<td>{ kindLabel(j.Kind) }</td>
+					<td><span class={ "state", "state-" + string(j.Status) }>{ statusLabel(j.Status) }</span></td>
+					<td>{ when(j.Created) }</td>
+					<td class="num">
+						if outputsSize(j) > 0 {
+							{ human(outputsSize(j)) }
+						}
+					</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}
