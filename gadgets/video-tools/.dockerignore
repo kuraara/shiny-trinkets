@@ -1,0 +1,4 @@
+data/
+bin/
+*.tmp
+**/__pycache__/

@@ -1,0 +1,53 @@
+# Portainer stack for video-tools.
+#   Portainer: Stacks -> Add stack -> Repository
+#     Repository URL:  https://github.com/kuraara/clowd-docker-stuff
+#     Reference:       refs/heads/master  (or refs/heads/feature/video-tools until merged)
+#     Compose path:    video-tools/docker-compose.yml
+#   Then set any of the variables below under "Environment variables" (all optional).
+#
+# First start downloads the speech models (~430 MB) into the data volume; joining clips works
+# straight away, panel transcripts start once the download finishes (shown on the Status page).
+services:
+  video-tools:
+    build:
+      context: .
+      args:
+        VERSION: "0.1.0"
+    image: video-tools:0.1.0
+    restart: unless-stopped
+    ports:
+      - "${VIDEO_TOOLS_PORT:-8090}:8080"
+    environment:
+      # Address you open it on, e.g. http://<pc>:8090 — used in links handed to agents (MCP).
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      # Set a token to require sign-in for the UI and "Authorization: Bearer <token>" for API/MCP.
+      AUTH_TOKEN: ${AUTH_TOKEN:-}
+      # --- storage guards ------------------------------------------------------------------
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-8192}       # per upload request, all files together
+      MIN_FREE_MB: ${MIN_FREE_MB:-2048}           # jobs/uploads never take the volume below this
+      JOB_TTL_HOURS: ${JOB_TTL_HOURS:-24}         # finished jobs and unused uploads deleted after
+      KEEP_JOIN_INPUTS: ${KEEP_JOIN_INPUTS:-false} # delete uploaded clips once they've been joined
+      # --- CPU / memory --------------------------------------------------------------------
+      WORKERS: ${WORKERS:-1}                      # jobs at once; each needs up to ~1 GB (transcripts)
+      FFMPEG_THREADS: ${FFMPEG_THREADS:-2}
+      ASR_THREADS: ${ASR_THREADS:-2}
+      # --- limits --------------------------------------------------------------------------
+      MAX_TRANSCRIPT_SECONDS: ${MAX_TRANSCRIPT_SECONDS:-600}
+      MAX_JOIN_FILES: ${MAX_JOIN_FILES:-20}
+      JOIN_MAX_HEIGHT: ${JOIN_MAX_HEIGHT:-2160}   # re-encoded joins are scaled down to this
+    volumes:
+      - video-tools-data:/data
+      # Optional read-only drop folder: clips here show up as inputs (and for agents) without uploading.
+      # - /volume1/video/inbox:/data/inbox:ro
+    # Hard ceilings so a big job can't starve the host. Raise mem_limit if WORKERS > 1.
+    mem_limit: 3g
+    cpus: 2
+    pids_limit: 512
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  video-tools-data:

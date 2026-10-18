@@ -1,0 +1,7 @@
+# Python side of video-tools (speech + rendering). Versions are the ones tested.
+sherpa-onnx==1.13.8      # Whisper runtime (bundles onnxruntime)
+vosk==0.3.45             # word timings
+praat-parselmouth==0.4.7 # voice pitch (Praat)
+soundfile==0.14.0
+numpy==2.5.3
+pillow==12.3.0
