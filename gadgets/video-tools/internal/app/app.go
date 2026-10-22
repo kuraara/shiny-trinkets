@@ -98,7 +98,7 @@ func (s *Service) runPanel(ctx context.Context, h *jobs.Handle) error {
 	if err != nil {
 		return err
 	}
-	a, err := s.Worker.Analyse(ctx, f.Path, h.OutDir(), p, h.Progress, h.Log)
+	a, err := s.Worker.Analyse(ctx, f.Path, h.OutDir(), h.WorkDir(), p, h.Progress, h.Log)
 	if err != nil {
 		return err
 	}

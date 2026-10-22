@@ -133,9 +133,10 @@ func (w Worker) run(ctx context.Context, progress func(int, string), logf func(s
 	return nil
 }
 
-// Analyse runs analyse.py for clip into outDir and writes the default review.
-func (w Worker) Analyse(ctx context.Context, clip, outDir string, p Params, progress func(int, string), logf func(string)) (Analysis, error) {
-	args := []string{clip, outDir}
+// Analyse runs analyse.py for clip into outDir and writes the default review. Scratch files (the
+// extracted audio) go in workDir, which the job manager empties however the job ends.
+func (w Worker) Analyse(ctx context.Context, clip, outDir, workDir string, p Params, progress func(int, string), logf func(string)) (Analysis, error) {
+	args := []string{clip, outDir, "--workdir", workDir}
 	if len(p.Times) > 0 {
 		args = append(args, "--times")
 		for _, t := range p.Times {

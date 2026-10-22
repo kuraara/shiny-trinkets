@@ -216,14 +216,19 @@ def main():
     ap.add_argument('clip'); ap.add_argument('outdir')
     ap.add_argument('--times', type=float, nargs='+')
     ap.add_argument('--scene-threshold', type=float, default=0.3)
+    # scratch files; the server passes the job's work/ folder, which it empties even if this
+    # process is killed (cancel, restart). Defaults to outdir for running the script by hand.
+    ap.add_argument('--workdir')
     a = ap.parse_args()
     os.makedirs(a.outdir, exist_ok=True)
+    a.workdir = a.workdir or a.outdir
+    os.makedirs(a.workdir, exist_ok=True)
     progress(2, 'probing')
     dur, has_audio = probe(a.clip)
     if dur > MAX_SECONDS:
         raise RuntimeError(f'clip is {dur:.0f}s; the panel transcript limit is {MAX_SECONDS:.0f}s '
                            f'(MAX_TRANSCRIPT_SECONDS). Trim it first.')
-    wav = os.path.join(a.outdir, 'audio.wav')
+    wav = os.path.join(a.workdir, 'audio.wav')
     words, lines, warnings = [], [], []
     if has_audio:
         progress(5, 'extracting audio')

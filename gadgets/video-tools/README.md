@@ -146,10 +146,10 @@ go test ./...                                      # join engine tests run real 
 
 ### Notes
 
-- The Dockerfile was written in a sandbox without a Docker daemon (like `app/Dockerfile`), so the
-  image wasn't built end to end there; each step was verified individually (Go build with the
-  pinned templ, clean `pip install` on Python 3.12, the model download, and the full app running on
-  those pieces — UI, API, MCP, joins, panel transcripts, guards, cancel and restart).
+- The image has been built and smoke-tested end to end through the API and MCP (joins, panel
+  transcripts, cancel and restart). `go test ./...` passes with ffmpeg 5.1 (the image's) and 7.1.
+- A panel transcript peaked at about 1.5 GB of container memory (file cache included); ffmpeg
+  during joins stays under about 300 MB.
 - Speech models are English-only.
 - Licences: Inter (OFL 1.1), htmx (0BSD), Whisper weights (MIT), sherpa-onnx and Vosk (Apache 2.0),
   Praat/parselmouth (GPL 3.0) — fine for self-hosting; check before redistributing the image.

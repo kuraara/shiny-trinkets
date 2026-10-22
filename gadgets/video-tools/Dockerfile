@@ -4,10 +4,9 @@
 # Repository, compose path video-tools/docker-compose.yml). Speech models (~430 MB) are NOT baked in;
 # they download into the /data volume on first start, so rebuilding the image never re-downloads them.
 #
-# Caveat (same as app/Dockerfile in this repo): written in a sandbox with no Docker daemon, so the
-# image itself hasn't been built end to end there. Every step was run and verified individually:
-# the Go build (pinned templ v0.3.1001, Go 1.24), a clean pip install of worker/requirements.txt on
-# Python 3.12, the model download script, and the full app running against those pieces.
+# Built and smoke-tested end to end on Docker 27 (amd64) through the API and MCP: joins, panel
+# transcripts, cancel and restart. The image is about 780 MB. The runtime base is Debian bookworm, whose ffmpeg is 5.1; the code and tests also pass on 7.1
+# (trixie), so moving the base image forward is fine.
 
 ARG GO_VERSION=1.24
 ARG PYTHON_VERSION=3.12

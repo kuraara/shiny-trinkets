@@ -87,6 +87,30 @@ func gen(t *testing.T, dir, name string, args ...string) string {
 	return out
 }
 
+// genRotated makes a clip with gen, then remuxes it with a 90° display matrix, like a phone
+// recording held upright. ffmpeg 6.0+ sets the matrix with -display_rotation; older versions
+// (Debian bookworm's 5.1, which the image uses) only accept the "rotate" metadata tag. Try
+// each and keep the first that ffprobe reports as rotated.
+func genRotated(t *testing.T, dir, name string, args ...string) string {
+	t.Helper()
+	plain := gen(t, dir, "plain_"+name, args...)
+	out := filepath.Join(dir, name)
+	for _, a := range [][]string{
+		{"-display_rotation", "90", "-i", plain, "-c", "copy"},
+		{"-i", plain, "-c", "copy", "-metadata:s:v:0", "rotate=90"},
+	} {
+		cmd := exec.Command("ffmpeg", append(append([]string{"-v", "error", "-y"}, a...), out)...)
+		if cmd.Run() != nil {
+			continue
+		}
+		if r := probeAll(t, out)[0].Rotation; r == 90 || r == 270 {
+			return out
+		}
+	}
+	t.Fatalf("gen %s: this ffmpeg wouldn't write a rotated clip", name)
+	return ""
+}
+
 func probeAll(t *testing.T, paths ...string) []Info {
 	var in []Info
 	for _, p := range paths {
@@ -129,7 +153,7 @@ func TestJoinIntegration(t *testing.T) {
 	b := gen(t, dir, "b.mp4", "-f", "lavfi", "-i", "smptebars=s=1280x720:r=30:d=3", "-f", "lavfi", "-i",
 		"sine=f=660:d=3", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest")
 	// portrait phone-style clip: landscape pixels + a 90° display matrix, no audio track
-	c := gen(t, dir, "c.mp4", "-display_rotation", "90", "-f", "lavfi", "-i", "mandelbrot=s=640x360:r=25",
+	c := genRotated(t, dir, "c.mp4", "-f", "lavfi", "-i", "mandelbrot=s=640x360:r=25",
 		"-t", "3", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p")
 	inputs := []string{a, b, c}
 	if u := os.Getenv("JOIN_TEST_EXTRA"); u != "" { // e.g. an iPhone HEVC screen recording

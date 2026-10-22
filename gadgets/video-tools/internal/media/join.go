@@ -271,9 +271,12 @@ func segmentArgs(in []Info, s segment, t Target, threads int, out string) []stri
 		va, aa := addClip(s.a, s.start, s.dur)
 		vb, ab := addClip(s.b, 0, s.dur)
 		d := fs(s.dur)
+		// ffmpeg 7 reports the frame rate as unknown after trim/setpts, and xfade refuses to run
+		// without one. A second fps= (a no-op: frames are already at that rate) restores it.
+		xv := norm(s.dur) + ",fps=" + t.FPS
 		fc = fmt.Sprintf("%s%s[va];%s%s[vb];[va][vb]xfade=transition=fade:duration=%s:offset=0[v];"+
 			"%s%s[xa];%s%s[xb];[xa][xb]acrossfade=d=%s:c1=tri:c2=tri[a]",
-			va, norm(s.dur), vb, norm(s.dur), d, aa, anorm(s.dur), ab, anorm(s.dur), d)
+			va, xv, vb, xv, d, aa, anorm(s.dur), ab, anorm(s.dur), d)
 	}
 	args = append(args, "-filter_complex", fc, "-filter_complex_threads", "1", "-map", "[v]", "-map", "[a]",
 		"-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-threads", th,
