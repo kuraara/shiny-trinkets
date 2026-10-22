@@ -18,7 +18,7 @@ Vosk for word timings, Praat for voice pitch) and rendering, ffmpeg for everythi
 
 1. **Stacks → Add stack → Repository**
    - Repository URL: `https://github.com/kuraara/clowd-docker-stuff`
-   - Reference: `refs/heads/master` (or `refs/heads/feature/video-tools` until it's merged)
+   - Reference: `refs/heads/master`
    - Compose path: `video-tools/docker-compose.yml`
 2. Optional **environment variables** (see [Configuration](#configuration)); the useful ones are
    `PUBLIC_URL` (e.g. `http://<pc>:8090`), `AUTH_TOKEN` and `VIDEO_TOOLS_PORT` (default 8090).

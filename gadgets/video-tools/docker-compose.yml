@@ -1,7 +1,7 @@
 # Portainer stack for video-tools.
 #   Portainer: Stacks -> Add stack -> Repository
 #     Repository URL:  https://github.com/kuraara/clowd-docker-stuff
-#     Reference:       refs/heads/master  (or refs/heads/feature/video-tools until merged)
+#     Reference:       refs/heads/master
 #     Compose path:    video-tools/docker-compose.yml
 #   Then set any of the variables below under "Environment variables" (all optional).
 #
