@@ -63,6 +63,11 @@
 
       <fieldset>
         <legend>Borders and spacing</legend>
+        <div class="seg two" role="radiogroup" aria-label="Units for borders and spacing">
+          <label><input type="radio" name="unit" value="px" checked><span>Pixels</span></label>
+          <label><input type="radio" name="unit" value="pct"><span>% of photo</span></label>
+        </div>
+        <p class="hint" id="unitHint" hidden>% of a typical photo's shorter side, so borders grow and shrink with the photos.</p>
         <label class="inline">Border <input type="range" id="border" min="0" max="80" value="0"> <output id="borderOut">0 px</output></label>
         <label class="inline">Border colour <input type="color" id="borderColor" value="#ffffff"></label>
         <label class="inline">Gap <input type="range" id="gap" min="0" max="120" value="0"> <output id="gapOut">0 px</output></label>

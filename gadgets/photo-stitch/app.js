@@ -16,9 +16,10 @@ const opts = () => ({
   cols: Math.max(1, parseInt($('#cols').value, 10) || 1),
   rows: parseInt($('#rows').value, 10) || 0,
   ratio: $('#ratio').value,
-  gap: parseInt($('#gap').value, 10) || 0,
-  margin: parseInt($('#margin').value, 10) || 0,
-  border: parseInt($('#border').value, 10) || 0,
+  unit: document.querySelector('input[name=unit]:checked').value, // 'px' or 'pct'
+  gap: parseFloat($('#gap').value) || 0,
+  margin: parseFloat($('#margin').value) || 0,
+  border: parseFloat($('#border').value) || 0,
   borderColor: $('#borderColor').value,
   bg: $('#bg').value,
   transparent: $('#transparent').checked && $('#format').value === 'png',
@@ -36,7 +37,8 @@ function loadOpts() {
   try { o = JSON.parse(localStorage.getItem('photo-stitch')); } catch { o = null; }
   if (!o) return;
   const set = (name, v) => { const el = document.querySelector(`input[name=${name}][value="${v}"]`); if (el) el.checked = true; };
-  set('layout', o.layout); set('fit', o.fit);
+  set('layout', o.layout); set('fit', o.fit); set('unit', o.unit || 'px');
+  setRanges(o.unit || 'px');
   $('#cols').value = o.cols || 2;
   $('#rows').value = o.rows || '';
   $('#ratio').value = o.ratio || 'first';
@@ -51,6 +53,40 @@ function loadOpts() {
   $('#size').value = o.size || 'full';
   if (!$('#size').value) $('#size').value = 'full';
   $('#sizePx').value = o.sizePx || 2048;
+}
+
+// Slider ranges per unit: pixels go up in whole steps, percent in tenths.
+const RANGES = { px: { border: [80, 1], gap: [120, 1], margin: [200, 1] }, pct: { border: [20, 0.1], gap: [30, 0.1], margin: [40, 0.1] } };
+function setRanges(unit) {
+  for (const [id, [max, step]] of Object.entries(RANGES[unit])) {
+    const el = $(`#${id}`);
+    el.max = max; el.step = step;
+  }
+}
+
+// Switching units converts the current values so the picture stays the same.
+let lastUnit = 'px';
+document.querySelectorAll('input[name=unit]').forEach((r) => r.addEventListener('change', () => {
+  const unit = document.querySelector('input[name=unit]:checked').value;
+  if (unit === lastUnit) return;
+  const pctPx = current ? pctUnit() : 0;
+  setRanges(unit);
+  for (const id of ['border', 'gap', 'margin']) {
+    const el = $(`#${id}`);
+    const v = parseFloat(el.value) || 0;
+    let nv = v;
+    if (pctPx > 0) nv = unit === 'pct' ? v / pctPx : v * pctPx;
+    const step = RANGES[unit][id][1];
+    el.value = Math.min(RANGES[unit][id][0], Number((Math.round(nv / step) * step).toFixed(1)));
+  }
+  lastUnit = unit;
+  update();
+}));
+
+// pctUnit is how many final pixels 1% would be for the current photos and size.
+function pctUnit() {
+  const o = { ...opts(), unit: 'pct' };
+  return layout(items, o, current.L.s).u;
 }
 
 // ---- adding photos ----
@@ -180,7 +216,9 @@ function layout(list, o, s = 1) {
   else if (o.layout === 'horizontal') { cols = n; rows = 1; }
   else { cols = Math.min(o.cols, n); rows = o.rows || Math.ceil(n / cols); }
   const used = list.slice(0, cols * rows);
-  const g = o.gap, b = o.border, m = o.margin;
+  // 1 unit: a pixel, or 1% of a typical photo's shorter side as drawn
+  const u = o.unit === 'pct' ? median(used.map((it) => Math.min(it.w, it.h))) * s / 100 : 1;
+  const g = o.gap * u, b = o.border * u, m = o.margin * u;
   const cells = [];
   let W, H;
 
@@ -217,7 +255,7 @@ function layout(list, o, s = 1) {
       cells.push({ it, sx: 0, sy: 0, sw: it.w, sh: it.h, bx: dx - b, by: dy - b, bw: dw + 2 * b, bh: dh + 2 * b, dx, dy, dw, dh });
     });
   }
-  return { W, H, cells, cols, rows, left: n - used.length, s };
+  return { W, H, cells, cols, rows, left: n - used.length, s, u };
 }
 
 const fitsBrowser = (W, H) => Math.max(W, H) <= MAX_SIDE && W * H <= MAX_AREA;
@@ -247,7 +285,7 @@ function draw(canvas, L, o, scale) {
   if (o.transparent) ctx.clearRect(0, 0, canvas.width, canvas.height);
   else { ctx.fillStyle = o.bg; ctx.fillRect(0, 0, canvas.width, canvas.height); }
   for (const c of L.cells) {
-    if (o.border > 0) {
+    if (c.bw > c.dw) {
       ctx.fillStyle = o.borderColor;
       ctx.fillRect(c.bx * scale, c.by * scale, c.bw * scale, c.bh * scale);
     }
@@ -262,9 +300,11 @@ function update() {
   saveOpts();
   $('#gridOpts').hidden = o.layout !== 'grid';
   $('#ratioRow').hidden = o.fit !== 'same';
-  $('#gapOut').textContent = `${o.gap} px`;
-  $('#marginOut').textContent = `${o.margin} px`;
-  $('#borderOut').textContent = `${o.border} px`;
+  const unit = o.unit === 'pct' ? '%' : ' px';
+  $('#gapOut').textContent = `${o.gap}${unit}`;
+  $('#marginOut').textContent = `${o.margin}${unit}`;
+  $('#borderOut').textContent = `${o.border}${unit}`;
+  $('#unitHint').hidden = o.unit !== 'pct';
   $('#borderColor').disabled = o.border === 0;
   $('#transparent').disabled = o.format !== 'png';
   $('#qualityRow').hidden = o.format !== 'jpeg';
@@ -342,7 +382,8 @@ document.querySelectorAll('.controls input, .controls select').forEach((el) => {
 });
 
 loadOpts();
+lastUnit = document.querySelector('input[name=unit]:checked').value;
 update();
 
 // test hook: lets automated checks read the layout
-window.__stitch = { items, layout: () => current && { W: Math.round(current.L.W), H: Math.round(current.L.H), cols: current.L.cols, rows: current.L.rows, s: current.L.s } };
+window.__stitch = { items, layout: () => current && { W: Math.round(current.L.W), H: Math.round(current.L.H), cols: current.L.cols, rows: current.L.rows, s: current.L.s, u: current.L.u } };

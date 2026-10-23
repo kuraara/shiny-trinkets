@@ -58,6 +58,20 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await page.select('#format', 'jpeg'); await sleep(200);
   res.qualityShown = await page.$eval('#qualityRow', (e) => !e.hidden);
   await page.select('#size', 'full'); await page.select('#format', 'png');
+  // percent units: switching converts values so the image keeps its size
+  await setVal('#border', 20); await sleep(200);
+  const beforePct = await L();
+  await page.click('input[name=unit][value=pct]'); await sleep(300);
+  res.pctAfterSwitch = { ...(await L()), border: await page.$eval('#border', (e) => e.value), label: await page.$eval('#borderOut', (e) => e.textContent) };
+  res.pctSameSize = Math.abs(res.pctAfterSwitch.H - beforePct.H) <= 6 * 0.05 * res.pctAfterSwitch.u + 1;
+  // in %, borders shrink with the output: at 1080 px the border is still 1.5% of a photo
+  await setVal('#border', 2); await sleep(200);
+  const full = await L();
+  await page.select('#size', '1080'); await sleep(200);
+  const small = await L();
+  res.pctScales = { fullU: full.u, smallU: small.u, ratioMatches: Math.abs(small.u / full.u - small.s) < 1e-6 };
+  await page.screenshot({ path: `${OUT}/s4c-percent.png` });
+  await page.click('input[name=unit][value=px]'); await page.select('#size', 'full'); await sleep(200);
   // phone layout
   await page.setViewport({ width: 390, height: 844, isMobile: true, deviceScaleFactor: 2 });
   await sleep(300);

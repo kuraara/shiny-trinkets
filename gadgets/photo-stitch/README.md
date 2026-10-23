@@ -7,8 +7,10 @@ ratio). Add photos by picking, dragging in, or pasting. Everything runs in the b
 is uploaded.
 
 - **Borders and spacing**: a border around each photo (width and colour), the gap between
-  photos, an outer margin, and the background colour (or transparent PNG). These are in
-  final-image pixels, so a 20 px border stays 20 px whatever size you save at.
+  photos, an outer margin, and the background colour (or transparent PNG). A toggle sets them
+  in **pixels** (of the saved image, so 20 px stays 20 px at any size) or in **% of a typical
+  photo's shorter side** (so they grow and shrink with the photos). Switching converts the
+  current values.
 - **File**: full resolution or a longest side of 4096 / 3000 / 2048 / 1600 / 1080 / 800 px or a
   custom size (photos are scaled down to fit; never enlarged), PNG or JPEG with a quality slider.
 
