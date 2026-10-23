@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Photo Stitch</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<main>
+  <header class="brand">
+    <img src="icon.svg" alt="">
+    <div><h1>Photo Stitch</h1><p class="sub">Join photos into one image. Nothing leaves your device.</p></div>
+  </header>
+
+  <div class="layout">
+    <section class="panel controls">
+      <div id="drop" class="drop" tabindex="0">
+        <p><b>Drop photos here</b>, paste them (<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>V</kbd>) or</p>
+        <div class="row">
+          <label class="btn primary" for="pick">Choose photos</label>
+          <button id="pasteBtn" type="button" hidden>Paste</button>
+        </div>
+        <input type="file" id="pick" accept="image/*" multiple hidden>
+      </div>
+      <ol id="list" class="list" aria-label="Photos in order"></ol>
+      <p class="hint" id="listHint" hidden>Drag to reorder, or use the arrows.</p>
+
+      <fieldset>
+        <legend>Layout</legend>
+        <div class="seg" role="radiogroup">
+          <label><input type="radio" name="layout" value="vertical" checked><span>Vertical</span></label>
+          <label><input type="radio" name="layout" value="horizontal"><span>Horizontal</span></label>
+          <label><input type="radio" name="layout" value="grid"><span>Grid</span></label>
+        </div>
+        <div class="row grid-opts" id="gridOpts" hidden>
+          <label>Columns <input type="number" id="cols" min="1" max="20" value="2"></label>
+          <label>Rows <input type="number" id="rows" min="1" max="50" placeholder="auto"></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Sizing</legend>
+        <label class="radio"><input type="radio" name="fit" value="asis" checked>
+          <span><b>As they are</b><small>No scaling or cropping; gaps are filled with the background.</small></span></label>
+        <label class="radio"><input type="radio" name="fit" value="same">
+          <span><b>Same shape</b><small>Crop and scale every photo to one aspect ratio.</small></span></label>
+        <label class="inline" id="ratioRow" hidden>Aspect ratio
+          <select id="ratio">
+            <option value="first">Match the first photo</option>
+            <option value="1">1:1 square</option>
+            <option value="1.3333">4:3</option>
+            <option value="0.75">3:4</option>
+            <option value="1.5">3:2</option>
+            <option value="0.6667">2:3</option>
+            <option value="1.7778">16:9</option>
+            <option value="0.5625">9:16</option>
+          </select>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Look</legend>
+        <label class="inline">Gap <input type="range" id="gap" min="0" max="80" value="0"> <output id="gapOut">0 px</output></label>
+        <label class="inline">Background <input type="color" id="bg" value="#ffffff"></label>
+        <label class="inline"><input type="checkbox" id="transparent"> Transparent (PNG only)</label>
+        <label class="inline">Save as
+          <select id="format"><option value="png">PNG</option><option value="jpeg">JPEG</option></select>
+        </label>
+      </fieldset>
+    </section>
+
+    <section class="panel preview">
+      <div class="preview-head">
+        <span id="dims" class="muted">Add photos to start</span>
+        <span class="spacer"></span>
+        <button id="copyBtn" type="button" hidden>Copy</button>
+        <button id="saveBtn" type="button" class="primary" disabled>Download</button>
+      </div>
+      <p class="note" id="note" hidden></p>
+      <div class="canvas-wrap" id="wrap"><canvas id="canvas"></canvas><div class="empty" id="empty">Your stitched image appears here.</div></div>
+    </section>
+  </div>
+</main>
+</body>
+</html>

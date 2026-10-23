@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Host · Photo Drop</title>
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/app.css">
+<script type="module" src="/static/host.js"></script>
+</head>
+<body>
+<main>
+  <div id="nokey" class="card center" hidden>
+    <h2>This browser isn't the host</h2>
+    <p class="muted">Host controls only work on the device that started the session.</p>
+    <a class="btn" href="/">Back to start</a>
+  </div>
+  <div id="ended" class="card center" hidden>
+    <h2>Session ended</h2>
+    <p class="muted">Its photos have been deleted.</p>
+    <a class="btn primary" href="/">Start another</a>
+  </div>
+
+  <div id="app" hidden>
+    <div class="host-top">
+      <h1><label class="visually-hidden" for="title">Session name</label><input id="title" maxlength="60"></h1>
+      <span class="status-dot" id="dot" title="Live"></span>
+      <a class="btn primary" id="openDisplay" target="_blank" rel="noopener">Open the desk ↗</a>
+    </div>
+
+    <div class="host-layout">
+      <div>
+        <section class="card">
+          <h2>Waiting for you <span class="chip accent count" id="pendingCount">0</span>
+            <span class="spacer"></span><button class="small" id="approveAll" hidden>Approve all</button></h2>
+          <div class="pending" id="pending"></div>
+          <div class="empty" id="pendingEmpty">New photos show up here. Nothing reaches the desk until you approve it.</div>
+        </section>
+
+        <section class="card" id="lobbyCard" hidden>
+          <h2>Wants to join <span class="chip accent count" id="lobbyCount">0</span>
+            <span class="spacer"></span><button class="small" id="admitAll">Let everyone in</button></h2>
+          <ul class="people" id="lobby"></ul>
+        </section>
+
+        <section class="card">
+          <h2>On the desk <span class="chip count" id="deskCount">0</span>
+            <span class="spacer"></span>
+            <label class="btn small" for="hostPick">Add photos</label>
+            <a class="btn small" id="download">Download all</a>
+            <button class="small" id="clearDesk">Clear</button></h2>
+          <input type="file" id="hostPick" accept="image/*" multiple hidden>
+          <div class="thumbs" id="desk"></div>
+          <div class="empty" id="deskEmpty">Approved photos land here and on the desk display.</div>
+        </section>
+      </div>
+
+      <aside>
+        <section class="card">
+          <h2>Invite people</h2>
+          <div class="share">
+            <img id="qr" alt="QR code to join">
+            <div>
+              <div class="muted small">Code</div>
+              <div class="code-big" id="code"></div>
+              <div class="url" id="joinUrl"></div>
+              <button class="small" id="copy" type="button">Copy link</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Settings</h2>
+          <label class="switch"><input type="checkbox" id="requireNames">
+            <span><b>Real names only</b><small>New guests must type their name.</small></span></label>
+          <label class="switch"><input type="checkbox" id="approveParticipants">
+            <span><b>Let each guest in yourself</b><small>Turning this off lets everyone waiting in.</small></span></label>
+          <label class="switch"><input type="checkbox" id="showQR">
+            <span><b>Show the join code on the desk</b></span></label>
+        </section>
+
+        <section class="card">
+          <h2>Guests <span class="chip count" id="peopleCount">0</span></h2>
+          <ul class="people" id="people"></ul>
+          <div class="empty" id="peopleEmpty">Nobody yet.</div>
+        </section>
+
+        <button class="bad" id="end" style="width:100%">End session and delete photos</button>
+      </aside>
+    </div>
+  </div>
+</main>
+</body>
+</html>

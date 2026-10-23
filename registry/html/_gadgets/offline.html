@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offline</title>
+<script src="/_gadgets/nav.js" defer></script>
+<style>
+  body { margin: 0; font: 16px/1.5 system-ui, sans-serif; background: #f3f4f7; color: #1b1d22; display: grid; place-items: center; min-height: 100vh; }
+  @media (prefers-color-scheme: dark) { body { background: #111318; color: #eef0f4; } }
+  div { text-align: center; padding: 24px; }
+  h1 { font-size: 1.4rem; margin: 0 0 6px; }
+  p { margin: 0; opacity: .7; }
+</style>
+</head>
+<body><div><h1 id="t">This gadget isn't answering</h1><p>It may be stopped, or its computer may be asleep. Try again in a minute.</p></div>
+<script>
+  fetch('/_gadgets/registry.json').then((r) => r.json()).then((reg) => {
+    const a = reg.apps.find((x) => x.proxy && x.proxy.port === Number(location.port));
+    if (a) { document.getElementById('t').textContent = `${a.name} isn't answering`; document.title = `${a.name} is offline`; }
+  }).catch(() => {});
+</script>
+</body>
+</html>

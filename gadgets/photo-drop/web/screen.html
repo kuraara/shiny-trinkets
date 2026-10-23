@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="gadget-nav" content="off">
+<title>Photo Drop</title>
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/screen.css">
+<script type="module" src="/static/screen.js"></script>
+</head>
+<body>
+<div id="desk" aria-live="polite"></div>
+
+<div id="welcome" hidden>
+  <div class="welcome-card">
+    <div class="welcome-title" id="wTitle">Photo Drop</div>
+    <img class="qr" id="wQR" alt="QR code to join">
+    <div class="welcome-text">Scan to drop your photos here</div>
+    <div class="url" id="wURL"></div>
+  </div>
+</div>
+
+<aside id="join" hidden>
+  <img class="qr" id="qr" alt="QR code to join">
+  <div>
+    <div class="join-title" id="title"></div>
+    <div class="join-text">Scan to add your photos</div>
+    <div class="join-code">Code <b id="code"></b></div>
+    <div class="join-count" id="count"></div>
+  </div>
+</aside>
+
+<div id="controls">
+  <a id="back" hidden>← Back</a>
+  <span id="conn" hidden>Reconnecting…</span>
+  <button id="fs" title="Full screen (F)">⛶</button>
+</div>
+
+<div id="lightbox" hidden>
+  <figure class="print big"><img id="lbImg" alt=""><figcaption id="lbCap"></figcaption></figure>
+</div>
+
+<div id="message" hidden><div class="welcome-card"><div class="welcome-title" id="msgTitle"></div><div class="welcome-text" id="msgText"></div></div></div>
+</body>
+</html>

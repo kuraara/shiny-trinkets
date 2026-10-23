@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Photo Drop</title>
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/app.css">
+<script type="module" src="/static/index.js"></script>
+</head>
+<body>
+<main>
+  <div class="brand">
+    <img src="/static/icon.svg" alt="">
+    <div><h1>Photo Drop</h1><div class="sub">Everyone scans a code and drops photos onto a shared desk. You approve each one first.</div></div>
+  </div>
+  <div class="grid2">
+    <form class="card" id="start">
+      <h2>Start a session</h2>
+      <label class="field">Name of the event <span class="hint">(optional)</span>
+        <input type="text" name="title" maxlength="60" placeholder="e.g. Sam's 40th" autocomplete="off">
+      </label>
+      <label class="switch"><input type="checkbox" name="requireNames">
+        <span><b>Real names only</b><small>Guests must type their name. Off: they can stay anonymous.</small></span></label>
+      <label class="switch"><input type="checkbox" name="approveParticipants">
+        <span><b>Let each guest in yourself</b><small>New guests wait in a lobby until you admit them.</small></span></label>
+      <label class="field" id="pinField" hidden>Host PIN
+        <input type="password" name="pin" autocomplete="off">
+      </label>
+      <p class="small muted">Every photo waits for your approval before it reaches the desk.</p>
+      <button class="primary big" type="submit">Start</button>
+      <p class="error" id="startErr" role="alert"></p>
+    </form>
+    <div>
+      <form class="card" id="join">
+        <h2>Join a session</h2>
+        <label class="field">Session code
+          <input type="text" class="code" name="code" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABC234">
+        </label>
+        <button class="big" type="submit">Join</button>
+      </form>
+      <div class="card" id="mine" hidden>
+        <h2>Your sessions on this device</h2>
+        <ul class="people" id="mineList"></ul>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

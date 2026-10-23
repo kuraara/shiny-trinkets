@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="gadget-nav" content="off">
+<title>Photo Drop</title>
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/app.css">
+<script type="module" src="/static/join.js"></script>
+</head>
+<body>
+<main class="narrow">
+  <div class="brand">
+    <img src="/static/icon.svg" alt="">
+    <div><h1 id="title">Photo Drop</h1><div class="sub" id="sub">Loading…</div></div>
+  </div>
+
+  <div class="card center" id="vMissing" hidden>
+    <h2 style="justify-content:center">Session not found</h2>
+    <p class="muted">It may have ended. Check the code with the host.</p>
+    <a class="btn" href="/">Enter a different code</a>
+  </div>
+
+  <form class="card" id="vForm" hidden>
+    <label class="field" id="nameLabel">Your name
+      <input type="text" name="name" maxlength="40" autocomplete="name" enterkeyhint="go">
+    </label>
+    <button class="primary big" type="submit">Join</button>
+    <p class="error" id="formErr" role="alert"></p>
+  </form>
+
+  <div class="card center" id="vWaiting" hidden>
+    <div class="spinner"></div>
+    <h2 style="justify-content:center">Waiting for the host</h2>
+    <p class="muted">You'll be let in shortly. Keep this page open.</p>
+  </div>
+
+  <div class="card center" id="vOut" hidden>
+    <h2 style="justify-content:center" id="outTitle"></h2>
+    <p class="muted" id="outText"></p>
+  </div>
+
+  <div id="vMain" hidden>
+    <div class="card">
+      <p id="hello"></p>
+      <label class="btn primary big" for="pick">📷 Add photos</label>
+      <input type="file" id="pick" accept="image/*" multiple hidden>
+      <div class="picked" id="picked"></div>
+      <button class="primary big" id="send" hidden>Send</button>
+      <p class="small muted center" style="margin-top:10px">The host checks every photo before it goes on the desk.</p>
+    </div>
+    <div class="card" id="mineCard" hidden>
+      <h2>Your photos</h2>
+      <div class="mine" id="mine"></div>
+    </div>
+    <p class="center"><a href="#" id="deskLink">See the desk →</a></p>
+  </div>
+</main>
+</body>
+</html>

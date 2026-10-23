@@ -1,0 +1,19 @@
+# Photo Drop. Reached through the gadget registry (gadgets network); no port of its own.
+services:
+  photo-drop:
+    image: photo-drop:latest
+    build: .
+    container_name: photo-drop
+    restart: unless-stopped
+    environment:
+      - ROOM_TTL_HOURS=48
+      # - PUBLIC_URL=https://drop.example.com   # set when hosted publicly
+      # - CREATE_PIN=1234                        # require a PIN to start sessions
+    volumes:
+      - photo-drop-data:/data
+    networks: [gadgets]
+volumes:
+  photo-drop-data:
+networks:
+  gadgets:
+    external: true

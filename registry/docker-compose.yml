@@ -1,0 +1,17 @@
+# Gadget registry: home page on port 80, each gadget proxied on its own port (see registry.json).
+# Creates the "gadgets" network the gadget stacks join.
+services:
+  registry:
+    image: gadget-registry:latest
+    build: .
+    container_name: gadget-registry
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "8101-8110:8101-8110"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: [gadgets]
+networks:
+  gadgets:
+    name: gadgets

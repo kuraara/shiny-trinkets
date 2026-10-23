@@ -1,0 +1,11 @@
+# Photo Stitch: static page, reached through the gadget registry (gadgets network).
+services:
+  photo-stitch:
+    image: photo-stitch:latest
+    build: .
+    container_name: photo-stitch
+    restart: unless-stopped
+    networks: [gadgets]
+networks:
+  gadgets:
+    external: true

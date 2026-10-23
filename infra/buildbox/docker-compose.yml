@@ -1,0 +1,19 @@
+# Portainer stack on the PC. Set AUTHORIZED_KEYS to the SSH public key(s) allowed in.
+services:
+  buildbox:
+    image: buildbox:latest
+    build: .
+    container_name: buildbox
+    restart: unless-stopped
+    ports:
+      - "2223:2223"
+    environment:
+      - AUTHORIZED_KEYS=${AUTHORIZED_KEYS}
+    volumes:
+      - buildbox-work:/work
+      - buildbox-go:/root/go
+      - /var/run/docker.sock:/var/run/docker.sock   # builds images on the PC's Docker
+    shm_size: 1gb   # Chromium needs more than the 64 MB default
+volumes:
+  buildbox-work:
+  buildbox-go:

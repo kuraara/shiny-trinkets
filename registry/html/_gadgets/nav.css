@@ -1,0 +1,63 @@
+/* Lives inside the navbar's shadow root, so it can't clash with the page's own CSS. */
+:host { all: initial; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+.bar, .drawer, .fab {
+  --bar-bg: #15171c; --bar-ink: #f2f3f5; --bar-muted: #9ba1ad;
+  --d-bg: #ffffff; --d-ink: #1b1d22; --d-muted: #6a707c; --d-line: #e6e8ec; --d-hover: #f1f3f6; --d-current: #e8eefc; --accent: #2563eb;
+  font: 14px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  .drawer { --d-bg: #1b1e25; --d-ink: #eef0f4; --d-muted: #9aa1ad; --d-line: #2c313b; --d-hover: #252a33; --d-current: #1e2a44; --accent: #60a5fa; }
+}
+.bar {
+  position: fixed; top: 0; left: 0; right: 0; height: 44px; z-index: 2147483000;
+  padding-top: env(safe-area-inset-top, 0px); padding-left: max(6px, env(safe-area-inset-left, 0px)); padding-right: max(6px, env(safe-area-inset-right, 0px));
+  display: flex; align-items: center; gap: 4px;
+  background: var(--bar-bg); color: var(--bar-ink); box-shadow: 0 1px 0 rgba(255,255,255,.06), 0 2px 8px rgba(0,0,0,.25);
+}
+.icon {
+  width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent; color: inherit;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; text-decoration: none;
+}
+.icon:hover { background: rgba(255,255,255,.1); }
+.icon:focus-visible, .item:focus-visible, .fab:focus-visible { outline: 2px solid #60a5fa; outline-offset: 1px; }
+.icon svg { width: 22px; height: 22px; }
+.brand { display: inline-flex; align-items: center; gap: 8px; color: inherit; text-decoration: none; font-weight: 650; font-size: 15px; padding: 4px 6px; border-radius: 8px; min-width: 0; }
+.brand span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand img { width: 24px; height: 24px; flex: none; }
+.spacer { flex: 1; }
+
+.scrim { position: fixed; inset: 0; z-index: 2147483001; background: rgba(0,0,0,.4); opacity: 0; transition: opacity .2s; }
+.scrim.on { opacity: 1; }
+.drawer {
+  position: fixed; top: 0; bottom: 0; left: 0; z-index: 2147483002; width: min(320px, 86vw); overflow-y: auto;
+  background: var(--d-bg); color: var(--d-ink); box-shadow: 4px 0 24px rgba(0,0,0,.25);
+  transform: translateX(-100%); transition: transform .2s ease; padding: 0 8px 16px;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.drawer.on { transform: none; }
+.dhead { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 4px 0 8px; position: sticky; top: 0; background: var(--d-bg); }
+.dhead img { width: 26px; height: 26px; }
+.dhead b { flex: 1; font-size: 16px; }
+.dhead .icon:hover { background: var(--d-hover); }
+.group { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--d-muted); padding: 14px 10px 6px; }
+.item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; color: var(--d-ink); text-decoration: none; min-height: 44px; }
+.item:hover { background: var(--d-hover); }
+.item.current { background: var(--d-current); font-weight: 650; }
+.item img, .item .glyph { width: 28px; height: 28px; flex: none; }
+.item .glyph { display: inline-flex; align-items: center; justify-content: center; color: var(--accent); }
+.item .glyph svg { width: 22px; height: 22px; }
+.item .name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item .host { font-size: 11.5px; color: var(--d-muted); }
+.item .out { color: var(--d-muted); display: inline-flex; }
+.item .out svg { width: 15px; height: 15px; }
+
+.fab {
+  position: fixed; left: max(14px, env(safe-area-inset-left, 0px)); bottom: max(14px, env(safe-area-inset-bottom, 0px)); z-index: 2147483000;
+  width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 7px; cursor: pointer;
+  background: var(--bar-bg); box-shadow: 0 4px 14px rgba(0,0,0,.35); opacity: .85;
+}
+.fab:hover { opacity: 1; }
+.fab img { width: 100%; height: 100%; display: block; }
+@media (prefers-reduced-motion: reduce) { .drawer, .scrim { transition: none; } }
