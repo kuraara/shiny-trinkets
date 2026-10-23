@@ -3,8 +3,14 @@
 Join photos into one image: vertical (default), horizontal, or a grid of N columns
 (rows automatic or fixed). Sizing is either **as they are** (no scaling or cropping, gaps
 filled with the background) or **same shape** (crop and scale every photo to one aspect
-ratio). Add photos by picking, dragging in, or pasting. Gap, background colour, transparent PNG
-or JPEG. Everything runs in the browser; nothing is uploaded.
+ratio). Add photos by picking, dragging in, or pasting. Everything runs in the browser; nothing
+is uploaded.
+
+- **Borders and spacing**: a border around each photo (width and colour), the gap between
+  photos, an outer margin, and the background colour (or transparent PNG). These are in
+  final-image pixels, so a 20 px border stays 20 px whatever size you save at.
+- **File**: full resolution or a longest side of 4096 / 3000 / 2048 / 1600 / 1080 / 800 px or a
+  custom size (photos are scaled down to fit; never enlarged), PNG or JPEG with a quality slider.
 
 Very large results are scaled down to what the browser can save (iPhones cap a canvas at
 about 16.7 megapixels); the page says when that happens.

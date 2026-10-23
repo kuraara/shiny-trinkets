@@ -44,7 +44,7 @@
       <fieldset>
         <legend>Sizing</legend>
         <label class="radio"><input type="radio" name="fit" value="asis" checked>
-          <span><b>As they are</b><small>No scaling or cropping; gaps are filled with the background.</small></span></label>
+          <span><b>As they are</b><small>No cropping, and no resizing to match each other; gaps are filled with the background.</small></span></label>
         <label class="radio"><input type="radio" name="fit" value="same">
           <span><b>Same shape</b><small>Crop and scale every photo to one aspect ratio.</small></span></label>
         <label class="inline" id="ratioRow" hidden>Aspect ratio
@@ -62,13 +62,34 @@
       </fieldset>
 
       <fieldset>
-        <legend>Look</legend>
-        <label class="inline">Gap <input type="range" id="gap" min="0" max="80" value="0"> <output id="gapOut">0 px</output></label>
+        <legend>Borders and spacing</legend>
+        <label class="inline">Border <input type="range" id="border" min="0" max="80" value="0"> <output id="borderOut">0 px</output></label>
+        <label class="inline">Border colour <input type="color" id="borderColor" value="#ffffff"></label>
+        <label class="inline">Gap <input type="range" id="gap" min="0" max="120" value="0"> <output id="gapOut">0 px</output></label>
+        <label class="inline">Outer margin <input type="range" id="margin" min="0" max="200" value="0"> <output id="marginOut">0 px</output></label>
         <label class="inline">Background <input type="color" id="bg" value="#ffffff"></label>
-        <label class="inline"><input type="checkbox" id="transparent"> Transparent (PNG only)</label>
+        <label class="inline"><input type="checkbox" id="transparent"> Transparent background (PNG only)</label>
+      </fieldset>
+
+      <fieldset>
+        <legend>File</legend>
+        <label class="inline">Size
+          <select id="size">
+            <option value="full">Full resolution</option>
+            <option value="4096">4096 px (longest side)</option>
+            <option value="3000">3000 px</option>
+            <option value="2048">2048 px</option>
+            <option value="1600">1600 px</option>
+            <option value="1080">1080 px</option>
+            <option value="800">800 px</option>
+            <option value="custom">Custom…</option>
+          </select>
+          <input type="number" id="sizePx" min="100" max="16384" step="10" value="2048" aria-label="Longest side in pixels" hidden>
+        </label>
         <label class="inline">Save as
           <select id="format"><option value="png">PNG</option><option value="jpeg">JPEG</option></select>
         </label>
+        <label class="inline" id="qualityRow" hidden>Quality <input type="range" id="quality" min="40" max="100" value="92"> <output id="qualityOut">92%</output></label>
       </fieldset>
     </section>
 
