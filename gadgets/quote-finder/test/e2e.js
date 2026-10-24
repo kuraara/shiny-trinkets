@@ -1,0 +1,31 @@
+// Usage: node test-e2e.js http://<pc>:8104 outdir
+const puppeteer = require('puppeteer-core');
+const BASE = process.argv[2], OUT = process.argv[3];
+require('fs').mkdirSync(OUT, { recursive: true });
+const errors = [];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+(async () => {
+  const b = await puppeteer.launch({ executablePath: process.env.PUPPETEER_EXECUTABLE_PATH, args: ['--no-sandbox'] });
+  const p = await b.newPage();
+  p.on('pageerror', (e) => errors.push(e.message));
+  p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  await p.setViewport({ width: 1100, height: 900 });
+  await p.goto(BASE + '/', { waitUntil: 'load' });
+  await p.waitForFunction(() => document.querySelector('#title').options.length > 3);
+  await p.type('#q', 'little uneven');
+  await p.waitForSelector('.hit');
+  await sleep(300);
+  await p.screenshot({ path: `${OUT}/q1-search.png` });
+  await p.click('.more'); await sleep(600);
+  const ctx = await p.$$eval('.hit .line', (ls) => ls.length);
+  await p.click('.regex span'); await p.$eval('#q', (e) => { e.value = ''; });
+  await p.type('#q', 'just a little.*uneven'); await sleep(900);
+  const regexHits = await p.$$eval('.hit', (h) => h.length);
+  await p.$eval('#q', (e) => { e.value = ''; }); await p.type('#q', '(broken'); await sleep(900);
+  const badMsg = await p.$eval('#status', (e) => e.textContent);
+  await p.click('.regex span'); await p.$eval('#q', (e) => { e.value = ''; }); await p.type('#q', 'pigeon'); await sleep(900);
+  await p.setViewport({ width: 390, height: 844, isMobile: true, deviceScaleFactor: 2 }); await sleep(400);
+  await p.screenshot({ path: `${OUT}/q2-phone.png` });
+  console.log(JSON.stringify({ ctx, regexHits, badMsg, url: p.url(), errors }));
+  await b.close();
+})().catch((e) => { console.error('FAILED', e.message, errors); process.exit(1); });

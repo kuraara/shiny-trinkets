@@ -1,0 +1,17 @@
+# Quote Finder search + index, on the PC. Reached through the gadget registry on :8104.
+services:
+  quote-finder:
+    image: quote-finder:latest
+    build: .
+    container_name: quote-finder
+    restart: unless-stopped
+    environment:
+      - INGEST_TOKEN=${INGEST_TOKEN}
+    volumes:
+      - quote-finder-data:/data
+    networks: [gadgets]
+volumes:
+  quote-finder-data:
+networks:
+  gadgets:
+    external: true

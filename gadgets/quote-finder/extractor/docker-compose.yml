@@ -1,0 +1,16 @@
+# Runs on the Pi, next to the media. Reads only; one file at a time at the lowest priority.
+services:
+  subtitle-extractor:
+    image: subtitle-extractor:latest
+    container_name: subtitle-extractor
+    restart: unless-stopped
+    environment:
+      - INGEST_TOKEN=${INGEST_TOKEN}
+      - INDEX_URL=http://<pc>:8104
+      - MEDIA_DIR=/media
+      - ONLY=${ONLY}          # e.g. "TvShows/Mike Tyson Mysteries"; empty = whole library
+      - RESCAN_HOURS=6
+    volumes:
+      - /path/to/video:/media:ro
+    mem_limit: 256m
+    cpus: 1.0

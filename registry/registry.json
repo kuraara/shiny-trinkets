@@ -47,6 +47,17 @@
       }
     },
     {
+      "id": "quote-finder",
+      "name": "Quote Finder",
+      "kind": "gadget",
+      "host": "pc",
+      "desc": "Search the dialogue of everything in Plex: find the episode from a quote.",
+      "proxy": {
+        "port": 8104,
+        "upstream": "http://quote-finder:8080"
+      }
+    },
+    {
       "id": "home-assistant",
       "name": "Home Assistant",
       "kind": "service",
