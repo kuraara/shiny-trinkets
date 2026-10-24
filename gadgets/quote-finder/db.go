@@ -157,10 +157,11 @@ type knownFile struct {
 	Size   int64  `json:"size"`
 	Mtime  int64  `json:"mtime"`
 	Status string `json:"status"`
+	Source string `json:"source"`
 }
 
 func (s *store) known() (map[string]knownFile, error) {
-	rows, err := s.db.Query(`SELECT path, size, mtime, status FROM media`)
+	rows, err := s.db.Query(`SELECT path, size, mtime, status, source FROM media`)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +170,7 @@ func (s *store) known() (map[string]knownFile, error) {
 	for rows.Next() {
 		var p string
 		var k knownFile
-		if err := rows.Scan(&p, &k.Size, &k.Mtime, &k.Status); err != nil {
+		if err := rows.Scan(&p, &k.Size, &k.Mtime, &k.Status, &k.Source); err != nil {
 			return nil, err
 		}
 		out[p] = k

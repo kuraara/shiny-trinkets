@@ -21,7 +21,13 @@ Two parts:
   forced/signs, plain over SDH), pulls it out with ffmpeg at the lowest CPU and disk priority,
   one file at a time, and sends it to the server. Rescans every 6 hours for new files and
   forgets deleted ones. `ONLY` limits it to some folders (e.g. `TvShows/Mike Tyson Mysteries`).
-  Files with picture-only subtitles (Blu-ray PGS) or none are recorded but not searchable yet.
+  Files go smallest first, and the extractor measures the disk's read speed as it goes.
+  **If a file would take more than a minute to read, it asks OpenSubtitles first** (matching
+  the exact release by its OpenSubtitles hash, which only reads 128 KB), and only reads the
+  whole file if that fails, at the end of the pass. Files with no English text subtitles
+  (none, or picture-only Blu-ray PGS) also get an OpenSubtitles try, as far as the daily
+  download allowance goes (about 20 a day on a free account). OpenSubtitles is off until
+  `OPENSUBTITLES_API_KEY`, `_USERNAME` and `_PASSWORD` are set on the extractor stack.
 - **The server** (this folder, Go + SQLite FTS5) on the PC stores the lines and serves the
   search page and API (`/api/search`, `/api/context`, `/api/titles`, `/api/stats`). The
   extractor authenticates with `INGEST_TOKEN` (set on both stacks).

@@ -10,6 +10,11 @@ services:
       - MEDIA_DIR=/media
       - ONLY=${ONLY}          # e.g. "TvShows/Mike Tyson Mysteries"; empty = whole library
       - RESCAN_HOURS=6
+      # OpenSubtitles (free account at opensubtitles.com, API key from "API consumers"):
+      # used for files that would take over a minute to read, and files with no subtitles.
+      - OPENSUBTITLES_API_KEY=${OPENSUBTITLES_API_KEY}
+      - OPENSUBTITLES_USERNAME=${OPENSUBTITLES_USERNAME}
+      - OPENSUBTITLES_PASSWORD=${OPENSUBTITLES_PASSWORD}
     volumes:
       - /path/to/video:/media:ro
     mem_limit: 256m
