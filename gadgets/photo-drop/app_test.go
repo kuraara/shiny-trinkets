@@ -342,3 +342,55 @@ func TestQR(t *testing.T) {
 		t.Fatalf("qr: %v", err)
 	}
 }
+
+func TestMoveAndArrange(t *testing.T) {
+	srv, st := newTestServer(t, t.TempDir())
+	_, room := call(t, srv, "POST", "/api/rooms", "", map[string]any{})
+	code, hostKey, dispKey := room["code"].(string), room["hostKey"].(string), room["displayKey"].(string)
+	for i := 0; i < 5; i++ {
+		upload(t, srv, code, hostKey, testJPEG(t, 30, 20), "")
+	}
+	s := state(t, srv, code, hostKey)
+	if len(s.Desk) != 5 {
+		t.Fatalf("desk %d", len(s.Desk))
+	}
+	first := s.Desk[0]
+	// the display can't move things; the host can, and the print comes to the top
+	if st, _ := call(t, srv, "POST", "/api/rooms/"+code+"/photos/"+first.ID+"/move", dispKey, map[string]any{"x": 0.1, "y": 0.2}); st != 403 {
+		t.Fatalf("display move: %d", st)
+	}
+	if st, _ := call(t, srv, "POST", "/api/rooms/"+code+"/photos/"+first.ID+"/move", hostKey, map[string]any{"x": 1.7, "y": 0.25}); st != 204 {
+		t.Fatalf("move: %d", st)
+	}
+	s = state(t, srv, code, hostKey)
+	top := s.Desk[len(s.Desk)-1]
+	if top.ID != first.ID || top.X != 1 || top.Y != 0.25 {
+		t.Fatalf("after move: %+v", top)
+	}
+	// tidy: 5 prints -> 3 columns, 2 rows; first row at the top edge, nearly straight
+	if st, _ := call(t, srv, "POST", "/api/rooms/"+code+"/arrange", hostKey, map[string]any{"style": "tidy"}); st != 204 {
+		t.Fatalf("tidy: %d", st)
+	}
+	s = state(t, srv, code, hostKey)
+	want := [][2]float64{{0, 0}, {0.5, 0}, {1, 0}, {0.25, 1}, {0.75, 1}}
+	for i, p := range s.Desk {
+		if p.X != want[i][0] || p.Y != want[i][1] || p.Rot < -2 || p.Rot > 2 {
+			t.Fatalf("tidy %d: %+v", i, p)
+		}
+	}
+	if st, _ := call(t, srv, "POST", "/api/rooms/"+code+"/arrange", hostKey, map[string]any{"style": "nope"}); st != 400 {
+		t.Fatalf("bad style: %d", st)
+	}
+	// automatic re-arrange runs once its time is up
+	call(t, srv, "POST", "/api/rooms/"+code+"/settings", hostKey, map[string]any{"autoArrange": 1, "autoStyle": "tidy"})
+	r := st.get(code)
+	if _, due := r.arrangeDue(time.Now()); due {
+		t.Fatal("due straight away")
+	}
+	if style, due := r.arrangeDue(time.Now().Add(61 * time.Second)); !due || style != "tidy" {
+		t.Fatalf("not due: %v %s", due, style)
+	}
+	if s = state(t, srv, code, hostKey); s.Settings.AutoArrange != 1 || s.Settings.AutoStyle != "tidy" {
+		t.Fatalf("settings %+v", s.Settings)
+	}
+}

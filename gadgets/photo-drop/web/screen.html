@@ -34,6 +34,19 @@
 <div id="controls">
   <a id="back" hidden>← Back</a>
   <span id="conn" hidden>Reconnecting…</span>
+  <span id="hostTools" hidden>
+    <button id="tidy" title="Lay the photos out in a neat grid">▦<span class="word"> Tidy</span></button>
+    <button id="shuffle" title="Scatter the photos again, buried ones on top">🔀<span class="word"> Shuffle</span></button>
+    <label class="auto" title="Re-arrange the desk automatically"><span class="word">Auto</span><span aria-hidden="true">⟳</span>
+      <select id="auto">
+        <option value="0">off</option>
+        <option value="1">1 min</option>
+        <option value="2">2 min</option>
+        <option value="5">5 min</option>
+        <option value="10">10 min</option>
+        <option value="30">30 min</option>
+      </select></label>
+  </span>
   <button id="fs" title="Full screen (F)">⛶</button>
 </div>
 

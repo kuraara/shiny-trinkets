@@ -1,4 +1,4 @@
-import { $, h, store, codeFromPath, live, photoURL } from './common.js';
+import { $, h, api, store, codeFromPath, live, photoURL } from './common.js';
 
 const code = codeFromPath();
 const frag = new URLSearchParams(location.hash.slice(1));
@@ -10,6 +10,9 @@ if (key) {
 const guest = store.get(`pd:p:${code}`);
 key = key || store.get(`pd:display:${code}`) || store.get(`pd:host:${code}`) || guest?.token;
 const isGuest = !!guest?.token && key === guest.token;
+// The host's own browser also holds the host key: then photos can be dragged and arranged.
+const hostKey = store.get(`pd:host:${code}`);
+let dragging = null; // id of the print being dragged
 
 const desk = $('#desk');
 const prints = new Map(); // id -> {el, p}
@@ -30,7 +33,12 @@ if (!key) {
 } else {
   $('#qr').src = $('#wQR').src = `/api/rooms/${code}/qr.svg`;
   $('#code').textContent = code;
-  if (isGuest) { const b = $('#back'); b.hidden = false; b.href = `/j/${code}`; }
+  const back = $('#back');
+  if (hostKey) {
+    back.hidden = false; back.href = `/h/${code}`; back.textContent = '← Host controls';
+    $('#hostTools').hidden = false;
+    document.body.classList.add('host');
+  } else if (isGuest) { back.hidden = false; back.href = `/j/${code}`; }
   live(code, key, {
     onState: render,
     onClosed: () => { desk.replaceChildren(); prints.clear(); message('That’s a wrap', 'This session has ended.'); },
@@ -77,7 +85,11 @@ function captionText(p) {
 function makePrint(p) {
   const img = h('img', { src: photoURL(code, p.id), alt: captionText(p) || 'Photo', decoding: 'async' });
   const el = h('figure', { class: 'print' }, img, h('figcaption', { text: captionText(p) }));
-  el.addEventListener('click', () => openLightbox(p));
+  el.addEventListener('click', () => {
+    if (el.dataset.dragged) { delete el.dataset.dragged; return; }
+    openLightbox(prints.get(p.id)?.p || p);
+  });
+  if (hostKey) draggable(el, p.id);
   return el;
 }
 
@@ -106,6 +118,11 @@ function render(s) {
   total = n;
   $('#welcome').hidden = n > 0 || !showQR;
   $('#join').hidden = n === 0 || !showQR;
+  if (hostKey && document.activeElement !== $('#auto')) {
+    const sel = $('#auto'), v = String(s.settings.autoArrange || 0);
+    if (![...sel.options].some((o) => o.value === v)) sel.append(h('option', { value: v, text: `${v} min` }));
+    sel.value = v;
+  }
   $('#count').textContent = `${s.counts.desk} photo${s.counts.desk === 1 ? '' : 's'} · ${s.counts.people} here`;
 
   const keep = new Set(s.desk.map((p) => p.id));
@@ -117,7 +134,7 @@ function render(s) {
   }
   for (const p of s.desk) {
     const known = prints.get(p.id);
-    if (known) { known.p = p; place(known.el, p, n); continue; }
+    if (known) { known.p = p; if (dragging !== p.id) place(known.el, p, n); continue; }
     const el = makePrint(p);
     prints.set(p.id, { el, p });
     if (first) { place(el, p, n); desk.append(el); continue; }
@@ -127,6 +144,72 @@ function render(s) {
     Promise.race([img.decode(), new Promise((r) => setTimeout(r, 4000))]).then(go, go);
   }
   first = false;
+}
+
+// ---- host: drag prints around ----
+function draggable(el, id) {
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button > 0 || dragging) return;
+    const item = prints.get(id);
+    if (!item) return;
+    const start = { x: e.clientX, y: e.clientY, left: parseFloat(el.style.left) || 0, top: parseFloat(el.style.top) || 0 };
+    let moved = false;
+    try { el.setPointerCapture(e.pointerId); } catch { /* fine */ }
+    const move = (ev) => {
+      const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
+      if (!moved) {
+        if (Math.hypot(dx, dy) < 6) return;
+        moved = true; dragging = id;
+        el.classList.add('dragging');
+        el.style.zIndex = String(topZ() + 1);
+        el.style.transform = `rotate(${item.p.rot}deg) scale(1.04)`;
+      }
+      const g = geometry(item.p, total);
+      el.style.left = `${Math.min(Math.max(start.left + dx, 0), Math.max(0, innerWidth - g.ow))}px`;
+      el.style.top = `${Math.min(Math.max(start.top + dy, 0), Math.max(0, innerHeight - g.oh))}px`;
+    };
+    const up = () => {
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up);
+      el.removeEventListener('pointercancel', up);
+      if (!moved) return;
+      el.dataset.dragged = '1'; // swallow the click that follows
+      setTimeout(() => delete el.dataset.dragged, 50);
+      const g = geometry(item.p, total);
+      const frac = (v, free) => (free > 0 ? Math.min(Math.max(v / free, 0), 1) : 0.5);
+      item.p.x = frac(parseFloat(el.style.left), innerWidth - g.ow);
+      item.p.y = frac(parseFloat(el.style.top), innerHeight - g.oh);
+      item.p.z = topZ() + 1;
+      el.classList.remove('dragging');
+      el.style.transform = `rotate(${item.p.rot}deg)`;
+      dragging = null;
+      hostCall(`/photos/${id}/move`, { x: item.p.x, y: item.p.y });
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  });
+}
+
+function topZ() {
+  let z = 0;
+  for (const { p } of prints.values()) z = Math.max(z, p.z);
+  return z;
+}
+
+function hostCall(path, body) {
+  return api(`/api/rooms/${code}${path}`, { method: 'POST', key: hostKey, body }).catch((e) => {
+    const c = $('#conn');
+    c.textContent = e.status === 403 ? 'Only the host can do that' : e.message;
+    c.hidden = false;
+    setTimeout(() => { c.hidden = true; c.textContent = 'Reconnecting…'; }, 3000);
+  });
+}
+
+if (hostKey) {
+  $('#tidy').addEventListener('click', () => hostCall('/arrange', { style: 'tidy' }));
+  $('#shuffle').addEventListener('click', () => hostCall('/arrange', { style: 'shuffle' }));
+  $('#auto').addEventListener('change', (e) => hostCall('/settings', { autoArrange: Number(e.target.value) }));
 }
 
 addEventListener('resize', () => { for (const { el, p } of prints.values()) place(el, p, total); });
@@ -141,6 +224,7 @@ $('#lightbox').addEventListener('click', () => { $('#lightbox').hidden = true; }
 
 // full screen and idle cursor
 const toggleFS = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.())?.catch?.(() => {});
+if (!document.fullscreenEnabled) $('#fs').hidden = true; // e.g. iPhone: no full screen for web pages
 $('#fs').addEventListener('click', toggleFS);
 addEventListener('keydown', (e) => {
   if (e.key === 'f' || e.key === 'F') toggleFS();

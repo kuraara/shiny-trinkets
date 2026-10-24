@@ -158,3 +158,9 @@ button.small, .btn.small { padding: 6px 10px; min-height: 34px; font-size: .85re
 .toast { background: var(--ink); color: var(--bg); padding: 10px 14px; border-radius: 10px; box-shadow: var(--shadow); font-weight: 600; }
 .toast.bad { background: var(--bad); color: #fff; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.field-row { padding: 10px 0; display: grid; gap: 8px; }
+.field-row small { display: block; color: var(--muted); }
+.field-row .selects { display: flex; gap: 8px; flex-wrap: wrap; }
+.field-row select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card, var(--bg)); color: var(--ink); }
+.field-row select:disabled { opacity: .5; }

@@ -45,6 +45,8 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("POST /api/rooms/{code}/photos", a.upload)
 	mux.HandleFunc("GET /api/rooms/{code}/photos/{file}", a.photoFile)
 	mux.HandleFunc("POST /api/rooms/{code}/photos/{id}/{action}", a.photoAction)
+	mux.HandleFunc("POST /api/rooms/{code}/photos/{id}/move", a.movePhoto)
+	mux.HandleFunc("POST /api/rooms/{code}/arrange", a.arrange)
 	mux.HandleFunc("POST /api/rooms/{code}/approve-all", a.approveAll)
 	mux.HandleFunc("POST /api/rooms/{code}/clear", a.clearDesk)
 	mux.HandleFunc("POST /api/rooms/{code}/people/{pid}/{action}", a.personAction)
@@ -465,6 +467,42 @@ func (a *app) photoAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rm.deleteFiles(gone)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (a *app) movePhoto(w http.ResponseWriter, r *http.Request) {
+	rm := a.hostRoom(w, r)
+	if rm == nil {
+		return
+	}
+	var p struct{ X, Y float64 }
+	if !readJSON(w, r, &p) {
+		return
+	}
+	if err := rm.move(r.PathValue("id"), p.X, p.Y); err != nil {
+		failErr(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (a *app) arrange(w http.ResponseWriter, r *http.Request) {
+	rm := a.hostRoom(w, r)
+	if rm == nil {
+		return
+	}
+	var p struct{ Style string }
+	if !readJSON(w, r, &p) {
+		return
+	}
+	if !validStyle(p.Style) {
+		fail(w, http.StatusBadRequest, "Unknown arrangement.")
+		return
+	}
+	if err := rm.arrange(p.Style); err != nil {
+		failErr(w, err)
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 

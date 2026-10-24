@@ -138,6 +138,12 @@ func (s *store) janitor(ctx context.Context) {
 			return
 		case <-t.C:
 		}
+		now := time.Now()
+		for _, r := range s.all() {
+			if style, due := r.arrangeDue(now); due {
+				r.arrange(style)
+			}
+		}
 		s.saveDirty()
 		if n%30 == 0 {
 			s.expire()

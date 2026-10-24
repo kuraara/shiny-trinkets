@@ -46,6 +46,8 @@
         <section class="card">
           <h2>On the desk <span class="chip count" id="deskCount">0</span>
             <span class="spacer"></span>
+            <button class="small" id="tidyDesk" title="Lay the photos out in a neat grid">Tidy</button>
+            <button class="small" id="shuffleDesk" title="Scatter the photos again, buried ones on top">Shuffle</button>
             <label class="btn small" for="hostPick">Add photos</label>
             <a class="btn small" id="download">Download all</a>
             <button class="small" id="clearDesk">Clear</button></h2>
@@ -77,6 +79,18 @@
             <span><b>Let each guest in yourself</b><small>Turning this off lets everyone waiting in.</small></span></label>
           <label class="switch"><input type="checkbox" id="showQR">
             <span><b>Show the join code on the desk</b></span></label>
+          <div class="field-row">
+            <span><b>Re-arrange the desk</b><small>Every so often, so buried photos get seen. You can also drag photos on the desk itself.</small></span>
+            <div class="selects">
+              <select id="autoArrange" aria-label="How often">
+                <option value="0">Never</option><option value="1">Every minute</option><option value="2">Every 2 min</option>
+                <option value="5">Every 5 min</option><option value="10">Every 10 min</option><option value="30">Every 30 min</option>
+              </select>
+              <select id="autoStyle" aria-label="How">
+                <option value="shuffle">Shuffle</option><option value="tidy">Tidy grid</option>
+              </select>
+            </div>
+          </div>
         </section>
 
         <section class="card">

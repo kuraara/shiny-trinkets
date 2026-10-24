@@ -31,6 +31,13 @@ function render(s) {
   $('#joinUrl').textContent = s.joinUrl;
   $('#openDisplay').href = `/s/${code}#d=${encodeURIComponent(s.displayKey)}`;
   for (const k of ['requireNames', 'approveParticipants', 'showQR']) $(`#${k}`).checked = s.settings[k];
+  for (const [k, def] of [['autoArrange', '0'], ['autoStyle', 'shuffle']]) {
+    const sel = $(`#${k}`), v = String(s.settings[k] || def);
+    if (document.activeElement === sel) continue;
+    if (![...sel.options].some((o) => o.value === v)) sel.append(h('option', { value: v, text: `Every ${v} min` }));
+    sel.value = v;
+  }
+  $('#autoStyle').disabled = !s.settings.autoArrange;
 
   // Photos waiting for approval
   $('#pendingCount').textContent = s.pending.length;
@@ -60,6 +67,7 @@ function render(s) {
   $('#deskCount').textContent = s.counts.desk;
   $('#deskEmpty').hidden = desk.length > 0;
   $('#clearDesk').hidden = desk.length === 0;
+  $('#tidyDesk').hidden = $('#shuffleDesk').hidden = desk.length < 2;
   $('#download').hidden = desk.length === 0;
   reconcile($('#desk'), desk, (p) => p.id, (p) => h('div', { class: 'thumb', title: [p.name, p.caption].filter(Boolean).join(' · ') },
     h('img', { src: photoURL(code, p.id), alt: '', loading: 'lazy' }),
@@ -93,6 +101,10 @@ twoStep($('#end'), 'Deletes everything. Tap again', async () => {
 for (const k of ['requireNames', 'approveParticipants', 'showQR']) {
   $(`#${k}`).addEventListener('change', (e) => act('/settings', { [k]: e.target.checked }));
 }
+$('#autoArrange').addEventListener('change', (e) => act('/settings', { autoArrange: Number(e.target.value) }));
+$('#autoStyle').addEventListener('change', (e) => act('/settings', { autoStyle: e.target.value }));
+$('#tidyDesk').addEventListener('click', () => act('/arrange', { style: 'tidy' }));
+$('#shuffleDesk').addEventListener('click', () => act('/arrange', { style: 'shuffle' }));
 $('#title').addEventListener('change', (e) => act('/settings', { title: e.target.value }));
 $('#title').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
 

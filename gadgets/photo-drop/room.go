@@ -15,9 +15,11 @@ import (
 )
 
 type settings struct {
-	RequireNames        bool `json:"requireNames"`        // guests must give a name (otherwise "Guest 3" is fine)
-	ApproveParticipants bool `json:"approveParticipants"` // host lets each guest in
-	ShowQR              bool `json:"showQR"`              // join code on the desk display
+	RequireNames        bool   `json:"requireNames"`        // guests must give a name (otherwise "Guest 3" is fine)
+	ApproveParticipants bool   `json:"approveParticipants"` // host lets each guest in
+	ShowQR              bool   `json:"showQR"`              // join code on the desk display
+	AutoArrange         int    `json:"autoArrange"`         // minutes between automatic re-arranges; 0 = off
+	AutoStyle           string `json:"autoStyle"`           // "shuffle" or "tidy"
 }
 
 const (
@@ -96,6 +98,7 @@ type room struct {
 	Photos     []*photo       `json:"photos"`
 	NextZ      int            `json:"nextZ"`
 	Guests     int            `json:"guests"`
+	Arranged   time.Time      `json:"arranged,omitzero"` // last re-arrange, for the timer
 }
 
 var (
@@ -307,6 +310,8 @@ type settingsPatch struct {
 	RequireNames        *bool   `json:"requireNames"`
 	ApproveParticipants *bool   `json:"approveParticipants"`
 	ShowQR              *bool   `json:"showQR"`
+	AutoArrange         *int    `json:"autoArrange"`
+	AutoStyle           *string `json:"autoStyle"`
 }
 
 func (r *room) update(p settingsPatch) error {
@@ -325,6 +330,13 @@ func (r *room) update(p settingsPatch) error {
 	}
 	if p.ShowQR != nil {
 		r.Settings.ShowQR = *p.ShowQR
+	}
+	if p.AutoArrange != nil {
+		r.Settings.AutoArrange = min(max(*p.AutoArrange, 0), 24*60)
+		r.Arranged = time.Now().UTC() // the timer starts now
+	}
+	if p.AutoStyle != nil && validStyle(*p.AutoStyle) {
+		r.Settings.AutoStyle = *p.AutoStyle
 	}
 	if p.ApproveParticipants != nil {
 		r.Settings.ApproveParticipants = *p.ApproveParticipants
@@ -484,6 +496,104 @@ func (r *room) photoAction(id, action string) ([]string, error) {
 		return []string{ph.ID}, nil
 	}
 	return nil, nil
+}
+
+// move puts a print where the host dropped it and brings it to the top.
+func (r *room) move(id string, x, y float64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.closed {
+		return errClosed
+	}
+	ph := r.findPhoto(id)
+	if ph == nil || ph.Status != photoApproved {
+		return errNotFound
+	}
+	clamp := func(v float64) float64 { return math.Round(min(max(v, 0), 1)*1000) / 1000 }
+	ph.X, ph.Y = clamp(x), clamp(y)
+	r.NextZ++
+	ph.Z = r.NextZ
+	r.changed()
+	return nil
+}
+
+func validStyle(s string) bool { return s == "shuffle" || s == "tidy" }
+
+// arrange lays out every print on the desk.
+//   - tidy: a neat grid in arrival order, nearly straight.
+//   - shuffle: spread evenly over the desk at fresh angles, in a new stacking order,
+//     so buried prints come back to the top.
+//
+// x and y are fractions of the free space (0 = left/top edge, 1 = right/bottom edge), so
+// evenly spaced fractions give evenly spaced prints on any screen.
+func (r *room) arrange(style string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.closed {
+		return errClosed
+	}
+	if !validStyle(style) {
+		return fmt.Errorf("unknown arrangement %q", style)
+	}
+	d := r.deskLocked(0)
+	n := len(d)
+	r.Arranged = time.Now().UTC()
+	if n == 0 {
+		return nil
+	}
+	// a widescreen desk holding roughly 4:3 prints
+	cols := int(math.Ceil(math.Sqrt(float64(n) * 1.33)))
+	cols = min(cols, n)
+	rows := (n + cols - 1) / cols
+	at := func(i, count int) float64 {
+		if count == 1 {
+			return 0.5
+		}
+		return float64(i) / float64(count-1)
+	}
+	round := func(v float64) float64 { return math.Round(v*1000) / 1000 }
+	if style == "shuffle" {
+		rand.Shuffle(n, func(i, j int) { d[i], d[j] = d[j], d[i] })
+	}
+	for i, ph := range d {
+		c, rw := i%cols, i/cols
+		inRow := cols
+		if rw == rows-1 && n%cols != 0 {
+			inRow = n % cols // centre a short last row
+		}
+		x, y := at(c, inRow), at(rw, rows)
+		if inRow < cols && cols > 1 {
+			x = (float64(c) + float64(cols-inRow)/2) / float64(cols-1)
+		}
+		if style == "tidy" {
+			ph.Rot = math.Round((rand.Float64()*4-2)*10) / 10
+		} else {
+			// jitter within the cell so it looks thrown, not gridded
+			jx, jy := 0.5/float64(max(cols-1, 1)), 0.5/float64(max(rows-1, 1))
+			x += (rand.Float64()*2 - 1) * jx * 0.8
+			y += (rand.Float64()*2 - 1) * jy * 0.8
+			ph.Rot = math.Round((rand.Float64()*30-15)*10) / 10
+		}
+		ph.X, ph.Y = round(min(max(x, 0), 1)), round(min(max(y, 0), 1))
+		r.NextZ++
+		ph.Z = r.NextZ
+	}
+	r.changed()
+	return nil
+}
+
+// arrangeDue reports whether the automatic re-arrange should run now.
+func (r *room) arrangeDue(now time.Time) (string, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.closed || r.Settings.AutoArrange <= 0 {
+		return "", false
+	}
+	style := r.Settings.AutoStyle
+	if !validStyle(style) {
+		style = "shuffle"
+	}
+	return style, now.Sub(r.Arranged) >= time.Duration(r.Settings.AutoArrange)*time.Minute
 }
 
 func (r *room) approveAll() int {

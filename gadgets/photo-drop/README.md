@@ -6,9 +6,12 @@ print, dropped at a random spot and tilted up to ±15°.
 
 - **Start page** (`/`): start a session (real names only? let each guest in yourself?) or join with a code.
 - **Host** (`/h/CODE`): approve/reject photos, admit/turn away guests, remove guests, take photos
-  off the desk, download everything as a zip, end the session (deletes all photos).
+  off the desk, tidy or shuffle the desk, re-arrange it automatically every few minutes (shuffle or
+  tidy grid), download everything as a zip, end the session (deletes all photos).
 - **Desk** (`/s/CODE`): the display. Opened from the host page. Shows the join QR code.
-  `F` for full screen, click a photo to enlarge it.
+  `F` for full screen, click a photo to enlarge it. In the host's own browser the desk also lets you
+  drag photos around (mouse or finger), has Tidy / Shuffle / Auto buttons and a "Host controls" link
+  back (iPhones have no full screen for web pages, so that link is the way out).
 - **Guest** (`/j/CODE`): join, wait to be let in if needed, send photos (with optional captions),
   see what was approved.
 
