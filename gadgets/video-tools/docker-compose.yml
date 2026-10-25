@@ -14,6 +14,7 @@ services:
       args:
         VERSION: "0.1.0"
     image: video-tools:0.1.0
+    container_name: video-tools
     restart: unless-stopped
     ports:
       - "${VIDEO_TOOLS_PORT:-8090}:8080"
@@ -37,6 +38,8 @@ services:
       JOIN_MAX_HEIGHT: ${JOIN_MAX_HEIGHT:-2160}   # re-encoded joins are scaled down to this
     volumes:
       - video-tools-data:/data
+    # on the gadget registry's network so Quote Finder can send it scenes (http://video-tools:8080)
+    networks: [gadgets]
       # Optional read-only drop folder: clips here show up as inputs (and for agents) without uploading.
       # - /volume1/video/inbox:/data/inbox:ro
     # Hard ceilings so a big job can't starve the host. Raise mem_limit if WORKERS > 1.
@@ -51,3 +54,7 @@ services:
 
 volumes:
   video-tools-data:
+    name: video-tools-data
+networks:
+  gadgets:
+    external: true

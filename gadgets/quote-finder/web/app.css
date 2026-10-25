@@ -41,6 +41,18 @@ code { font: .9em ui-monospace, Menlo, monospace; background: var(--chip); paddi
 mark { background: var(--mark); color: var(--mark-ink); border-radius: 3px; padding: 0 1px; }
 .more { margin-top: 6px; font: inherit; font-size: .85rem; color: var(--accent); background: none; border: 0; padding: 4px 6px; cursor: pointer; }
 .more:hover { text-decoration: underline; }
+.actions { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.lines.picking .line { cursor: pointer; color: var(--ink); }
+.lines.picking .line:hover { background: var(--chip); }
+.line.chosen { background: var(--hitbg); color: var(--ink); box-shadow: inset 3px 0 var(--accent); border-radius: 0; }
+.line.chosen.first { border-top-left-radius: 6px; border-top-right-radius: 6px; }
+.line.chosen.last { border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
+.pickbar { position: sticky; bottom: 10px; z-index: 5; margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--accent); box-shadow: 0 6px 20px rgba(0,0,0,.18); }
+.pickbar.done { position: static; box-shadow: none; }
+.pick-text { flex: 1 1 180px; font-size: .9rem; }
+.pickbar button, .pickbar a { font: inherit; font-size: .9rem; padding: 7px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; text-decoration: none; }
+.pickbar .primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
 .coverage { margin-top: 28px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; }
 .coverage summary { cursor: pointer; font-weight: 600; }
 .coverage table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: .9rem; }

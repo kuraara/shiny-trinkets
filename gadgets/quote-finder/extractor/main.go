@@ -73,6 +73,9 @@ func main() {
 		log.Fatal("INGEST_TOKEN is required")
 	}
 	log.Printf("extractor: media %s → %s, only %v, rescan every %s", c.media, c.url, c.only, c.rescan)
+	if a := os.Getenv("CLIP_ADDR"); a != "" {
+		go c.serveClips(a)
+	}
 	for {
 		if err := pass(c); err != nil {
 			log.Printf("pass failed: %v (retrying in 5 minutes)", err)
@@ -80,6 +83,9 @@ func main() {
 			continue
 		}
 		if c.rescan <= 0 {
+			if os.Getenv("CLIP_ADDR") != "" {
+				select {} // keep serving clips
+			}
 			return
 		}
 		time.Sleep(c.rescan)

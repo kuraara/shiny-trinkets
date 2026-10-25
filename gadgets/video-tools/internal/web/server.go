@@ -525,7 +525,7 @@ func (s *Server) apiIndex(w http.ResponseWriter, r *http.Request) {
 			"POST /api/files            multipart, field 'file' (repeatable) -> [{id,name,size}]",
 			"GET  /api/files            uploaded + inbox clips",
 			"DELETE /api/files/{id}",
-			"POST /api/panel            {file_id, times?:[sec], scene_threshold?} -> job",
+			"POST /api/panel            {file_id, times?:[sec], scene_threshold?, lines?:[{text,start,end}]} -> job (lines skip speech recognition)",
 			"GET  /api/jobs/{id}        job; panel jobs include lines, frames and image URLs",
 			"POST /api/jobs/{id}/render {lines:[{speaker, text?, panel?}]} panel is 1-based, 0 = leave off",
 			"POST /api/join             {file_ids:[], transition:none|fade|crossfade, seconds?, mode?:auto|copy|reencode, fade_edges?, name?} -> job",
@@ -648,15 +648,16 @@ func decode(r *http.Request, v any) error {
 
 func (s *Server) apiPanel(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		FileID         string    `json:"file_id"`
-		Times          []float64 `json:"times"`
-		SceneThreshold float64   `json:"scene_threshold"`
+		FileID         string            `json:"file_id"`
+		Times          []float64         `json:"times"`
+		SceneThreshold float64           `json:"scene_threshold"`
+		Lines          []panel.GivenLine `json:"lines"`
 	}
 	if err := decode(r, &req); err != nil {
 		writeJSON(w, 400, map[string]string{"error": err.Error()})
 		return
 	}
-	j, err := s.svc.StartPanel(req.FileID, panel.Params{Times: req.Times, SceneThreshold: req.SceneThreshold})
+	j, err := s.svc.StartPanel(req.FileID, panel.Params{Times: req.Times, SceneThreshold: req.SceneThreshold, Lines: req.Lines})
 	if err != nil {
 		writeJSON(w, errCode(err), map[string]string{"error": err.Error()})
 		return

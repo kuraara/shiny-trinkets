@@ -141,10 +141,10 @@ func TestRequiredWords(t *testing.T) {
 	cases := map[string]string{
 		`just a little .+ uneven`: "just a little uneven",
 		`Just a little \+ uneven`: "just a little uneven",
-		`colou?r`:                  "",
-		`(cat|dog) food`:           "food",
-		`^hello world$`:            "hello world",
-		`hel+o there`:              "there",
+		`colou?r`:                 "",
+		`(cat|dog) food`:          "food",
+		`^hello world$`:           "hello world",
+		`hel+o there`:             "there",
 	}
 	for in, want := range cases {
 		if got := strings.Join(requiredWords(in), " "); got != want {

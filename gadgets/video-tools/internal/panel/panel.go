@@ -55,6 +55,35 @@ type Analysis struct {
 type Params struct {
 	Times          []float64 `json:"times,omitempty"` // empty = auto
 	SceneThreshold float64   `json:"scene_threshold,omitempty"`
+	// Lines, when given (e.g. from subtitles), are used as the transcript instead of speech
+	// recognition: no speech models needed and the wording is exactly what was given.
+	Lines []GivenLine `json:"lines,omitempty"`
+}
+
+// GivenLine is one known line of dialogue, timed in seconds from the start of the clip.
+type GivenLine struct {
+	Text  string  `json:"text"`
+	Start float64 `json:"start"`
+	End   float64 `json:"end"`
+}
+
+// MaxGivenLines caps how many given lines one job takes.
+const MaxGivenLines = 60
+
+// CheckLines validates given lines.
+func CheckLines(ls []GivenLine) error {
+	if len(ls) > MaxGivenLines {
+		return fmt.Errorf("at most %d lines", MaxGivenLines)
+	}
+	for i, l := range ls {
+		if strings.TrimSpace(l.Text) == "" {
+			return fmt.Errorf("line %d has no text", i+1)
+		}
+		if l.Start < 0 || l.End <= l.Start {
+			return fmt.Errorf("line %d: start must be ≥ 0 and before end", i+1)
+		}
+	}
+	return nil
 }
 
 // ReviewLine is the user's (or agent's) decision for one line.
@@ -142,6 +171,14 @@ func (w Worker) Analyse(ctx context.Context, clip, outDir, workDir string, p Par
 		for _, t := range p.Times {
 			args = append(args, strconv.FormatFloat(t, 'f', 3, 64))
 		}
+	}
+	if len(p.Lines) > 0 {
+		lf := filepath.Join(workDir, "given_lines.json")
+		b, _ := json.Marshal(p.Lines)
+		if err := os.WriteFile(lf, b, 0o644); err != nil {
+			return Analysis{}, err
+		}
+		args = append(args, "--lines", lf)
 	}
 	if p.SceneThreshold > 0 {
 		args = append(args, "--scene-threshold", strconv.FormatFloat(p.SceneThreshold, 'f', 3, 64))

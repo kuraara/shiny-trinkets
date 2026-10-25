@@ -216,7 +216,9 @@ func tools() []map[string]any {
 				"file_id":         str("Clip id from list_clips or an upload (f_... or inbox:...)."),
 				"times":           map[string]any{"type": "array", "items": map[string]any{"type": "number", "minimum": 0}, "description": "Seconds into the clip to take each panel from. Omit for one panel per spoken line."},
 				"scene_threshold": num("Scene-cut sensitivity 0.05–0.95, default 0.3. Lower finds more cuts."),
-				"wait_seconds":    wait,
+				"lines": map[string]any{"type": "array", "maxItems": 60, "description": "Known dialogue (e.g. subtitles) to use instead of speech recognition: [{text, start, end}] in seconds from the start of the clip.",
+					"items": obj(map[string]any{"text": str("The line."), "start": num("Seconds."), "end": num("Seconds.")}, "text", "start", "end")},
+				"wait_seconds": wait,
 			}, "file_id"),
 		},
 		{
@@ -320,15 +322,16 @@ func (m *Server) call(r *http.Request, name string, raw json.RawMessage) toolRes
 
 	case "start_panel_transcript":
 		var a struct {
-			FileID         string    `json:"file_id"`
-			Times          []float64 `json:"times"`
-			SceneThreshold float64   `json:"scene_threshold"`
-			Wait           *int      `json:"wait_seconds"`
+			FileID         string            `json:"file_id"`
+			Times          []float64         `json:"times"`
+			SceneThreshold float64           `json:"scene_threshold"`
+			Lines          []panel.GivenLine `json:"lines"`
+			Wait           *int              `json:"wait_seconds"`
 		}
 		if err := dec(&a); err != nil {
 			return errResult("bad arguments: %v", err)
 		}
-		j, err := m.svc.StartPanel(a.FileID, panel.Params{Times: a.Times, SceneThreshold: a.SceneThreshold})
+		j, err := m.svc.StartPanel(a.FileID, panel.Params{Times: a.Times, SceneThreshold: a.SceneThreshold, Lines: a.Lines})
 		if err != nil {
 			return errResult("%v", err)
 		}

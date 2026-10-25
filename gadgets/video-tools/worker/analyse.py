@@ -5,7 +5,9 @@ Transcribes (Whisper for text, Vosk for word timings), finds scene cuts, picks o
 extracts frames, maps each line to a frame, measures voice pitch per line and builds contact sheets
 that show who is talking.
 
-usage: analyse.py CLIP OUTDIR [--times 1.0 2.5 7.2] [--scene-threshold 0.3]
+usage: analyse.py CLIP OUTDIR [--times 1.0 2.5 7.2] [--scene-threshold 0.3] [--lines lines.json]
+  --lines    known dialogue [{text, start, end}] (e.g. from subtitles) used instead of speech
+             recognition; the speech models aren't needed.
   no --times -> auto: one frame per spoken line (middle of the line, inside its main shot);
                 a silent clip gets one frame per shot.
 env:   MODELS_DIR (default /data/models), ASR_THREADS (2), FFMPEG_THREADS (2), MAX_TRANSCRIPT_SECONDS (600)
@@ -216,6 +218,7 @@ def main():
     ap.add_argument('clip'); ap.add_argument('outdir')
     ap.add_argument('--times', type=float, nargs='+')
     ap.add_argument('--scene-threshold', type=float, default=0.3)
+    ap.add_argument('--lines', help='JSON file of known lines [{text, start, end}]')
     # scratch files; the server passes the job's work/ folder, which it empties even if this
     # process is killed (cancel, restart). Defaults to outdir for running the script by hand.
     ap.add_argument('--workdir')
@@ -230,7 +233,21 @@ def main():
                            f'(MAX_TRANSCRIPT_SECONDS). Trim it first.')
     wav = os.path.join(a.workdir, 'audio.wav')
     words, lines, warnings = [], [], []
-    if has_audio:
+    if a.lines:
+        with open(a.lines) as f:
+            given = json.load(f)
+        for g in given:
+            s, e = max(0.0, float(g['start'])), min(dur, float(g['end']))
+            if e <= s:
+                warnings.append(f'line "{g["text"][:40]}" is outside the clip; left out')
+                continue
+            lines.append({'text': g['text'].strip(), 'start': round(s, 2), 'end': round(e, 2), 'timing': 'given'})
+        if has_audio and lines:
+            progress(10, 'extracting audio')
+            ffmpeg('-i', a.clip, '-vn', '-ac', '1', '-ar', '16000', wav)
+            progress(40, 'voice pitch')
+            pitch(wav, lines)
+    elif has_audio:
         progress(5, 'extracting audio')
         ffmpeg('-i', a.clip, '-vn', '-ac', '1', '-ar', '16000', wav)
         progress(10, 'word timings')
@@ -250,7 +267,7 @@ def main():
     for L in lines:   # shots the line really plays in (ignore audio that spills <0.25 s across a cut)
         ov = [(s, min(L['end'], b) - max(L['start'], a_)) for s, (a_, b) in enumerate(zip(bounds, bounds[1:]))]
         L['scenes'] = [s for s, o in ov if o >= 0.25] or [max(ov, key=lambda x: x[1])[0]]
-    mode = 'user' if a.times else 'auto'
+    mode = 'user' if a.times else ('given' if a.lines else 'auto')
     times = [round(min(max(t, 0), dur - 0.05), 3) for t in (a.times or auto_times(lines, cuts, dur))]
     progress(82, 'frames')
     frames = []

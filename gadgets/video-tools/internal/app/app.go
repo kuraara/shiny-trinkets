@@ -74,6 +74,9 @@ func (s *Service) StartPanel(fileID string, p panel.Params) (jobs.Job, error) {
 			return jobs.Job{}, errors.New("times can't be negative")
 		}
 	}
+	if err := panel.CheckLines(p.Lines); err != nil {
+		return jobs.Job{}, err
+	}
 	if err := s.Store.Reserve(64 << 20); err != nil {
 		return jobs.Job{}, err
 	}
@@ -81,17 +84,17 @@ func (s *Service) StartPanel(fileID string, p panel.Params) (jobs.Job, error) {
 }
 
 func (s *Service) runPanel(ctx context.Context, h *jobs.Handle) error {
-	if !s.Models.Ready() {
+	var p panel.Params
+	if err := h.Params(&p); err != nil {
+		return err
+	}
+	if len(p.Lines) == 0 && !s.Models.Ready() { // given lines need no speech models
 		s.Models.EnsureAsync(context.Background())
 		if st, d := s.Models.Status(); st == "failed" {
 			return fmt.Errorf("speech models unavailable: %s", d)
 		}
 		h.Progress(0, "waiting for the speech models to finish downloading")
 		return jobs.ErrRequeue
-	}
-	var p panel.Params
-	if err := h.Params(&p); err != nil {
-		return err
 	}
 	in := h.Job().Inputs[0]
 	f, err := s.Store.Resolve(in.ID)

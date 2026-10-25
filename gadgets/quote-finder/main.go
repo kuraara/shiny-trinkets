@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -22,8 +23,9 @@ import (
 var webFiles embed.FS
 
 type app struct {
-	db    *store
-	token string
+	db     *store
+	token  string
+	panels panelCfg
 }
 
 func main() {
@@ -35,7 +37,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	a := &app{db: db, token: os.Getenv("INGEST_TOKEN")}
+	a := &app{db: db, token: os.Getenv("INGEST_TOKEN"), panels: panelCfg{
+		clipURL:     strings.TrimRight(os.Getenv("CLIP_URL"), "/"),
+		videoTools:  strings.TrimRight(os.Getenv("VIDEO_TOOLS_URL"), "/"),
+		publicTools: strings.TrimRight(os.Getenv("VIDEO_TOOLS_PUBLIC_URL"), "/"),
+		toolsToken:  os.Getenv("VIDEO_TOOLS_TOKEN"),
+	}}
 	if a.token == "" {
 		log.Print("INGEST_TOKEN is not set: the extractor can't send subtitles")
 	}
@@ -60,6 +67,13 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("GET /api/context", a.context)
 	mux.HandleFunc("GET /api/titles", a.titles)
 	mux.HandleFunc("GET /api/stats", a.stats)
+	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]bool{"panels": a.panels.enabled()})
+	})
+	mux.HandleFunc("POST /api/panels", a.sameOrigin(a.apiPanels))
+	mcp := &mcpServer{a: a}
+	mux.Handle("POST /mcp", mcp)
+	mux.Handle("GET /mcp", mcp) // answers 405: no event stream
 	mux.HandleFunc("GET /api/ingest/known", a.auth(a.known))
 	mux.HandleFunc("POST /api/ingest", a.auth(a.ingest))
 	mux.HandleFunc("POST /api/ingest/forget", a.auth(a.forget))
@@ -72,6 +86,19 @@ func noCache(h http.Handler) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		h.ServeHTTP(w, r)
 	})
+}
+
+// sameOrigin stops other web sites from making panels through a visitor's browser.
+func (a *app) sameOrigin(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if o := r.Header.Get("Origin"); o != "" {
+			if u, err := url.Parse(o); err != nil || u.Host != r.Host {
+				writeJSON(w, http.StatusForbidden, map[string]string{"error": "cross-origin request"})
+				return
+			}
+		}
+		next(w, r)
+	}
 }
 
 func (a *app) auth(next http.HandlerFunc) http.HandlerFunc {
@@ -124,7 +151,14 @@ func (a *app) context(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	id, _ := strconv.ParseInt(q.Get("media"), 10, 64)
 	at, _ := strconv.Atoi(q.Get("at"))
-	lines, err := a.db.context(id, at, 12, 12)
+	around := func(k string) int {
+		n, err := strconv.Atoi(q.Get(k))
+		if err != nil {
+			return 12
+		}
+		return min(max(n, 0), 80)
+	}
+	lines, err := a.db.context(id, at, around("before"), around("after"))
 	if err != nil {
 		fail(w, err)
 		return

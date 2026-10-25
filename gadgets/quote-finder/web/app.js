@@ -68,6 +68,8 @@ async function search(pushHistory) {
   list.replaceChildren(...res.hits.map((h) => result(h, re)));
 }
 
+let panelsOn = false; // set from /api/config: can this server make panel scripts?
+
 function result(h, re) {
   const li = el('li', 'hit');
   const head = el('div', 'head');
@@ -75,26 +77,104 @@ function result(h, re) {
   if (h.epTitle) head.append(el('span', 'eptitle', h.epTitle));
   head.append(el('span', 'time', fmtTime(h.start)));
   const lines = el('div', 'lines');
-  const draw = (ls) => lines.replaceChildren(...ls.map((l) => {
-    const p = el('p', l.hit ? 'line hit' : 'line');
-    p.append(el('span', 'ts', fmtTime(l.start)));
-    const t = el('span', 'txt');
-    markText(t, l.text, re);
-    p.append(t);
-    return p;
-  }));
-  draw(h.lines);
+  let current = h.lines;
+  let pick = null; // {a, b}: indexes of the first and last chosen line while choosing
+  const draw = () => {
+    const [lo, hi] = pick && pick.a != null ? [Math.min(pick.a, pick.b ?? pick.a), Math.max(pick.a, pick.b ?? pick.a)] : [-1, -1];
+    lines.replaceChildren(...current.map((l, i) => {
+      const p = el('p', `line${l.hit ? ' hit' : ''}${i >= lo && i <= hi ? ' chosen' : ''}${i === lo ? ' first' : ''}${i === hi ? ' last' : ''}`);
+      p.append(el('span', 'ts', fmtTime(l.start)));
+      const t = el('span', 'txt');
+      markText(t, l.text, re);
+      p.append(t);
+      if (pick) {
+        p.tabIndex = 0;
+        p.setAttribute('role', 'button');
+        p.addEventListener('click', () => choose(i));
+        p.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(i); } });
+      }
+      return p;
+    }));
+    lines.classList.toggle('picking', !!pick);
+    updateBar();
+  };
+  const loadScene = async (before, after) => {
+    const r = await fetch(`/api/context?media=${h.mediaId}&at=${h.start}&before=${before}&after=${after}`);
+    if (!r.ok) throw new Error('Could not load the scene');
+    current = await r.json();
+  };
+
+  const actions = el('div', 'actions');
   const more = el('button', 'more', 'More of the scene');
   more.type = 'button';
   more.addEventListener('click', async () => {
     more.disabled = true;
-    try {
-      const r = await fetch(`/api/context?media=${h.mediaId}&at=${h.start}`);
-      draw(await r.json());
-      more.remove();
-    } catch { more.disabled = false; }
+    try { await loadScene(12, 12); draw(); more.remove(); } catch { more.disabled = false; }
   });
-  li.append(head, lines, more);
+  actions.append(more);
+
+  // choosing lines for a panel script
+  const bar = el('div', 'pickbar');
+  bar.hidden = true;
+  const barText = el('span', 'pick-text');
+  const go = el('button', 'primary', 'Make panels');
+  const cancel = el('button', '', 'Cancel');
+  go.type = cancel.type = 'button';
+  bar.append(barText, go, cancel);
+  function updateBar() {
+    bar.hidden = !pick;
+    if (!pick) return;
+    go.hidden = pick.b == null;
+    if (pick.a == null) barText.textContent = 'Tap the first line of the scene';
+    else if (pick.b == null) barText.textContent = 'Now tap the last line';
+    else {
+      const lo = Math.min(pick.a, pick.b), hi = Math.max(pick.a, pick.b);
+      barText.textContent = `${hi - lo + 1} line${hi > lo ? 's' : ''} · ${fmtTime(current[lo].start)}–${fmtTime(current[hi].start)}`;
+    }
+  }
+  function choose(i) {
+    if (pick.a == null || pick.b != null) pick = { a: i, b: null };
+    else pick.b = i;
+    draw();
+  }
+  if (panelsOn) {
+    const start = el('button', 'more', 'Make panels…');
+    start.type = 'button';
+    start.title = 'Pick the first and last line; Panel Script makes the images';
+    start.addEventListener('click', async () => {
+      start.disabled = true;
+      try { await loadScene(25, 40); more.remove(); } catch { /* keep what we have */ }
+      start.disabled = false;
+      pick = { a: null, b: null };
+      draw();
+      lines.querySelector('.line.hit')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+    actions.append(start);
+  }
+  cancel.addEventListener('click', () => { pick = null; draw(); });
+  go.addEventListener('click', async () => {
+    const lo = Math.min(pick.a, pick.b), hi = Math.max(pick.a, pick.b);
+    go.disabled = cancel.disabled = true;
+    barText.textContent = 'Cutting the scene and sending it to Panel Script…';
+    try {
+      const r = await fetch('/api/panels', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ media: h.mediaId, from: current[lo].start, to: current[hi].start }) });
+      const res = await r.json();
+      if (!r.ok) throw new Error(res.error || 'Something went wrong');
+      pick = null; draw();
+      const done = el('div', 'pickbar done');
+      const a = el('a', 'primary', 'Open in Panel Script ↗');
+      a.href = res.url; a.target = '_blank'; a.rel = 'noopener';
+      done.append(el('span', 'pick-text', `${res.lines} line${res.lines === 1 ? '' : 's'} sent. Name the speakers there.`), a);
+      bar.after(done);
+    } catch (e) {
+      barText.textContent = e.message;
+      go.textContent = 'Try again';
+    } finally { go.disabled = cancel.disabled = false; }
+  });
+
+  draw();
+  li.append(head, lines, bar, actions);
   return li;
 }
 
@@ -130,7 +210,8 @@ async function loadTitles() {
 const params = new URLSearchParams(location.search);
 $('#q').value = params.get('q') || '';
 $('#regex').checked = params.get('regex') === '1';
-loadTitles().then(() => {
+const config = fetch('/api/config').then((r) => r.json()).then((c) => { panelsOn = !!c.panels; }).catch(() => {});
+Promise.all([loadTitles(), config]).then(() => {
   if (params.get('t')) $('#title').value = params.get('t');
   if ($('#q').value) search(false);
 });
