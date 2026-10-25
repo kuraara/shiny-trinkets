@@ -211,10 +211,12 @@
     },
     {
       "id": "air-printer",
-      "name": "AirPrint PDF printer",
-      "kind": "background",
+      "name": "AirPrint to PDF",
+      "kind": "service",
       "host": "pi",
-      "desc": "Prints to PDF from phones (usually stopped)."
+      "desc": "Print from an iPhone or Mac to the “PDF” printer; the PDFs are listed here.",
+      "url": "http://<pi>:8632/",
+      "about": "Shows up as a printer called “AirPrint PDF @ <pi-name>” on iPhones and Macs. Whatever you print is saved as a PDF on the Pi (/path/to/printed-pdfs), and this page lists them to open or save."
     }
   ]
 }
