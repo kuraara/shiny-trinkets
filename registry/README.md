@@ -23,3 +23,11 @@ reverse-proxies the home-made gadgets so they all get the same top bar.
 3. Rebuild and redeploy (`buildbox/redeploy.sh gadget-registry <stackId>`).
 
 `nginx/40-gadgets.sh` turns `registry.json` into the nginx config each time the container starts.
+
+## Views and shared ports
+
+The home page shows **Cards** (with each gadget's `about` text: what it's for) or compact
+**Tiles**; the choice is remembered per browser. Several entries can share one proxied port,
+each opening its own `proxy.path` (Video Tools is split into Panel Transcript, Join Clips and
+Cut a Clip this way; the `hidden` video-tools entry owns the port). nginx gets one server per
+port, and the navbar names whichever entry's path you're on.

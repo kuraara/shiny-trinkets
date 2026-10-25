@@ -72,7 +72,7 @@ func TestMakePanels(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.JobID != "j_9" || res.URL != "http://pc:8103/jobs/j_9" || res.Lines != 3 {
+	if res.JobID != "j_9" || res.URL != "/panel.html?job=j_9" || res.ToolsURL != "http://pc:8103/jobs/j_9" || res.Lines != 3 {
 		t.Fatalf("result %+v", res)
 	}
 	if !strings.Contains(clipQuery, "start=249.600") || !strings.Contains(clipQuery, "end=257.600") || !strings.Contains(clipQuery, "American+Dad") {

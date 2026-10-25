@@ -15,8 +15,14 @@
   <header class="hero">
     <h1>Gadgets</h1>
     <p>Everything running on the PC and the Pi.</p>
-    <label class="search"><span class="visually-hidden">Filter</span>
-      <input type="search" id="q" placeholder="Filter…" autocomplete="off"></label>
+    <div class="tools">
+      <div class="viewsw" role="radiogroup" aria-label="Show as">
+        <label title="Compact tiles"><input type="radio" name="view" value="tiles"><span><svg viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></g></svg>Tiles</span></label>
+        <label title="Cards that say what each one does"><input type="radio" name="view" value="cards" checked><span><svg viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/></g></svg>Cards</span></label>
+      </div>
+      <label class="search"><span class="visually-hidden">Filter</span>
+        <input type="search" id="q" placeholder="Filter…" autocomplete="off"></label>
+    </div>
   </header>
   <section><h2>Gadgets</h2><div class="cards big" id="gadget"></div></section>
   <section><h2>Services</h2><div class="cards" id="service"></div></section>

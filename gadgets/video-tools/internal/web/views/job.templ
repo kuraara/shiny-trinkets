@@ -92,6 +92,7 @@ templ JoinResult(j jobs.Job) {
 templ PanelReview(j jobs.Job, pv app.PanelView) {
 	<form id="review" class="review" hx-post={ "/jobs/" + j.ID + "/render" } hx-target="#result" hx-swap="innerHTML" hx-indicator="#render-busy" data-review>
 		<section class="strip" aria-label="Preview of the finished image">
+			<label class="strip-opt"><input type="checkbox" data-panel-numbers/> Show panel numbers and times</label>
 			for fi, f := range pv.Analysis.Frames {
 				<figure class="frame">
 					<div class="shot">
@@ -107,7 +108,7 @@ templ PanelReview(j jobs.Job, pv app.PanelView) {
 							}
 						</div>
 					</div>
-					<figcaption>Panel { itoa(fi + 1) } at { secs(f.T) }s</figcaption>
+					<figcaption hidden>Panel { itoa(fi + 1) } at { secs(f.T) }s</figcaption>
 				</figure>
 			}
 		</section>

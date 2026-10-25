@@ -172,3 +172,12 @@
     });
   }
 })();
+
+// review preview: panel numbers and times are hidden unless ticked (remembered)
+for (const box of document.querySelectorAll('[data-panel-numbers]')) {
+  const strip = box.closest('.strip');
+  const apply = () => { for (const c of strip.querySelectorAll('figcaption')) c.hidden = !box.checked; };
+  try { box.checked = localStorage.getItem('vt-panel-numbers') === '1'; } catch { /* private mode */ }
+  apply();
+  box.addEventListener('change', () => { try { localStorage.setItem('vt-panel-numbers', box.checked ? '1' : '0'); } catch { /* ignore */ } apply(); });
+}

@@ -43,12 +43,13 @@ type panelCfg struct {
 func (p panelCfg) enabled() bool { return p.clipURL != "" && p.videoTools != "" }
 
 type panelResult struct {
-	JobID  string `json:"jobId"`
-	URL    string `json:"url"`
-	Lines  int    `json:"lines"`
-	Title  string `json:"title"`
-	Clip   string `json:"clip"`
-	Status string `json:"status"`
+	JobID    string `json:"jobId"`
+	URL      string `json:"url"`
+	ToolsURL string `json:"toolsUrl"`
+	Lines    int    `json:"lines"`
+	Title    string `json:"title"`
+	Clip     string `json:"clip"`
+	Status   string `json:"status"`
 }
 
 type sceneLine struct {
@@ -207,7 +208,11 @@ func (a *app) makeScene(ctx context.Context, mediaID int64, from, to int, o scen
 	if pub == "" {
 		pub = a.panels.videoTools
 	}
-	return panelResult{JobID: job.ID, URL: pub + "/jobs/" + job.ID, Lines: len(lines), Title: strings.TrimSuffix(name, ".mkv"),
+	link := pub + "/jobs/" + job.ID
+	if !o.Clip {
+		link = "/panel.html?job=" + job.ID // Quote Finder's own panel editor
+	}
+	return panelResult{JobID: job.ID, URL: link, ToolsURL: pub + "/jobs/" + job.ID, Lines: len(lines), Title: strings.TrimSuffix(name, ".mkv"),
 		Clip: fmt.Sprintf("%s–%s", msec(start), msec(end)), Status: job.Status}, nil
 }
 
@@ -259,3 +264,64 @@ func (a *app) apiPanels(w http.ResponseWriter, r *http.Request) {
 
 func msec(ms int) string       { return strconv.FormatFloat(float64(ms)/1000, 'f', 3, 64) }
 func round2(f float64) float64 { return float64(int(f*100+0.5)) / 100 }
+
+// ---- the panel editor reads and saves video-tools panel jobs through these (same origin, so the
+// browser can draw the frames on a canvas and export it)
+
+var (
+	jobIDRe    = regexp.MustCompile(`^j_[a-z0-9]{6,40}$`)
+	fileNameRe = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,80}$`)
+)
+
+func (a *app) vtJob(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !jobIDRe.MatchString(id) || !a.panels.enabled() {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no such job"})
+		return
+	}
+	a.vtProxy(w, r, "GET", "/api/jobs/"+id, nil)
+}
+
+func (a *app) vtFile(w http.ResponseWriter, r *http.Request) {
+	id, name := r.PathValue("id"), r.PathValue("name")
+	if !jobIDRe.MatchString(id) || !fileNameRe.MatchString(name) || !a.panels.enabled() {
+		http.NotFound(w, r)
+		return
+	}
+	a.vtProxy(w, r, "GET", "/jobs/"+id+"/files/"+name, nil)
+}
+
+func (a *app) vtRender(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !jobIDRe.MatchString(id) || !a.panels.enabled() {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no such job"})
+		return
+	}
+	a.vtProxy(w, r, "POST", "/api/jobs/"+id+"/render", http.MaxBytesReader(w, r.Body, 256<<10))
+}
+
+func (a *app) vtProxy(w http.ResponseWriter, r *http.Request, method, path string, body io.Reader) {
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, method, a.panels.videoTools+path, body)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	if a.panels.toolsToken != "" {
+		req.Header.Set("Authorization", "Bearer "+a.panels.toolsToken)
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "couldn't reach video-tools"})
+		return
+	}
+	defer res.Body.Close()
+	for _, h := range []string{"Content-Type", "Content-Length", "Last-Modified", "ETag"} {
+		if v := res.Header.Get(h); v != "" {
+			w.Header().Set(h, v)
+		}
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(res.StatusCode)
+	io.Copy(w, res.Body)
+}

@@ -1,0 +1,64 @@
+/* Panel editor (uses the tokens in app.css) */
+main.wide { max-width: 1180px; }
+.back { margin: 0 0 6px; font-size: .9rem; }
+.back a { color: var(--accent); text-decoration: none; }
+h1#title { font-size: 1.3rem; margin: 0 0 14px; overflow-wrap: anywhere; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+.wait { display: flex; gap: 14px; align-items: center; padding: 18px; }
+.spinner { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--chip); border-top-color: var(--accent); animation: spin 1s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+.failbox { padding: 16px; color: var(--ink); border-color: #dc2626; }
+
+.editor { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 18px; align-items: start; }
+@media (max-width: 860px) { .editor { grid-template-columns: 1fr; } }
+.preview-col { position: sticky; top: calc(var(--gadget-nav-h, 0px) + 12px); }
+@media (max-width: 860px) { .preview-col { position: static; } }
+.preview { padding: 10px; display: flex; justify-content: center; background:
+  repeating-conic-gradient(var(--chip) 0 25%, transparent 0 50%) 0 0 / 18px 18px, var(--card); }
+.preview canvas { display: block; max-width: 100%; height: auto; border-radius: 4px; }
+@media (min-width: 861px) { .preview { max-height: calc(100vh - var(--gadget-nav-h, 0px) - 150px); overflow: auto; } }
+.center { text-align: center; }
+.save-row { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 4px; }
+.save-row button, .pline select, .ctl select, .ctl input[type=number] {
+  font: inherit; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+}
+.save-row button { cursor: pointer; font-weight: 600; }
+.save-row .primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; padding: 10px 22px; }
+.save-row button:disabled { opacity: .6; }
+.quiet { color: var(--muted); font-size: .88rem; }
+
+.group { padding: 12px 14px; margin-bottom: 12px; }
+.group summary { cursor: pointer; font-weight: 700; font-size: 1rem; }
+.group[open] summary { margin-bottom: 8px; }
+.plines { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 10px; }
+.pline { border: 1px solid var(--line); border-radius: 10px; padding: 8px; display: grid; gap: 6px; }
+.pl-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pline select { padding: 5px 8px; font-size: .88rem; }
+.pline .speaker, .pline .ltext { font: inherit; width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.pline .speaker { font-weight: 700; }
+.pline .ltext { resize: vertical; font-size: .92rem; }
+.whotalks summary { cursor: pointer; color: var(--accent); font-size: .88rem; }
+.whotalks img { width: 100%; border-radius: 6px; margin-top: 6px; display: block; }
+.whotalks p { margin: 4px 0 0; }
+
+.ctl { display: grid; gap: 6px; margin: 10px 0; }
+.ctl.inline { grid-template-columns: 1fr auto; align-items: center; }
+.ctl .lbl { font-weight: 600; font-size: .9rem; }
+.ctl.range { grid-template-columns: 1fr auto; align-items: center; font-weight: 600; font-size: .9rem; }
+.ctl.range input { grid-column: 1 / -1; grid-row: 2; width: 100%; accent-color: var(--accent); }
+.ctl.range output { font: 600 .85rem ui-monospace, Menlo, monospace; color: var(--muted); }
+.ctl input[type=color] { width: 48px; height: 34px; border: 1px solid var(--line); border-radius: 8px; background: none; padding: 2px; }
+.check { display: flex; gap: 8px; align-items: center; margin: 10px 0 4px; font-size: .92rem; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.linkish { background: none; border: 0; color: var(--accent); font: inherit; font-size: .88rem; padding: 4px 0; cursor: pointer; }
+
+/* segmented control, as in Photo Stitch */
+.seg { display: grid; background: var(--chip); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg.two { grid-template-columns: 1fr 1fr; }
+.seg.four { grid-template-columns: repeat(4, 1fr); }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.seg span { display: block; text-align: center; padding: 7px 4px; border-radius: 8px; font-weight: 600; font-size: .9rem; }
+.seg input:checked + span { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.seg input:focus-visible + span { outline: 2px solid var(--accent); }

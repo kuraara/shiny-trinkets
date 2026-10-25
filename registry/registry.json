@@ -22,7 +22,8 @@
       "proxy": {
         "port": 8102,
         "upstream": "http://photo-drop:8080"
-      }
+      },
+      "about": "Run a live photo wall at a party: guests scan a QR code and send photos from their phones, you approve each one, and they land on a big screen like prints thrown on a desk."
     },
     {
       "id": "photo-stitch",
@@ -33,17 +34,57 @@
       "proxy": {
         "port": 8101,
         "upstream": "http://photo-stitch:80"
-      }
+      },
+      "about": "Put several photos into one image: stacked, side by side or in a grid, with borders, gaps and an exact output size. Everything happens in your browser."
     },
     {
       "id": "video-tools",
       "name": "Video Tools",
-      "kind": "gadget",
+      "kind": "hidden",
       "host": "pc",
-      "desc": "Panel transcripts from clips, and joining clips with fades.",
+      "desc": "Owns the video tools proxy (the three video gadgets open pages on it).",
       "proxy": {
         "port": 8103,
-        "upstream": "http://host.docker.internal:8090"
+        "upstream": "http://video-tools:8080"
+      }
+    },
+    {
+      "id": "panel-transcript",
+      "name": "Panel Transcript",
+      "kind": "gadget",
+      "host": "pc",
+      "desc": "Turn a clip into a strip of subtitled stills.",
+      "about": "Upload a clip with people talking: it picks a still for each line, writes down what’s said and stacks the stills into one image with the lines as subtitles. You name the speakers before it’s made.",
+      "proxy": {
+        "port": 8103,
+        "path": "/panel",
+        "upstream": "http://video-tools:8080"
+      }
+    },
+    {
+      "id": "join-clips",
+      "name": "Join Clips",
+      "kind": "gadget",
+      "host": "pc",
+      "desc": "Join clips end to end, with fades if you like.",
+      "about": "Put several clips together into one video. Clips that match are joined in seconds without losing quality; add fades or crossfades, or mix phones and cameras, and it converts them to one format first.",
+      "proxy": {
+        "port": 8103,
+        "path": "/join",
+        "upstream": "http://video-tools:8080"
+      }
+    },
+    {
+      "id": "cut-clip",
+      "name": "Cut a Clip",
+      "kind": "gadget",
+      "host": "pc",
+      "desc": "Cut a stretch out of a longer video.",
+      "about": "Pick a start and an end and get just that part: an exact MP4 that plays on any phone (HDR colours fixed), or a fast copy in the original quality.",
+      "proxy": {
+        "port": 8103,
+        "path": "/clip",
+        "upstream": "http://video-tools:8080"
       }
     },
     {
@@ -55,7 +96,8 @@
       "proxy": {
         "port": 8104,
         "upstream": "http://quote-finder:8080"
-      }
+      },
+      "about": "Remember a line but not the episode? Type what you remember and find the show, episode and moment it’s said, across everything in Plex. Then turn the scene into panels or a clip."
     },
     {
       "id": "home-assistant",

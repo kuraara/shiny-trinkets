@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Panels · Quote Finder</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="panel.css">
+<script src="panel.js" defer></script>
+</head>
+<body>
+<main class="wide">
+  <p class="back"><a href="/" id="back">← Back to the search</a></p>
+  <h1 id="title">Panels</h1>
+
+  <section id="wait" class="card wait">
+    <div class="spinner" aria-hidden="true"></div>
+    <div><b id="waitText">Taking the frames…</b><div class="muted" id="waitSub">This takes a few seconds.</div></div>
+  </section>
+  <p id="fail" class="card failbox" role="alert" hidden></p>
+
+  <div id="editor" class="editor" hidden>
+    <section class="preview-col">
+      <div class="preview card">
+        <canvas id="preview" aria-label="Preview of the finished image"></canvas>
+      </div>
+      <p class="muted center" id="sizeNote"></p>
+      <div class="save-row">
+        <button class="primary" id="download" type="button">Download</button>
+        <button id="share" type="button" hidden>Share</button>
+        <a id="toolsLink" class="quiet" target="_blank" rel="noopener">Open in Video Tools ↗</a>
+      </div>
+    </section>
+
+    <section class="side-col">
+      <details class="card group" open>
+        <summary>Who says what</summary>
+        <p class="muted">Watch whose mouth moves in “Who’s talking?”, then type a name. Names you’ve typed are suggested.</p>
+        <ol id="lines" class="plines"></ol>
+        <label class="check"><input type="checkbox" id="names" checked> Show speaker names</label>
+        <datalist id="speakers"></datalist>
+      </details>
+
+      <details class="card group" open>
+        <summary>Layout</summary>
+        <div class="ctl">
+          <span class="lbl">Shape of each panel</span>
+          <select id="ratio">
+            <option value="original">As filmed</option>
+            <option value="1.7778">16:9</option>
+            <option value="1.3333">4:3</option>
+            <option value="1">Square</option>
+            <option value="0.8">4:5 (portrait)</option>
+            <option value="2.39">2.39:1 (cinema)</option>
+          </select>
+        </div>
+        <div class="ctl">
+          <span class="lbl">Columns</span>
+          <div class="seg four" role="radiogroup" aria-label="Columns">
+            <label><input type="radio" name="cols" value="1" checked><span>1</span></label>
+            <label><input type="radio" name="cols" value="2"><span>2</span></label>
+            <label><input type="radio" name="cols" value="3"><span>3</span></label>
+            <label><input type="radio" name="cols" value="4"><span>4</span></label>
+          </div>
+        </div>
+        <div class="ctl">
+          <span class="lbl">Spacing in</span>
+          <div class="seg two" role="radiogroup" aria-label="Units for spacing">
+            <label><input type="radio" name="unit" value="pct" checked><span>% of panel</span></label>
+            <label><input type="radio" name="unit" value="px"><span>Pixels</span></label>
+          </div>
+        </div>
+        <label class="ctl range">Gap between panels <input type="range" id="gap" min="0" max="10" step="0.1" value="2.1"> <output id="gapOut"></output></label>
+        <label class="ctl range">Outer margin <input type="range" id="margin" min="0" max="10" step="0.1" value="2.4"> <output id="marginOut"></output></label>
+        <label class="ctl inline">Background <input type="color" id="bg" value="#000000"></label>
+        <label class="ctl range">Subtitle size <input type="range" id="textScale" min="60" max="160" step="5" value="100"> <output id="textScaleOut"></output></label>
+        <label class="check"><input type="checkbox" id="labels"> Number the panels (1/4, 2/4 …)</label>
+        <button class="linkish" id="resetLayout" type="button">Reset layout</button>
+      </details>
+
+      <details class="card group">
+        <summary>Size and file</summary>
+        <div class="ctl">
+          <span class="lbl">Width of the whole image</span>
+          <select id="size">
+            <option value="full">As filmed (no scaling)</option>
+            <option value="3840">3840 px</option>
+            <option value="1920">1920 px</option>
+            <option value="1280">1280 px</option>
+            <option value="1080">1080 px (Instagram)</option>
+            <option value="720">720 px</option>
+            <option value="custom">Custom…</option>
+          </select>
+          <input type="number" id="sizePx" min="200" max="16384" step="10" value="1600" aria-label="Width in pixels" hidden>
+        </div>
+        <div class="ctl inline">
+          <span class="lbl">Save as</span>
+          <select id="format"><option value="png">PNG</option><option value="jpeg">JPEG</option></select>
+        </div>
+        <label class="ctl range" id="qualityRow" hidden>Quality <input type="range" id="quality" min="40" max="100" value="90"> <output id="qualityOut"></output></label>
+      </details>
+    </section>
+  </div>
+</main>
+</body>
+</html>

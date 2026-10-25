@@ -170,10 +170,11 @@ function result(h, re) {
       if (!r.ok) throw new Error(res.error || 'Something went wrong');
       pick = null; draw();
       const done = el('div', 'pickbar done');
-      const a = el('a', 'primary', clip ? 'Watch or download ↗' : 'Open in Panel Script ↗');
-      a.href = res.url; a.target = '_blank'; a.rel = 'noopener';
+      const a = el('a', 'primary', clip ? 'Watch or download ↗' : 'Open the panel editor');
+      a.href = res.url;
+      if (clip) { a.target = '_blank'; a.rel = 'noopener'; }
       done.append(el('span', 'pick-text', clip ? `Clip of ${res.lines} line${res.lines === 1 ? '' : 's'} on its way (a few seconds).`
-        : `${res.lines} line${res.lines === 1 ? '' : 's'} sent. Name the speakers there.`), a);
+        : `Panels for ${res.lines} line${res.lines === 1 ? '' : 's'} are being made.`), a);
       bar.after(done);
     } catch (e) {
       barText.textContent = e.message;

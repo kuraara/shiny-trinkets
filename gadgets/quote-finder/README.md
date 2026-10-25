@@ -10,8 +10,12 @@ show, episode and time, with the lines around it. Filter by show or movie.
 - A quote that's split across two subtitles still matches.
 - Searches are in the URL, so they can be bookmarked or shared.
 - **Panels or clip…** on a result: tap the first and last line of the scene, then
-  - **Make panels**: video-tools' Panel Script gets the scene with the subtitle lines already
-    filled in (no speech recognition), and you name the speakers on its review page;
+  - **Make panels**: video-tools takes the frames for the subtitle lines (no speech recognition),
+    then Quote Finder's **panel editor** (`panel.html?job=`) opens: name the speakers (with
+    video-tools' "who's talking" frame strips and voice pitch), and lay the panels out with
+    Photo Stitch's controls (panel shape, columns, gap and margin in % or px, background, image
+    width, subtitle size, optional 1/4 panel numbers, PNG/JPEG). The image is drawn and saved in
+    the browser, the same way video-tools draws it; names are sent back to video-tools too;
   - **Make clip**: video-tools cuts the scene (a second either side) into an MP4 that plays
     anywhere, optionally with the subtitles burned in.
 

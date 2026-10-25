@@ -68,9 +68,16 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("GET /api/titles", a.titles)
 	mux.HandleFunc("GET /api/stats", a.stats)
 	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]bool{"panels": a.panels.enabled()})
+		pub := a.panels.publicTools
+		if pub == "" {
+			pub = a.panels.videoTools
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"panels": a.panels.enabled(), "videoTools": pub})
 	})
 	mux.HandleFunc("POST /api/panels", a.sameOrigin(a.apiPanels))
+	mux.HandleFunc("GET /api/vt/jobs/{id}", a.vtJob)
+	mux.HandleFunc("GET /api/vt/jobs/{id}/files/{name}", a.vtFile)
+	mux.HandleFunc("POST /api/vt/jobs/{id}/render", a.sameOrigin(a.vtRender))
 	mcp := &mcpServer{a: a}
 	mux.Handle("POST /mcp", mcp)
 	mux.Handle("GET /mcp", mcp) // answers 405: no event stream
@@ -82,7 +89,11 @@ func (a *app) routes() http.Handler {
 
 func noCache(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-cache")
+		if strings.HasPrefix(r.URL.Path, "/fonts/") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "no-cache")
+		}
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		h.ServeHTTP(w, r)
 	})

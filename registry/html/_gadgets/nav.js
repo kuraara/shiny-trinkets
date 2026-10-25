@@ -12,7 +12,13 @@
   const BAR_H = 44;
 
   const homeURL = (reg) => `${location.protocol}//${location.hostname}${reg.homePort ? `:${reg.homePort}` : ''}/`;
-  const appURL = (app) => (app.proxy ? `${location.protocol}//${location.hostname}:${app.proxy.port}/` : app.url);
+  const appURL = (app) => (app.proxy ? `${location.protocol}//${location.hostname}:${app.proxy.port}${app.proxy.path || '/'}` : app.url);
+  // Several gadgets can share a port (one app, several pages): the one whose path we're on wins,
+  // else the entry without a path.
+  const currentApp = (apps) => {
+    const here = apps.filter((a) => a.proxy && a.proxy.port === portNow());
+    return here.find((a) => a.proxy.path && location.pathname.startsWith(a.proxy.path)) || here.find((a) => !a.proxy.path) || here[0] || null;
+  };
   const portNow = () => Number(location.port || (location.protocol === 'https:' ? 443 : 80));
 
   function el(tag, attrs = {}, ...kids) {
@@ -41,7 +47,7 @@
 
   function build(reg) {
     const isHome = !!document.querySelector('meta[name="gadget-home"]');
-    const current = isHome ? null : reg.apps.find((a) => a.proxy && a.proxy.port === portNow()) || null;
+    const current = isHome ? null : currentApp(reg.apps);
     const mode = pageMode || (current && current.proxy && current.proxy.nav) || 'bar';
     if (mode === 'off') return;
 

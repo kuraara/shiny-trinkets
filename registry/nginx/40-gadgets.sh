@@ -41,7 +41,8 @@ done
 echo "}"
 
 # one server per proxied gadget, on its own port, with the navbar added
-jq -r '.apps[] | select(.proxy) | [.id, .proxy.port, .proxy.upstream, (.proxy.nav // "bar")] | @tsv' "$REG" | while IFS="$(printf '\t')" read -r id port up nav; do
+# (several entries may share a port, each opening its own path: one server per port)
+jq -r '[.apps[] | select(.proxy)] | group_by(.proxy.port) | map(.[0])[] | [.id, .proxy.port, .proxy.upstream, (.proxy.nav // "bar")] | @tsv' "$REG" | while IFS="$(printf '\t')" read -r id port up nav; do
   cat <<EOS
 
 # $id
@@ -67,4 +68,4 @@ EOI
 EOE
 done
 } > "$OUT"
-echo "gadgets: wrote $OUT ($(jq '[.apps[]|select(.proxy)]|length' "$REG") proxied, $(jq '.apps|length' "$REG") listed)"
+echo "gadgets: wrote $OUT ($(jq '[.apps[]|select(.proxy)|.proxy.port]|unique|length' "$REG") proxied ports, $(jq '.apps|length' "$REG") listed)"

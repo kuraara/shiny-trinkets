@@ -235,3 +235,7 @@ dialog#lightbox .close { position: absolute; right: 8px; top: 8px; font: 600 14p
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
 
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* panel numbers on the review preview are off unless asked for */
+.strip-opt { display: flex; gap: 6px; align-items: center; color: #cbd5e1; font-size: .85rem; margin: -4px 0 10px; }
+.strip figcaption[hidden] { display: none; }
