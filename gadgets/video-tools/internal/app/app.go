@@ -50,6 +50,7 @@ func New(cfg config.Config) (*Service, error) {
 	}
 	s.Jobs.Register("panel", s.runPanel)
 	s.Jobs.Register("join", s.runJoin)
+	s.Jobs.Register("clip", s.runClip)
 	return s, nil
 }
 
@@ -204,7 +205,7 @@ type joinParams struct {
 	Name    string            `json:"name"`
 }
 
-var nameRe = regexp.MustCompile(`[^A-Za-z0-9._ -]+`)
+var nameRe = regexp.MustCompile(`[^A-Za-z0-9._ !'(),&-]+`)
 
 func (s *Service) StartJoin(req JoinRequest) (jobs.Job, error) {
 	if len(req.FileIDs) < 2 {

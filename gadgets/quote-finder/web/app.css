@@ -50,7 +50,11 @@ mark { background: var(--mark); color: var(--mark-ink); border-radius: 3px; padd
 .pickbar { position: sticky; bottom: 10px; z-index: 5; margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
   padding: 8px 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--accent); box-shadow: 0 6px 20px rgba(0,0,0,.18); }
 .pickbar.done { position: static; box-shadow: none; }
-.pick-text { flex: 1 1 180px; font-size: .9rem; }
+.pick-text { flex: 1 1 100%; font-size: .9rem; }
+.pickbar.done .pick-text { flex-basis: 180px; }
+.pick-btns { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; }
+.pick-btns .subs { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); margin-right: auto; }
+.pick-btns .subs input { width: 18px; height: 18px; accent-color: var(--accent); }
 .pickbar button, .pickbar a { font: inherit; font-size: .9rem; padding: 7px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; text-decoration: none; }
 .pickbar .primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
 .coverage { margin-top: 28px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; }

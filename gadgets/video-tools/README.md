@@ -1,6 +1,6 @@
 # video-tools
 
-A small self-hosted web app (plus JSON API and MCP endpoint for agents) that does two things with
+A small self-hosted web app (plus JSON API and MCP endpoint for agents) that does three things with
 video clips:
 
 - **Panel transcript** — pulls stills from a clip, transcribes the dialogue, and stacks the stills
@@ -10,6 +10,13 @@ video clips:
 - **Join clips** — joins clips end to end. Matching clips with no transition are joined **without
   re-encoding** (stream copy: lossless, seconds). Fades through black, crossfades or mismatched
   clips are converted to one common H.264/AAC format first, and the result says why.
+- **Cut a clip** — cuts a stretch out of a longer video. *Exact* gives a frame-accurate H.264/AAC
+  MP4 that plays anywhere (up to 1080p; HDR is tone-mapped so colours look right; subtitles can
+  be burned in through the API). *Fast copy* keeps the original quality and takes seconds, but
+  starts on the nearest keyframe.
+
+Quote Finder sends scenes here: panel scripts arrive with the subtitle lines already filled in
+(`lines` on `/api/panel` skips speech recognition), and clips arrive through `/api/clip`.
 
 Go (templ + htmx) for the web app, a Python worker for speech (Whisper via sherpa-onnx for text,
 Vosk for word timings, Praat for voice pitch) and rendering, ffmpeg for everything video.
@@ -23,6 +30,9 @@ Vosk for word timings, Praat for voice pitch) and rendering, ffmpeg for everythi
 2. Optional **environment variables** (see [Configuration](#configuration)); the useful ones are
    `PUBLIC_URL` (e.g. `http://<pc>:8090`), `AUTH_TOKEN` and `VIDEO_TOOLS_PORT` (default 8090).
 3. Deploy, then open `http://<host>:8090`.
+
+The compose file joins the gadget registry's `gadgets` network so Quote Finder can reach it as
+`http://video-tools:8080`; without the registry, create it first with `docker network create gadgets`.
 
 On first start the speech models (~430 MB) download into the data volume in the background. Joining
 works immediately; panel transcripts wait for the download (progress is on the **Status** page).
@@ -64,7 +74,7 @@ claude mcp add --transport http video-tools http://<pc>:8090/mcp
 ```
 
 Tools: `list_clips`, `start_panel_transcript`, `get_job`, `get_panel_images`,
-`render_panel_transcript`, `join_clips`, `cancel_job`. Agents get clips in with
+`render_panel_transcript`, `join_clips`, `cut_clip`, `cancel_job`. Agents get clips in with
 `curl -F file=@clip.mov http://<pc>:8090/api/files` or from the inbox folder. Analysis results
 come back with the frames and per-line contact sheets as images, so the agent can name the speakers
 itself.

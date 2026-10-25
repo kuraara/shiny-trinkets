@@ -342,7 +342,7 @@ func JoinNew(p Page, files []storage.File, maxUpload string, maxFiles int) templ
 	})
 }
 
-func Login(p Page, bad bool) templ.Component {
+func ClipNew(p Page, files []storage.File, maxUpload string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -375,23 +375,91 @@ func Login(p Page, bad bool) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<h1 class=\"page\">Sign in</h1><form class=\"work narrow\" method=\"post\" action=\"/login\"><label class=\"field\"><span>Access token (the AUTH_TOKEN this container was started with)</span> <input type=\"password\" name=\"token\" autocomplete=\"current-password\" required></label> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<h1 class=\"page\">Cut a clip</h1><p class=\"lede\">Cut a stretch out of a longer video, ready to share.</p><form class=\"work\" method=\"post\" action=\"/clip\" enctype=\"multipart/form-data\" data-upload><div class=\"drop\" data-drop><input type=\"file\" name=\"file\" id=\"clip-file\" accept=\"video/*,.mov,.mkv,.mts\" data-file> <label for=\"clip-file\"><strong>Choose a video</strong> or drop it here <span class=\"hint\">Up to ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if bad {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"flash flash-bad\" role=\"alert\">That token doesn’t match.</p>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
+			var templ_7745c5c3_Var21 string
+			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(maxUpload)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/views/forms.templ`, Line: 133, Col: 41}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"actions\"><button class=\"btn\" type=\"submit\">Sign in</button></div></form>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, " per upload.</span></label><p class=\"picked\" data-picked></p></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = FilePicker(files, "file_id").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"row2\"><label class=\"field\"><span>From (seconds, or minutes:seconds)</span> <input type=\"text\" name=\"start\" placeholder=\"1:23.5\" inputmode=\"decimal\" autocomplete=\"off\" required></label> <label class=\"field\"><span>To</span> <input type=\"text\" name=\"end\" placeholder=\"1:41\" inputmode=\"decimal\" autocomplete=\"off\" required></label></div><fieldset class=\"choice\"><legend>How</legend> <label class=\"radio\"><input type=\"radio\" name=\"mode\" value=\"accurate\" checked> Exact cut, plays anywhere (MP4, re-encoded, up to 1080p)</label> <label class=\"radio\"><input type=\"radio\" name=\"mode\" value=\"fast\"> Fast copy, original quality (starts on the nearest keyframe)</label></fieldset><label class=\"field\"><span>File name (optional)</span> <input type=\"text\" name=\"name\" autocomplete=\"off\"></label><div class=\"actions\"><button class=\"btn\" type=\"submit\">Cut clip</button> <progress class=\"up\" max=\"100\" value=\"0\" hidden data-progress></progress> <span class=\"up-text\" data-progress-text></span></div><p class=\"flash flash-bad\" role=\"alert\" hidden data-error></p></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
 		templ_7745c5c3_Err = Layout(p).Render(templ.WithChildren(ctx, templ_7745c5c3_Var20), templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func Login(p Page, bad bool) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var22 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var22 == nil {
+			templ_7745c5c3_Var22 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Var23 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+			if !templ_7745c5c3_IsBuffer {
+				defer func() {
+					templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err == nil {
+						templ_7745c5c3_Err = templ_7745c5c3_BufErr
+					}
+				}()
+			}
+			ctx = templ.InitializeContext(ctx)
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<h1 class=\"page\">Sign in</h1><form class=\"work narrow\" method=\"post\" action=\"/login\"><label class=\"field\"><span>Access token (the AUTH_TOKEN this container was started with)</span> <input type=\"password\" name=\"token\" autocomplete=\"current-password\" required></label> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if bad {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<p class=\"flash flash-bad\" role=\"alert\">That token doesn’t match.</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div class=\"actions\"><button class=\"btn\" type=\"submit\">Sign in</button></div></form>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			return nil
+		})
+		templ_7745c5c3_Err = Layout(p).Render(templ.WithChildren(ctx, templ_7745c5c3_Var23), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

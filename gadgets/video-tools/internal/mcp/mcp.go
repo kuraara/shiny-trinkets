@@ -39,6 +39,9 @@ PANEL TRANSCRIPT
 3. render_panel_transcript(job_id, lines=[{speaker, text?, panel?}, ...]) — exactly one entry per transcript line, in order. panel is 1-based; 0 leaves a line off the image; omit to keep the suggested panel.
 4. Give the user the PNG link and the transcript as a verbatim table (time, speaker, line). Say which speakers you were unsure of, and if a panel's timestamp falls inside one line but carries the next, say so.
 
+CUTTING CLIPS
+- cut_clip(file_id, start, end, mode?) cuts a stretch out of a video: accurate (default) gives a frame-exact MP4 that plays anywhere, optionally with burned-in subtitles; fast copies without re-encoding from the nearest keyframe.
+
 JOINING CLIPS
 - join_clips(file_ids in order, transition none|fade|crossfade, seconds?). With no transition and matching clips it joins without re-encoding (fast, lossless); otherwise it converts everything to H.264/AAC in the first clip's size. The result lists why re-encoding was needed.
 
@@ -274,6 +277,23 @@ func tools() []map[string]any {
 			}, "file_ids"),
 		},
 		{
+			"name":  "cut_clip",
+			"title": "Cut a clip",
+			"description": "Cuts start..end (seconds) out of a video. mode accurate (default): frame-exact H.264/AAC MP4 that plays anywhere, up to 1080p, HDR tone-mapped, optional burned-in subtitles; " +
+				"mode fast: stream copy (original quality, seconds) starting on the keyframe at or before start. Returns the download link when finished.",
+			"inputSchema": obj(map[string]any{
+				"file_id":    str("Video id from list_clips or an upload."),
+				"start":      num("Seconds into the video."),
+				"end":        num("Seconds into the video."),
+				"mode":       map[string]any{"type": "string", "enum": []string{"accurate", "fast"}},
+				"max_height": map[string]any{"type": "integer", "description": "accurate: scale down to this height (default 1080; -1 keeps the source size)."},
+				"subtitles": map[string]any{"type": "array", "description": "accurate: lines to burn in, [{text, start, end}] in seconds into the source.",
+					"items": obj(map[string]any{"text": str("The line."), "start": num("Seconds."), "end": num("Seconds.")}, "text", "start", "end")},
+				"name":         str("Output file name without extension."),
+				"wait_seconds": wait,
+			}, "file_id", "start", "end"),
+		},
+		{
 			"name":        "cancel_job",
 			"title":       "Cancel job",
 			"description": "Stops a queued or running job.",
@@ -430,6 +450,21 @@ func (m *Server) call(r *http.Request, name string, raw json.RawMessage) toolRes
 			return errResult("bad arguments: %v", err)
 		}
 		j, err := m.svc.StartJoin(a.JoinRequest)
+		if err != nil {
+			return errResult("%v", err)
+		}
+		j = m.wait(ctx, j.ID, waitFor(a.Wait))
+		return m.jobResult(base, j, false)
+
+	case "cut_clip":
+		var a struct {
+			app.ClipRequest
+			Wait *int `json:"wait_seconds"`
+		}
+		if err := dec(&a); err != nil {
+			return errResult("bad arguments: %v", err)
+		}
+		j, err := m.svc.StartClip(a.ClipRequest)
 		if err != nil {
 			return errResult("%v", err)
 		}

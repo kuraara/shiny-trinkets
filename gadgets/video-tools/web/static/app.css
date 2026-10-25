@@ -233,3 +233,5 @@ dialog#lightbox img { display: block; max-width: 94vw; max-height: 88vh; }
 dialog#lightbox .close { position: absolute; right: 8px; top: 8px; font: 600 14px "Inter", sans-serif; background: #fff; border: 0; border-radius: 4px; padding: 6px 10px; cursor: pointer; }
 
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

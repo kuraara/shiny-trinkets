@@ -43,7 +43,7 @@ func Home(p Page, recent []jobs.Job) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"hero\"><h1 class=\"subline\"><span class=\"who\">Video tools:</span> “Turn a clip into subtitled stills, or join clips into one.”</h1></section><section class=\"tools\"><div class=\"tool\"><h2>Panel transcript</h2><p>Pulls stills from a clip, transcribes what’s said, and stacks the stills into one image with each line burned in as a subtitle. Pick the moments yourself or let it take one per line of dialogue. You add the speaker names before it renders.</p><a class=\"btn\" href=\"/panel\">Start a panel transcript</a></div><div class=\"tool\"><h2>Join clips</h2><p>Joins clips end to end. Clips that already match are joined without re-encoding, so nothing is lost and it takes seconds. Add fades or crossfades, or mix formats, and it converts everything to one common format first.</p><a class=\"btn\" href=\"/join\">Join clips</a></div></section><section class=\"recent\"><h2>Recent jobs</h2>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"hero\"><h1 class=\"subline\"><span class=\"who\">Video tools:</span> “Turn a clip into subtitled stills, join clips into one, or cut a clip out of a longer video.”</h1></section><section class=\"tools\"><div class=\"tool\"><h2>Panel transcript</h2><p>Pulls stills from a clip, transcribes what’s said, and stacks the stills into one image with each line burned in as a subtitle. Pick the moments yourself or let it take one per line of dialogue. You add the speaker names before it renders.</p><a class=\"btn\" href=\"/panel\">Start a panel transcript</a></div><div class=\"tool\"><h2>Join clips</h2><p>Joins clips end to end. Clips that already match are joined without re-encoding, so nothing is lost and it takes seconds. Add fades or crossfades, or mix formats, and it converts everything to one common format first.</p><a class=\"btn\" href=\"/join\">Join clips</a></div><div class=\"tool\"><h2>Cut a clip</h2><p>Cuts a stretch out of a longer video. Exact cuts come out as an MP4 that plays anywhere (HDR is converted so colours look right); a fast copy keeps the original quality and takes seconds.</p><a class=\"btn\" href=\"/clip\">Cut a clip</a></div></section><section class=\"recent\"><h2>Recent jobs</h2>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -109,7 +109,7 @@ func JobTable(list []jobs.Job) templ.Component {
 			var templ_7745c5c3_Var4 templ.SafeURL
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(jobURL(j.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/views/home.templ`, Line: 42, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/views/home.templ`, Line: 47, Col: 31}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -122,7 +122,7 @@ func JobTable(list []jobs.Job) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(j.Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/views/home.templ`, Line: 42, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/views/home.templ`, Line: 47, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -135,7 +135,7 @@ func JobTable(list []jobs.Job) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(kindLabel(j.Kind))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/views/home.templ`, Line: 43, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/views/home.templ`, Line: 48, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -170,7 +170,7 @@ func JobTable(list []jobs.Job) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(statusLabel(j.Status))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/views/home.templ`, Line: 44, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/views/home.templ`, Line: 49, Col: 85}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -183,7 +183,7 @@ func JobTable(list []jobs.Job) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(when(j.Created))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/views/home.templ`, Line: 45, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/views/home.templ`, Line: 50, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -197,7 +197,7 @@ func JobTable(list []jobs.Job) templ.Component {
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(human(outputsSize(j)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/views/home.templ`, Line: 48, Col: 30}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/views/home.templ`, Line: 53, Col: 30}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {

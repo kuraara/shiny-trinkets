@@ -5,7 +5,7 @@ import "github.com/kuraara/clowd-docker-stuff/video-tools/internal/jobs"
 templ Home(p Page, recent []jobs.Job) {
 	@Layout(p) {
 		<section class="hero">
-			<h1 class="subline"><span class="who">Video tools:</span> “Turn a clip into subtitled stills, or join clips into one.”</h1>
+			<h1 class="subline"><span class="who">Video tools:</span> “Turn a clip into subtitled stills, join clips into one, or cut a clip out of a longer video.”</h1>
 		</section>
 		<section class="tools">
 			<div class="tool">
@@ -17,6 +17,11 @@ templ Home(p Page, recent []jobs.Job) {
 				<h2>Join clips</h2>
 				<p>Joins clips end to end. Clips that already match are joined without re-encoding, so nothing is lost and it takes seconds. Add fades or crossfades, or mix formats, and it converts everything to one common format first.</p>
 				<a class="btn" href="/join">Join clips</a>
+			</div>
+			<div class="tool">
+				<h2>Cut a clip</h2>
+				<p>Cuts a stretch out of a longer video. Exact cuts come out as an MP4 that plays anywhere (HDR is converted so colours look right); a fast copy keeps the original quality and takes seconds.</p>
+				<a class="btn" href="/clip">Cut a clip</a>
 			</div>
 		</section>
 		<section class="recent">

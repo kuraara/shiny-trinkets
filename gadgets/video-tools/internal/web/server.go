@@ -51,6 +51,8 @@ func New(svc *app.Service, mcpHandler http.Handler) http.Handler {
 	mux.HandleFunc("POST /panel", s.panelCreate)
 	mux.HandleFunc("GET /join", s.joinForm)
 	mux.HandleFunc("POST /join", s.joinCreate)
+	mux.HandleFunc("GET /clip", s.clipForm)
+	mux.HandleFunc("POST /clip", s.clipCreate)
 	mux.HandleFunc("GET /jobs", s.jobsPage)
 	mux.HandleFunc("GET /jobs/{id}", s.jobPage)
 	mux.HandleFunc("GET /jobs/{id}/status", s.jobStatus)
@@ -73,6 +75,7 @@ func New(svc *app.Service, mcpHandler http.Handler) http.Handler {
 	mux.HandleFunc("POST /api/panel", s.apiPanel)
 	mux.HandleFunc("POST /api/jobs/{id}/render", s.apiRender)
 	mux.HandleFunc("POST /api/join", s.apiJoin)
+	mux.HandleFunc("POST /api/clip", s.apiClip)
 	mux.HandleFunc("POST /api/jobs/{id}/cancel", s.apiCancel)
 	mux.HandleFunc("DELETE /api/jobs/{id}", s.apiDelete)
 	if mcpHandler != nil {
@@ -365,6 +368,62 @@ func (s *Server) joinCreate(w http.ResponseWriter, r *http.Request) {
 	s.redirect(w, r, "/jobs/"+j.ID)
 }
 
+func (s *Server) clipForm(w http.ResponseWriter, r *http.Request) {
+	s.render(w, r, views.ClipNew(s.page("Cut a clip", "clip"), s.svc.Store.List(), storage.Human(s.svc.Cfg.MaxUploadBytes)))
+}
+
+func (s *Server) clipCreate(w http.ResponseWriter, r *http.Request) {
+	files, fields, err := s.svc.Store.SaveUploads(w, r)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	fileID := first(fields, "file_id")
+	for i, f := range files {
+		if i == 0 {
+			fileID = f.ID
+		} else {
+			_ = s.svc.Store.DeleteUpload(f.ID)
+		}
+	}
+	cleanup := func() {
+		if len(files) > 0 {
+			_ = s.svc.Store.DeleteUpload(files[0].ID)
+		}
+	}
+	if fileID == "" {
+		s.fail(w, r, errors.New("choose a video first"))
+		return
+	}
+	ts, err := panel.ParseTimes(first(fields, "start") + "," + first(fields, "end"))
+	if err != nil || len(ts) != 2 {
+		cleanup()
+		s.fail(w, r, errors.New("enter a start and an end time, e.g. 1:23.5 and 1:41"))
+		return
+	}
+	j, err := s.svc.StartClip(app.ClipRequest{FileID: fileID, Start: ts[0], End: ts[1], Mode: first(fields, "mode"), Name: first(fields, "name")})
+	if err != nil {
+		cleanup()
+		s.fail(w, r, err)
+		return
+	}
+	s.redirect(w, r, "/jobs/"+j.ID)
+}
+
+func (s *Server) apiClip(w http.ResponseWriter, r *http.Request) {
+	var req app.ClipRequest
+	if err := decode(r, &req); err != nil {
+		writeJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	j, err := s.svc.StartClip(req)
+	if err != nil {
+		writeJSON(w, errCode(err), map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 202, j)
+}
+
 func (s *Server) jobsPage(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, views.JobsPage(s.page("Jobs", "jobs"), s.svc.Jobs.List()))
 }
@@ -529,6 +588,7 @@ func (s *Server) apiIndex(w http.ResponseWriter, r *http.Request) {
 			"GET  /api/jobs/{id}        job; panel jobs include lines, frames and image URLs",
 			"POST /api/jobs/{id}/render {lines:[{speaker, text?, panel?}]} panel is 1-based, 0 = leave off",
 			"POST /api/join             {file_ids:[], transition:none|fade|crossfade, seconds?, mode?:auto|copy|reencode, fade_edges?, name?} -> job",
+			"POST /api/clip             {file_id, start, end, mode?:accurate|fast, max_height?, subtitles?:[{text,start,end}], name?, delete_input?} -> job",
 			"POST /api/jobs/{id}/cancel",
 			"DELETE /api/jobs/{id}",
 			"GET  /jobs/{id}/files/{name} download an output",

@@ -22,6 +22,7 @@ const mcpInstructions = `Quote Finder searches the dialogue (subtitles) of the P
 - search_quotes finds where a line is said. Words can be in any order and partly remembered; "exact words" in quotes; regex=true for a regular expression (case-insensitive). Filter with title (a show or movie name from list_titles) or kind (tv|movie). Each hit gives media_id and at_ms.
 - get_scene shows the lines around a moment (media_id + at_ms), each with its start time in ms.
 - make_panel_script turns the lines from from_ms to to_ms (start times of the first and last line, from get_scene) into a Panel Script job in video-tools: the scene is cut from the file and the subtitle lines become the transcript. It returns the job id and a review link. Then either give the user the link to name the speakers, or use the video-tools MCP (get_job with include_images, then render_panel_transcript) to name them yourself: mouth movement in each line's contact sheet first, voice pitch as a hint, and only name characters you're confident about.
+- make_clip cuts the same kind of range out as a video (MP4, plays anywhere), optionally with the subtitles burned in.
 - Only part of the library may be indexed yet; list_titles shows coverage.`
 
 type mcpServer struct{ a *app }
@@ -188,6 +189,16 @@ func mcpTools() []map[string]any {
 			}, "media_id", "from_ms", "to_ms"),
 		},
 		{
+			"name": "make_clip", "title": "Make a video clip",
+			"description": "Cuts the scene from the first to the last chosen line (plus a second either side) out of the media file and has video-tools make a frame-exact MP4 that plays anywhere. Returns the job id and a link to watch or download it. At most 60 lines / 5 minutes.",
+			"inputSchema": obj(map[string]any{
+				"media_id":  integer("From search_quotes."),
+				"from_ms":   integer("Start time of the first line (from get_scene)."),
+				"to_ms":     integer("Start time of the last line (from get_scene)."),
+				"subtitles": map[string]any{"type": "boolean", "description": "Burn the subtitle lines into the video (default false)."},
+			}, "media_id", "from_ms", "to_ms"),
+		},
+		{
 			"name": "list_titles", "title": "List titles", "annotations": ro,
 			"description": "Shows and movies in the library and how many of their files are searchable.",
 			"inputSchema": obj(map[string]any{
@@ -322,6 +333,25 @@ func (m *mcpServer) call(ctx context.Context, name string, raw json.RawMessage) 
 		return mcpText(fmt.Sprintf("Panel Script job %s started for %s (%d lines).\nReview and name the speakers: %s\n"+
 			"Or with the video-tools MCP: get_job(job_id=%q, include_images=true), then render_panel_transcript.",
 			res.JobID, res.Title, res.Lines, res.URL, res.JobID), res)
+
+	case "make_clip":
+		var a struct {
+			MediaID   int64 `json:"media_id"`
+			FromMS    int   `json:"from_ms"`
+			ToMS      int   `json:"to_ms"`
+			Subtitles bool  `json:"subtitles"`
+		}
+		if err := dec(&a); err != nil {
+			return mcpFail("bad arguments: %v", err)
+		}
+		cctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+		defer cancel()
+		res, err := m.a.makeScene(cctx, a.MediaID, a.FromMS, a.ToMS, sceneOpts{Clip: true, Subtitles: a.Subtitles})
+		if err != nil {
+			return mcpFail("%v", err)
+		}
+		return mcpText(fmt.Sprintf("Clip job %s started for %s (%d lines). It takes a few seconds; watch or download it at %s\n"+
+			"With the video-tools MCP: get_job(job_id=%q) gives the download link when it's done.", res.JobID, res.Title, res.Lines, res.URL, res.JobID), res)
 
 	case "list_titles":
 		var a struct{ Kind string }

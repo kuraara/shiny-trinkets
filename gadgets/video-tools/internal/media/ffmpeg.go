@@ -92,6 +92,7 @@ type Stream struct {
 	AvgFrameRate string            `json:"avg_frame_rate"`
 	RFrameRate   string            `json:"r_frame_rate"`
 	FieldOrder   string            `json:"field_order"`
+	ColorTrans   string            `json:"color_transfer"`
 	Disposition  map[string]int    `json:"disposition"`
 	Tags         map[string]string `json:"tags"`
 	SideData     []struct {

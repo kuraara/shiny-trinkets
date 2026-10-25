@@ -118,13 +118,20 @@ function result(h, re) {
   bar.hidden = true;
   const barText = el('span', 'pick-text');
   const go = el('button', 'primary', 'Make panels');
+  const goClip = el('button', 'primary', 'Make clip');
+  const subs = el('label', 'subs');
+  const subsBox = el('input'); subsBox.type = 'checkbox';
+  subs.append(subsBox, ' subtitles on the clip');
+  subs.title = 'Burn the subtitle lines into the clip';
   const cancel = el('button', '', 'Cancel');
-  go.type = cancel.type = 'button';
-  bar.append(barText, go, cancel);
+  go.type = goClip.type = cancel.type = 'button';
+  const btns = el('div', 'pick-btns');
+  btns.append(go, goClip, subs, cancel);
+  bar.append(barText, btns);
   function updateBar() {
     bar.hidden = !pick;
     if (!pick) return;
-    go.hidden = pick.b == null;
+    go.hidden = goClip.hidden = subs.hidden = pick.b == null;
     if (pick.a == null) barText.textContent = 'Tap the first line of the scene';
     else if (pick.b == null) barText.textContent = 'Now tap the last line';
     else {
@@ -138,9 +145,9 @@ function result(h, re) {
     draw();
   }
   if (panelsOn) {
-    const start = el('button', 'more', 'Make panels…');
+    const start = el('button', 'more', 'Panels or clip…');
     start.type = 'button';
-    start.title = 'Pick the first and last line; Panel Script makes the images';
+    start.title = 'Pick the first and last line, then make panel images or a video clip';
     start.addEventListener('click', async () => {
       start.disabled = true;
       try { await loadScene(25, 40); more.remove(); } catch { /* keep what we have */ }
@@ -152,26 +159,28 @@ function result(h, re) {
     actions.append(start);
   }
   cancel.addEventListener('click', () => { pick = null; draw(); });
-  go.addEventListener('click', async () => {
+  const send = async (clip) => {
     const lo = Math.min(pick.a, pick.b), hi = Math.max(pick.a, pick.b);
-    go.disabled = cancel.disabled = true;
-    barText.textContent = 'Cutting the scene and sending it to Panel Script…';
+    go.disabled = goClip.disabled = cancel.disabled = true;
+    barText.textContent = clip ? 'Cutting the scene and sending it to Video Tools…' : 'Cutting the scene and sending it to Panel Script…';
     try {
       const r = await fetch('/api/panels', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ media: h.mediaId, from: current[lo].start, to: current[hi].start }) });
+        body: JSON.stringify({ media: h.mediaId, from: current[lo].start, to: current[hi].start, clip, subtitles: clip && subsBox.checked }) });
       const res = await r.json();
       if (!r.ok) throw new Error(res.error || 'Something went wrong');
       pick = null; draw();
       const done = el('div', 'pickbar done');
-      const a = el('a', 'primary', 'Open in Panel Script ↗');
+      const a = el('a', 'primary', clip ? 'Watch or download ↗' : 'Open in Panel Script ↗');
       a.href = res.url; a.target = '_blank'; a.rel = 'noopener';
-      done.append(el('span', 'pick-text', `${res.lines} line${res.lines === 1 ? '' : 's'} sent. Name the speakers there.`), a);
+      done.append(el('span', 'pick-text', clip ? `Clip of ${res.lines} line${res.lines === 1 ? '' : 's'} on its way (a few seconds).`
+        : `${res.lines} line${res.lines === 1 ? '' : 's'} sent. Name the speakers there.`), a);
       bar.after(done);
     } catch (e) {
       barText.textContent = e.message;
-      go.textContent = 'Try again';
-    } finally { go.disabled = cancel.disabled = false; }
-  });
+    } finally { go.disabled = goClip.disabled = cancel.disabled = false; }
+  };
+  go.addEventListener('click', () => send(false));
+  goClip.addEventListener('click', () => send(true));
 
   draw();
   li.append(head, lines, bar, actions);

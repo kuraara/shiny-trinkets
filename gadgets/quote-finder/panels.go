@@ -1,6 +1,7 @@
 package main
 
-// "Make panels": turn a stretch of dialogue into a Panel Script job in video-tools.
+// "Make panels" / "Make clip": turn a stretch of dialogue into a Panel Script job, or a video
+// clip (optionally with the subtitles burned in), in video-tools.
 //
 //  1. the subtitle lines from the first to the last chosen line come from the index;
 //  2. the scene is cut from the media file by the extractor next to the media (stream copy,
@@ -98,6 +99,13 @@ func clipName(h hit, from int) string {
 }
 
 func (a *app) makePanels(ctx context.Context, mediaID int64, from, to int) (panelResult, error) {
+	return a.makeScene(ctx, mediaID, from, to, sceneOpts{})
+}
+
+// sceneOpts: Clip makes a video clip instead of panels; Subtitles burns the lines into it.
+type sceneOpts struct{ Clip, Subtitles bool }
+
+func (a *app) makeScene(ctx context.Context, mediaID int64, from, to int, o sceneOpts) (panelResult, error) {
 	var res panelResult
 	if !a.panels.enabled() {
 		return res, errors.New("making panels isn't set up (CLIP_URL and VIDEO_TOOLS_URL)")
@@ -117,8 +125,12 @@ func (a *app) makePanels(ctx context.Context, mediaID int64, from, to int) (pane
 	case lines[len(lines)-1].End-lines[0].Start > maxPanelSpan:
 		return res, errors.New("that's longer than 5 minutes; pick a shorter stretch")
 	}
-	start := max(0, lines[0].Start-leadIn)
-	end := lines[len(lines)-1].End + tailOut
+	lead, tail := leadIn, tailOut
+	if o.Clip { // a clip breathes a little either side
+		lead, tail = 1000, 1200
+	}
+	start := max(0, lines[0].Start-lead)
+	end := lines[len(lines)-1].End + tail
 	name := clipName(h, lines[0].Start)
 
 	// 1. the scene, from the extractor next to the media
@@ -174,12 +186,21 @@ func (a *app) makePanels(ctx context.Context, mediaID int64, from, to int) (pane
 	for i, l := range lines {
 		gl[i] = map[string]any{"text": l.Text, "start": round2(float64(l.Start)/1000 - key), "end": round2(float64(l.End)/1000 - key)}
 	}
-	body, _ := json.Marshal(map[string]any{"file_id": up.Files[0].ID, "lines": gl})
+	endpoint, req2 := "/api/panel", map[string]any{"file_id": up.Files[0].ID, "lines": gl}
+	if o.Clip {
+		endpoint = "/api/clip"
+		req2 = map[string]any{"file_id": up.Files[0].ID, "start": max(0, round2(float64(start)/1000-key)), "end": round2(float64(end)/1000 - key),
+			"name": strings.TrimSuffix(name, ".mkv"), "delete_input": true}
+		if o.Subtitles {
+			req2["subtitles"] = gl
+		}
+	}
+	body, _ := json.Marshal(req2)
 	var job struct {
 		ID     string `json:"id"`
 		Status string `json:"status"`
 	}
-	if err := a.toolsCall(ctx, "POST", "/api/panel", "application/json", strings.NewReader(string(body)), &job); err != nil {
+	if err := a.toolsCall(ctx, "POST", endpoint, "application/json", strings.NewReader(string(body)), &job); err != nil {
 		return res, err
 	}
 	pub := a.panels.publicTools
@@ -217,8 +238,10 @@ func (a *app) toolsCall(ctx context.Context, method, path, ctype string, body io
 
 func (a *app) apiPanels(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Media    int64 `json:"media"`
-		From, To int
+		Media     int64 `json:"media"`
+		From, To  int
+		Clip      bool `json:"clip"`
+		Subtitles bool `json:"subtitles"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad body"})
@@ -226,7 +249,7 @@ func (a *app) apiPanels(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
 	defer cancel()
-	res, err := a.makePanels(ctx, req.Media, req.From, req.To)
+	res, err := a.makeScene(ctx, req.Media, req.From, req.To, sceneOpts{Clip: req.Clip, Subtitles: req.Subtitles})
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
 		return

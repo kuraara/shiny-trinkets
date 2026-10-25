@@ -45,6 +45,8 @@ func kindLabel(k string) string {
 		return "Panel transcript"
 	case "join":
 		return "Join"
+	case "clip":
+		return "Clip"
 	}
 	return k
 }

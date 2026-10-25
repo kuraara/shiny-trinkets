@@ -42,6 +42,7 @@ func TestMakePanels(t *testing.T) {
 			Start, End float64
 		} `json:"lines"`
 	}
+	var clipBody map[string]any
 	tools := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/files":
@@ -58,6 +59,10 @@ func TestMakePanels(t *testing.T) {
 			json.NewDecoder(r.Body).Decode(&panelBody)
 			w.WriteHeader(202)
 			io.WriteString(w, `{"id":"j_9","status":"queued"}`)
+		case "/api/clip":
+			json.NewDecoder(r.Body).Decode(&clipBody)
+			w.WriteHeader(202)
+			io.WriteString(w, `{"id":"j_10","status":"queued"}`)
 		}
 	}))
 	defer tools.Close()
@@ -80,6 +85,15 @@ func TestMakePanels(t *testing.T) {
 		panelBody.Lines[2].Text != "Well, I'll be upstairs" {
 		t.Fatalf("panel body %+v", panelBody)
 	}
+	// a clip: a second either side, subtitles burned in, the excerpt deleted afterwards
+	res, err = a.makeScene(context.Background(), 1, 250000, 255000, sceneOpts{Clip: true, Subtitles: true})
+	if err != nil || res.JobID != "j_10" {
+		t.Fatalf("clip %+v %v", res, err)
+	}
+	if !strings.Contains(clipQuery, "start=249.000") || !strings.Contains(clipQuery, "end=258.200") ||
+		clipBody["start"] != 0.0 || clipBody["end"] != 9.1 || clipBody["delete_input"] != true || len(clipBody["subtitles"].([]any)) != 3 {
+		t.Fatalf("clip query %s body %v", clipQuery, clipBody)
+	}
 	if _, err := a.makePanels(context.Background(), 1, 1000, 2000); err == nil {
 		t.Fatal("empty range should fail")
 	}
@@ -97,7 +111,7 @@ func TestMakePanels(t *testing.T) {
 		json.NewDecoder(r.Body).Decode(&out)
 		return out
 	}
-	if tl := call(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`); len(tl["result"].(map[string]any)["tools"].([]any)) != 4 {
+	if tl := call(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`); len(tl["result"].(map[string]any)["tools"].([]any)) != 5 {
 		t.Fatalf("tools %v", tl)
 	}
 	sr := call(`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"search_quotes","arguments":{"query":"upstairs"}}}`)
