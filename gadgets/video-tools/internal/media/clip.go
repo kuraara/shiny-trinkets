@@ -67,7 +67,10 @@ func ClipArgs(in Info, o ClipOptions, threads int, out string) []string {
 	a = append(a, "-vf", strings.Join(vf, ","), "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
 		"-profile:v", "high", "-threads", fmt.Sprint(max(threads, 1)))
 	if in.Audio != nil {
-		a = append(a, "-c:a", "aac", "-b:a", "160k", "-ac", "2")
+		// a very short fade at each end: no click, and no stray syllable of the neighbouring line
+		fade := min(0.12, d/4)
+		a = append(a, "-af", fmt.Sprintf("afade=t=in:d=%s,afade=t=out:st=%s:d=%s", fs(fade), fs(d-fade), fs(fade)),
+			"-c:a", "aac", "-b:a", "160k", "-ac", "2")
 	}
 	return append(a, "-movflags", "+faststart", out)
 }

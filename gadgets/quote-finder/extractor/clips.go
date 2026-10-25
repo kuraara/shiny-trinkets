@@ -1,10 +1,11 @@
 package main
 
 // Scene clips for Quote Finder: GET /clip?path=<library path>&start=<s>&end=<s> streams that
-// stretch of the file as Matroska, copied without re-encoding (so the Pi does almost no work).
-// A copy can only start on a keyframe, so the clip starts at the keyframe at or before `start`;
-// the X-Clip-Start header says where that is (seconds into the file) so callers can line up
-// subtitle times. Only the main video track and one audio track (English if there is one) are
+// stretch of the file as Matroska, the video copied without re-encoding (so the Pi does almost
+// no work) and the audio re-encoded so it stays in sync.
+// A copy can only start on a keyframe, so the clip starts a second before the keyframe at or
+// before `start` (the picture from the keyframe on); the X-Clip-Start header says where the
+// clip's t=0 is (seconds into the file) so callers can line up subtitle times. Only the main video track and one audio track (English if there is one) are
 // kept. Needs the same Bearer token as the index.
 
 import (
@@ -53,18 +54,32 @@ func (c cfg) clip(w http.ResponseWriter, r *http.Request) {
 	}
 	key := keyframeBefore(r, abs, start)
 	audio := audioTrack(r, abs)
-	args := []string{"-nostdin", "-hide_banner", "-v", "error", "-ss", ff3(key), "-i", abs, "-t", ff3(end - key),
-		"-map", "0:v:0"}
+	// Read from a few seconds before the keyframe and trim on output: audio for the moments just
+	// after a keyframe is often stored before it in the file, and would otherwise be lost.
+	// The trim point is a second before the keyframe, not on it: with B-frames a keyframe is
+	// stored (dts) a little before it is shown (pts), and trimming exactly at its pts drops it,
+	// and with it all the video up to the next keyframe (seconds later). The copy starts at the
+	// keyframe regardless; the audio starts at the trim point, which is what X-Clip-Start reports.
+	pre := min(5, key)
+	margin := min(1, key)
+	zero := key - margin // where the clip's t=0 is in the file
+	args := []string{"-nostdin", "-hide_banner", "-v", "error", "-ss", ff3(key - pre), "-i", abs,
+		"-ss", ff3(pre - margin), "-t", ff3(end - zero), "-map", "0:v:0"}
 	if audio >= 0 {
 		args = append(args, "-map", "0:"+strconv.Itoa(audio))
 	}
-	args = append(args, "-c", "copy", "-sn", "-dn", "-map_metadata", "-1", "-map_chapters", "-1", "-f", "matroska", "pipe:1")
+	// The video is copied (no re-encoding) from the keyframe; the audio is decoded and re-encoded.
+	// Copied audio would start at the demuxer's seek point, which can be seconds before the
+	// keyframe, leaving the sound that far behind the picture; decoded audio is trimmed to start
+	// exactly at the keyframe. Re-encoding ~30 s of audio takes the Pi about a second.
+	args = append(args, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ac", "2",
+		"-sn", "-dn", "-map_metadata", "-1", "-map_chapters", "-1", "-f", "matroska", "pipe:1")
 	cmd := exec.CommandContext(r.Context(), "nice", append([]string{"-n", "10", "ffmpeg"}, args...)...)
 	cmd.Stdout = w
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	w.Header().Set("Content-Type", "video/x-matroska")
-	w.Header().Set("X-Clip-Start", ff3(key))
+	w.Header().Set("X-Clip-Start", ff3(zero))
 	t0 := time.Now()
 	if err := cmd.Run(); err != nil {
 		log.Printf("clip %s %.1f-%.1f: %v %s", rel, start, end, err, firstLine(fmt.Errorf("%s", stderr.String())))

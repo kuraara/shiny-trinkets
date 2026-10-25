@@ -75,7 +75,8 @@ func TestMakePanels(t *testing.T) {
 	if res.JobID != "j_9" || res.URL != "/panel.html?job=j_9" || res.ToolsURL != "http://pc:8103/jobs/j_9" || res.Lines != 3 {
 		t.Fatalf("result %+v", res)
 	}
-	if !strings.Contains(clipQuery, "start=249.600") || !strings.Contains(clipQuery, "end=257.600") || !strings.Contains(clipQuery, "American+Dad") {
+	// the fetch is generous (3 s before, 5 s after) so the speech can be found even if the subtitles are off
+	if !strings.Contains(clipQuery, "start=247.000") || !strings.Contains(clipQuery, "end=262.000") || !strings.Contains(clipQuery, "American+Dad") {
 		t.Fatalf("clip query %s", clipQuery)
 	}
 	if gotName != "American Dad! S08E09 4m10s.mkv" || gotSize != 4096 {
@@ -90,9 +91,14 @@ func TestMakePanels(t *testing.T) {
 	if err != nil || res.JobID != "j_10" {
 		t.Fatalf("clip %+v %v", res, err)
 	}
-	if !strings.Contains(clipQuery, "start=249.000") || !strings.Contains(clipQuery, "end=258.200") ||
+	if !strings.Contains(clipQuery, "start=247.000") || !strings.Contains(clipQuery, "end=262.000") ||
 		clipBody["start"] != 0.0 || clipBody["end"] != 9.1 || clipBody["delete_input"] != true || len(clipBody["subtitles"].([]any)) != 3 {
 		t.Fatalf("clip query %s body %v", clipQuery, clipBody)
+	}
+	// video-tools gets the lines in the fetched stretch to line the cut up with the speech
+	al, _ := clipBody["align"].(map[string]any)
+	if al == nil || len(al["lines"].([]any)) != 3 || al["first"] != 0.0 || al["last"] != 2.0 {
+		t.Fatalf("align %v", clipBody["align"])
 	}
 	if _, err := a.makePanels(context.Background(), 1, 1000, 2000); err == nil {
 		t.Fatal("empty range should fail")

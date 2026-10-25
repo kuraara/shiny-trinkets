@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,6 +30,22 @@ type ClipRequest struct {
 	// DeleteInput removes the uploaded source once the clip is made (used when the source is a
 	// throwaway excerpt, e.g. from Quote Finder).
 	DeleteInput bool `json:"delete_input"`
+	// Align, when given, moves the cut to the speech: the lines (e.g. subtitles, which are only
+	// roughly right) are matched against the words actually spoken, and the clip runs from just
+	// before the first chosen line is said to just after the last one ends, without running into
+	// the neighbouring lines. Start/End above are the fallback if that can't be done. Burned-in
+	// subtitles are retimed to the speech too.
+	Align *ClipAlign `json:"align,omitempty"`
+}
+
+// ClipAlign: the lines around the cut (times in seconds into the source) and which of them
+// (First..Last, 0-based) the clip should hold; Lead/Tail are the room left around the speech.
+type ClipAlign struct {
+	Lines []panel.GivenLine `json:"lines"`
+	First int               `json:"first"`
+	Last  int               `json:"last"`
+	Lead  float64           `json:"lead"` // default 0.5 s
+	Tail  float64           `json:"tail"` // default 0.7 s
 }
 
 type clipParams struct {
@@ -57,6 +74,21 @@ func (s *Service) StartClip(req ClipRequest) (jobs.Job, error) {
 	}
 	if len(req.Subtitles) > 500 {
 		return jobs.Job{}, errors.New("at most 500 subtitle lines")
+	}
+	if al := req.Align; al != nil {
+		if err := panel.CheckLinesMax(al.Lines, 400); err != nil {
+			return jobs.Job{}, fmt.Errorf("align: %w", err)
+		}
+		if len(al.Lines) == 0 || al.First < 0 || al.Last < al.First || al.Last >= len(al.Lines) {
+			return jobs.Job{}, errors.New("align: first and last must pick lines from the list, first before last")
+		}
+		if al.Lead <= 0 {
+			al.Lead = 0.5
+		}
+		if al.Tail <= 0 {
+			al.Tail = 0.7
+		}
+		al.Lead, al.Tail = min(al.Lead, 5), min(al.Tail, 5)
 	}
 	if req.MaxHeight == 0 {
 		req.MaxHeight = 1080
@@ -99,6 +131,42 @@ func (s *Service) runClip(ctx context.Context, h *jobs.Handle) error {
 	o := media.ClipOptions{Start: p.Start, End: min(p.End, inf.Duration), Mode: p.Mode, FontsDir: s.Cfg.FontsDir}
 	if p.MaxHeight > 0 {
 		o.MaxHeight = min(p.MaxHeight, s.Cfg.JoinMaxHeight)
+	}
+	if al := p.Align; al != nil {
+		switch {
+		case !s.Models.Ready():
+			h.Note("Cut on the subtitle times: the speech models aren’t downloaded yet, so the cut wasn’t lined up with the speech.")
+		default:
+			h.Progress(2, "lining the cut up with the speech")
+			res, err := s.Worker.Align(ctx, f.Path, h.WorkDir(), al.Lines, al.First, al.Last, al.Lead, al.Tail,
+				func(pct int, msg string) { h.Progress(2+pct*28/100, msg) }, h.Log)
+			switch {
+			case err != nil:
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+				h.Note("Cut on the subtitle times: lining up with the speech failed (" + err.Error() + ").")
+			case res.Matched == 0:
+				h.Note("Cut on the subtitle times: none of the subtitle words were recognised in the speech.")
+			default:
+				o.Start, o.End = res.Cut.Start, min(res.Cut.End, inf.Duration)
+				msg := fmt.Sprintf("Cut lined up with the speech (%d of the subtitle words heard).", res.Matched)
+				if math.Abs(res.Offset) >= 0.5 {
+					early := "early"
+					if res.Offset < 0 {
+						early = "late"
+					}
+					msg += fmt.Sprintf(" The subtitles were about %.1f s %s.", math.Abs(res.Offset), early)
+				}
+				h.Note(msg)
+				if len(p.Subtitles) > 0 { // burn in the chosen lines where they're really spoken
+					p.Subtitles = p.Subtitles[:0]
+					for _, l := range res.Lines[al.First : al.Last+1] {
+						p.Subtitles = append(p.Subtitles, panel.GivenLine{Text: l.Text, Start: l.Start, End: l.End + 0.3})
+					}
+				}
+			}
+		}
 	}
 	if len(p.Subtitles) > 0 {
 		var cues []media.Cue

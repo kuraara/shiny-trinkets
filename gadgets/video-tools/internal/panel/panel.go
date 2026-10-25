@@ -71,9 +71,12 @@ type GivenLine struct {
 const MaxGivenLines = 60
 
 // CheckLines validates given lines.
-func CheckLines(ls []GivenLine) error {
-	if len(ls) > MaxGivenLines {
-		return fmt.Errorf("at most %d lines", MaxGivenLines)
+func CheckLines(ls []GivenLine) error { return CheckLinesMax(ls, MaxGivenLines) }
+
+// CheckLinesMax validates given lines, allowing up to max of them.
+func CheckLinesMax(ls []GivenLine, max int) error {
+	if len(ls) > max {
+		return fmt.Errorf("at most %d lines", max)
 	}
 	for i, l := range ls {
 		if strings.TrimSpace(l.Text) == "" {
@@ -334,4 +337,54 @@ func ParseTimes(s string) ([]float64, error) {
 		return nil, fmt.Errorf("at most 24 panels")
 	}
 	return out, nil
+}
+
+// ---------------------------------------------------------------- aligning known lines
+
+// AlignedLine is a known line moved to where it is actually spoken.
+type AlignedLine struct {
+	Text    string  `json:"text"`
+	Start   float64 `json:"start"`
+	End     float64 `json:"end"`
+	Matched int     `json:"matched"` // words recognised in the speech
+	Words   int     `json:"words"`
+}
+
+// Alignment is align.py's result: the lines, the overall subtitle offset (speech minus
+// subtitle; positive = subtitles early) and where to cut a clip of the chosen lines.
+type Alignment struct {
+	Lines   []AlignedLine `json:"lines"`
+	Offset  float64       `json:"offset"`
+	Matched int           `json:"matched"`
+	Heard   int           `json:"words"`
+	Cut     struct {
+		Start       float64 `json:"start"`
+		End         float64 `json:"end"`
+		SpeechStart float64 `json:"speech_start"`
+		SpeechEnd   float64 `json:"speech_end"`
+	} `json:"cut"`
+}
+
+// Align runs align.py: Vosk word timings over clip, matched to the given lines; first..last are
+// the lines a clip should hold, lead/tail the room left before and after their speech.
+func (w Worker) Align(ctx context.Context, clip, workDir string, lines []GivenLine, first, last int, lead, tail float64,
+	progress func(int, string), logf func(string)) (Alignment, error) {
+	var res Alignment
+	lf := filepath.Join(workDir, "align_lines.json")
+	b, _ := json.Marshal(lines)
+	if err := os.WriteFile(lf, b, 0o644); err != nil {
+		return res, err
+	}
+	out := filepath.Join(workDir, "align.json")
+	err := w.run(ctx, progress, logf, "align.py", clip, out, "--lines", lf, "--workdir", workDir,
+		"--first", strconv.Itoa(first), "--last", strconv.Itoa(last),
+		"--lead", strconv.FormatFloat(lead, 'f', 3, 64), "--tail", strconv.FormatFloat(tail, 'f', 3, 64))
+	if err != nil {
+		return res, err
+	}
+	b, err = os.ReadFile(out)
+	if err != nil {
+		return res, err
+	}
+	return res, json.Unmarshal(b, &res)
 }

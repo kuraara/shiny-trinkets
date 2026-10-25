@@ -29,8 +29,14 @@ import (
 const (
 	maxPanelLines = 60
 	maxPanelSpan  = 5 * 60 * 1000 // ms
-	leadIn        = 400           // ms of picture before the first line
-	tailOut       = 600           // ms after the last line
+	// How much of the file is fetched around the chosen lines. Subtitles are only roughly right
+	// (and their end times often short), so the fetch is generous; video-tools then lines the
+	// lines up with the speech and cuts just outside it.
+	fetchLead = 3000 // ms before the first line
+	fetchTail = 5000 // ms after the last line ends
+	// Fallback clip edges, used if the speech can't be matched.
+	clipLead = 1000
+	clipTail = 1200
 )
 
 type panelCfg struct {
@@ -85,6 +91,27 @@ func (s *store) sceneLines(mediaID int64, from, to int) (string, hit, []sceneLin
 	return path, h, ls, rows.Err()
 }
 
+// windowLines returns every subtitle line starting between from and to (ms).
+func (s *store) windowLines(mediaID int64, from, to int) ([]sceneLine, error) {
+	rows, err := s.db.Query(`SELECT start_ms, end_ms, text FROM cues WHERE media_id = ? AND start_ms BETWEEN ? AND ? ORDER BY idx LIMIT 400`,
+		mediaID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ls []sceneLine
+	for rows.Next() {
+		var l sceneLine
+		if err := rows.Scan(&l.Start, &l.End, &l.Text); err != nil {
+			return nil, err
+		}
+		if l.End > l.Start && strings.TrimSpace(l.Text) != "" {
+			ls = append(ls, l)
+		}
+	}
+	return ls, rows.Err()
+}
+
 var unsafeName = regexp.MustCompile(`[^\p{L}\p{N} !'&(),.\-]+`)
 
 func clipName(h hit, from int) string {
@@ -126,13 +153,24 @@ func (a *app) makeScene(ctx context.Context, mediaID int64, from, to int, o scen
 	case lines[len(lines)-1].End-lines[0].Start > maxPanelSpan:
 		return res, errors.New("that's longer than 5 minutes; pick a shorter stretch")
 	}
-	lead, tail := leadIn, tailOut
-	if o.Clip { // a clip breathes a little either side
-		lead, tail = 1000, 1200
-	}
-	start := max(0, lines[0].Start-lead)
-	end := lines[len(lines)-1].End + tail
+	start := max(0, lines[0].Start-fetchLead)
+	end := lines[len(lines)-1].End + fetchTail
 	name := clipName(h, lines[0].Start)
+	// every line in the fetched stretch: the chosen ones plus their neighbours, which help the
+	// speech matching and keep a clip from running into the next line
+	around, err := a.db.windowLines(mediaID, start, end)
+	if err != nil {
+		return res, err
+	}
+	first, last := -1, -1
+	for i, l := range around {
+		if l.Start == lines[0].Start && first < 0 {
+			first = i
+		}
+		if l.Start == lines[len(lines)-1].Start {
+			last = i
+		}
+	}
 
 	// 1. the scene, from the extractor next to the media
 	q := url.Values{"path": {path}, "start": {msec(start)}, "end": {msec(end)}}
@@ -183,15 +221,24 @@ func (a *app) makeScene(ctx context.Context, mediaID int64, from, to int, o scen
 	}
 
 	// 3. the panel job, with the subtitles re-timed to the clip
-	gl := make([]map[string]any, len(lines))
-	for i, l := range lines {
-		gl[i] = map[string]any{"text": l.Text, "start": round2(float64(l.Start)/1000 - key), "end": round2(float64(l.End)/1000 - key)}
+	rel := func(ls []sceneLine) []map[string]any {
+		out := make([]map[string]any, len(ls))
+		for i, l := range ls {
+			out[i] = map[string]any{"text": l.Text, "start": max(0, round2(float64(l.Start)/1000-key)), "end": round2(float64(l.End)/1000 - key)}
+		}
+		return out
 	}
+	gl := rel(lines)
 	endpoint, req2 := "/api/panel", map[string]any{"file_id": up.Files[0].ID, "lines": gl}
 	if o.Clip {
 		endpoint = "/api/clip"
-		req2 = map[string]any{"file_id": up.Files[0].ID, "start": max(0, round2(float64(start)/1000-key)), "end": round2(float64(end)/1000 - key),
+		cs := max(0, lines[0].Start-clipLead)
+		ce := lines[len(lines)-1].End + clipTail
+		req2 = map[string]any{"file_id": up.Files[0].ID, "start": max(0, round2(float64(cs)/1000-key)), "end": round2(float64(ce)/1000 - key),
 			"name": strings.TrimSuffix(name, ".mkv"), "delete_input": true}
+		if first >= 0 && last >= first {
+			req2["align"] = map[string]any{"lines": rel(around), "first": first, "last": last}
+		}
 		if o.Subtitles {
 			req2["subtitles"] = gl
 		}

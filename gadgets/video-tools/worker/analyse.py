@@ -16,6 +16,13 @@ stdout: "PROGRESS <0-100> <message>" lines for the server, then a summary.
 """
 import argparse, difflib, json, os, re, subprocess, sys, wave
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # run with -I: find align.py beside us
+from align import align as align_lines   # noqa: E402
+
+# Audio extraction keeps the container's timeline: t=0 in the WAV is t=0 in the video, even when
+# the audio starts late or has gaps (otherwise word times drift from the frames).
+AUDIO_T0 = 'aresample=async=1:first_pts=0'
+
 MODELS = os.environ.get('MODELS_DIR', '/data/models')
 WHISPER = os.path.join(MODELS, 'sherpa-onnx-whisper-small.en')
 VOSK = os.path.join(MODELS, 'vosk-model-small-en-us-0.15')
@@ -244,12 +251,24 @@ def main():
             lines.append({'text': g['text'].strip(), 'start': round(s, 2), 'end': round(e, 2), 'timing': 'given'})
         if has_audio and lines:
             progress(10, 'extracting audio')
-            ffmpeg('-i', a.clip, '-vn', '-ac', '1', '-ar', '16000', wav)
+            ffmpeg('-i', a.clip, '-vn', '-af', AUDIO_T0, '-ac', '1', '-ar', '16000', wav)
+            if os.path.isdir(VOSK):   # subtitles get close; the speech says exactly when
+                progress(20, 'lining the lines up with the speech')
+                words = vosk_words(wav)
+                if words:
+                    aligned, offset, n = align_lines(words, lines)
+                    for L, A in zip(lines, aligned):
+                        if A['matched']:
+                            L['start'], L['end'] = round(max(0.0, A['start']), 2), round(min(dur, A['end']), 2)
+                            L['timing'] = 'aligned'
+                    if abs(offset) >= 0.5:
+                        warnings.append(f'the subtitles were {abs(offset):.1f}s {"early" if offset > 0 else "late"}; '
+                                        'lines were moved to where they are spoken')
             progress(40, 'voice pitch')
             pitch(wav, lines)
     elif has_audio:
         progress(5, 'extracting audio')
-        ffmpeg('-i', a.clip, '-vn', '-ac', '1', '-ar', '16000', wav)
+        ffmpeg('-i', a.clip, '-vn', '-af', AUDIO_T0, '-ac', '1', '-ar', '16000', wav)
         progress(10, 'word timings')
         words = vosk_words(wav)
         if words:   # skip Whisper on silence/music — it hallucinates there
