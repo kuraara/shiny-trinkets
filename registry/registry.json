@@ -21,7 +21,8 @@
       "desc": "Guests scan a code and drop photos onto a shared desk. You approve each one first.",
       "proxy": {
         "port": 8102,
-        "upstream": "http://photo-drop:8080"
+        "upstream": "http://photo-drop:8080",
+        "tls": false
       },
       "about": "Run a live photo wall at a party: guests scan a QR code and send photos from their phones, you approve each one, and they land on a big screen like prints thrown on a desk."
     },

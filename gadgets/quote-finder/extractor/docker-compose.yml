@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       - INGEST_TOKEN=${INGEST_TOKEN}
-      - INDEX_URL=http://<pc>:8104
+      - INDEX_URL=http://<pc>:8124   # Quote Finder direct (8104 is https for people)
       - MEDIA_DIR=/media
       - ONLY=${ONLY}          # e.g. "TvShows/Mike Tyson Mysteries"; empty = whole library
       - RESCAN_HOURS=6

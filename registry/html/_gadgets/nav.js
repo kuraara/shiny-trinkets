@@ -12,7 +12,9 @@
   const BAR_H = 44;
 
   const homeURL = (reg) => `${location.protocol}//${location.hostname}${reg.homePort ? `:${reg.homePort}` : ''}/`;
-  const appURL = (app) => (app.proxy ? `${location.protocol}//${location.hostname}:${app.proxy.port}${app.proxy.path || '/'}` : app.url);
+  // a gadget kept on plain HTTP ("tls": false) is linked as http:; others use this page's scheme
+  // (from a plain-HTTP page the registry redirects them to https)
+  const appURL = (app) => (app.proxy ? `${app.proxy.tls === false ? 'http:' : location.protocol}//${location.hostname}:${app.proxy.port}${app.proxy.path || '/'}` : app.url);
   // Several gadgets can share a port (one app, several pages): the one whose path we're on wins,
   // else the entry without a path.
   const currentApp = (apps) => {

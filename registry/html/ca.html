@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="gadget-nav" content="off">
+<title>Trust the gadgets</title>
+<style>
+  /* inline on purpose: this page is served over plain HTTP, before the device trusts anything */
+  :root { --bg: #f3f4f7; --card: #fff; --ink: #1b1d22; --muted: #4b5260; --line: #e1e4ea; --accent: #1d4ed8; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #111318; --card: #1a1d24; --ink: #eef0f4; --muted: #b3b9c4; --line: #2a2f39; --accent: #7aa7ff; color-scheme: dark; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 28px 16px 48px; }
+  h1 { font-size: 1.7rem; line-height: 1.2; margin: 0 0 8px; letter-spacing: -.02em; }
+  p.lede { color: var(--muted); margin: 0 0 20px; }
+  .get { display: inline-block; margin: 4px 0 22px; padding: 13px 20px; border-radius: 12px; background: #15171c; color: #fff; font-weight: 700; text-decoration: none; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; margin-bottom: 12px; }
+  h2 { font-size: 1.05rem; margin: 0 0 6px; }
+  ol { margin: 0; padding-left: 1.3em; }
+  li { margin: 4px 0; }
+  .muted { color: var(--muted); font-size: .92rem; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Trust the home gadgets on this device</h1>
+  <p class="lede">The gadgets use a secure (https) connection with a certificate made at home. Install it once
+    on each phone or computer and the “not private” warnings go away. Phones can then also save clips
+    straight to Photos.</p>
+  <a class="get" href="/ca.crt">Download the certificate</a>
+
+  <section>
+    <h2>iPhone or iPad</h2>
+    <ol>
+      <li>Open this page in <b>Safari</b> (Chrome can’t install it) and tap <b>Download the certificate</b>, then <b>Allow</b>.</li>
+      <li>Open <b>Settings</b>: tap <b>Profile Downloaded</b> near the top, then <b>Install</b> (twice) and enter your passcode.</li>
+      <li>Go to <b>Settings → General → About → Certificate Trust Settings</b> and turn on <b>Home Gadgets local CA</b>.</li>
+      <li>Open <a href="https://<pc>/">https://<pc></a>.</li>
+    </ol>
+  </section>
+  <section>
+    <h2>Mac</h2>
+    <ol>
+      <li>Download the certificate and open it: it goes into Keychain Access.</li>
+      <li>Double-click <b>Home Gadgets local CA</b>, open <b>Trust</b>, set <b>When using this certificate</b> to <b>Always Trust</b>.</li>
+    </ol>
+  </section>
+  <section>
+    <h2>Windows</h2>
+    <ol>
+      <li>Download the certificate, open it and choose <b>Install Certificate</b>.</li>
+      <li>Pick <b>Local Machine</b>, then <b>Place all certificates in the following store → Trusted Root Certification Authorities</b>.</li>
+    </ol>
+  </section>
+  <section>
+    <h2>Android</h2>
+    <ol>
+      <li>Download the certificate, then <b>Settings → Security → Encryption &amp; credentials → Install a certificate → CA certificate</b>.</li>
+    </ol>
+  </section>
+  <p class="muted">The certificate can only vouch for addresses on the home network (the home network) and local names
+    (.local, .lan, .home.arpa), never for real websites, so installing it can’t be used to impersonate anything
+    outside the house.</p>
+</main>
+</body>
+</html>

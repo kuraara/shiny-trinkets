@@ -19,7 +19,8 @@ show, episode and time, with the lines around it. Filter by show or movie.
   - **Make clip**: video-tools cuts the scene (a second either side) into an MP4 that plays
     anywhere, optionally with the subtitles burned in.
 
-http://<pc>:8104 (through the gadget registry).
+https://<pc>:8104 (through the gadget registry). Machines use the direct, plain-HTTP port
+8124: the extractor's ingest and agents' MCP (`http://<pc>:8124/mcp`).
 
 ## How it works
 
@@ -53,7 +54,7 @@ Two parts:
 `make_panel_script`, `make_clip`, `list_titles`. Pair it with the video-tools MCP to name the
 speakers of a panel script or fetch a finished clip:
 
-    claude mcp add --transport http quote-finder http://<pc>:8104/mcp
+    claude mcp add --transport http quote-finder http://<pc>:8124/mcp
     claude mcp add --transport http video-tools http://<pc>:8090/mcp
 
 Show and episode come from the folder layout (`TvShows/<Show>/Season N/...S01E02...`,

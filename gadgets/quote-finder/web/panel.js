@@ -396,7 +396,10 @@ async function load() {
   const cfg = await fetch('/api/config').then((r) => r.json()).catch(() => ({}));
   if (cfg.videoTools) $('#toolsLink').href = `${cfg.videoTools}/jobs/${jobId}`; else $('#toolsLink').hidden = true;
   buildLines();
-  if (navigator.canShare && IOS) $('#share').hidden = false;
+  if (navigator.canShare && IOS) { // the share sheet has "Save Image"; a download goes to Files
+    $('#share').hidden = false;
+    $('#share').textContent = 'Save to Photos…';
+  }
   redraw();
 }
 

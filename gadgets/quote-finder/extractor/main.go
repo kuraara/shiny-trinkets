@@ -57,7 +57,7 @@ var videoExt = map[string]bool{".mkv": true, ".mp4": true, ".m4v": true, ".avi":
 func main() {
 	c := cfg{
 		media:  env("MEDIA_DIR", "/media"),
-		url:    strings.TrimRight(env("INDEX_URL", "http://<pc>:8104"), "/"),
+		url:    strings.TrimRight(env("INDEX_URL", "http://<pc>:8124"), "/"),
 		token:  os.Getenv("INGEST_TOKEN"),
 		rescan: time.Duration(atoi(env("RESCAN_HOURS", "6"))) * time.Hour,
 		os:     newOpenSubs(),

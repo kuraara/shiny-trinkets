@@ -10,10 +10,14 @@ services:
       # "Make panels": scenes are cut by the extractor on the Pi, then sent to video-tools
       - CLIP_URL=http://<pi>:8105
       - VIDEO_TOOLS_URL=http://video-tools:8080
-      - VIDEO_TOOLS_PUBLIC_URL=http://<pc>:8103
+      - VIDEO_TOOLS_PUBLIC_URL=https://<pc>:8103
       - VIDEO_TOOLS_TOKEN=${VIDEO_TOOLS_TOKEN:-}
     volumes:
       - quote-finder-data:/data
+    # People use https://<pc>:8104 through the gadget registry. This direct, plain-HTTP
+    # port is for machines: the subtitle extractor on the Pi (ingest) and agents (MCP at /mcp).
+    ports:
+      - "8124:8080"
     networks: [gadgets]
 volumes:
   quote-finder-data:

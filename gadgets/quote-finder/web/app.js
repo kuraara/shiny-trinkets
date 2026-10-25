@@ -235,8 +235,11 @@ function showClip(box, jobId, out) {
   const row = el('div', 'clip-actions');
   row.append(dl);
   const type = out.name.endsWith('.mkv') ? 'video/x-matroska' : 'video/mp4';
+  const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   if (navigator.canShare && navigator.canShare({ files: [new File([], out.name, { type })] })) {
-    const share = el('button', '', 'Share…');
+    // iPhones save videos to Photos only through the share sheet ("Save Video"); a download goes to Files
+    const label = ios ? 'Save to Photos…' : 'Share…';
+    const share = el('button', ios ? 'primary' : '', label);
     share.type = 'button';
     let file = null;
     share.addEventListener('click', async () => {
@@ -244,17 +247,17 @@ function showClip(box, jobId, out) {
         if (!file) {
           share.disabled = true; share.textContent = 'Preparing…';
           file = new File([await (await fetch(src)).blob()], out.name, { type });
-          share.disabled = false; share.textContent = 'Share…';
+          share.disabled = false; share.textContent = label;
         }
         await navigator.share({ files: [file], title: out.name });
       } catch (e) {
         share.disabled = false;
         // iOS only shares straight after a tap; fetching the video can outlast that
-        share.textContent = e.name === 'NotAllowedError' && file ? 'Tap again to share' : 'Share…';
+        share.textContent = e.name === 'NotAllowedError' && file ? 'Tap again to save' : label;
         if (e.name !== 'AbortError' && e.name !== 'NotAllowedError') alert(`Couldn’t share: ${e.message}`);
       }
     });
-    row.append(share);
+    if (ios) { dl.className = ''; dl.textContent = `Download to Files${mb}`; row.prepend(share); } else row.append(share);
   }
   box.replaceChildren(v, row, el('p', 'muted clip-name', out.name));
 }

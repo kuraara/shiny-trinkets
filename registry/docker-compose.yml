@@ -1,4 +1,6 @@
-# Gadget registry: home page on port 80, each gadget proxied on its own port (see registry.json).
+# Gadget registry: home page on port 443 (80 redirects), each gadget proxied on its own port over
+# HTTPS (see registry.json). The certificate (made by the home CA on the build box, see README)
+# is in the gadget-tls volume; without it everything falls back to plain HTTP.
 # Creates the "gadgets" network the gadget stacks join.
 services:
   registry:
@@ -8,10 +10,16 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
       - "8101-8110:8101-8110"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - gadget-tls:/etc/gadgets/tls:ro
     networks: [gadgets]
+volumes:
+  gadget-tls:
+    external: true
 networks:
   gadgets:
     name: gadgets

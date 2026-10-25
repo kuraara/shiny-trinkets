@@ -189,6 +189,14 @@ for (const btn of document.querySelectorAll('[data-share-file]')) {
   const type = name.endsWith('.mkv') ? 'video/x-matroska' : 'video/mp4';
   if (!navigator.canShare || !navigator.canShare({ files: [new File([], name, { type })] })) continue;
   btn.hidden = false;
+  // iPhones save videos to Photos only through the share sheet ("Save Video"); a download goes to Files
+  if (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+    btn.textContent = 'Save to Photos…';
+    btn.classList.remove('btn-quiet');
+    const dl = btn.parentElement.querySelector('a[download]');
+    if (dl) { dl.classList.add('btn-quiet'); dl.textContent = dl.textContent.replace('Download', 'Download to Files'); }
+    btn.parentElement.prepend(btn);
+  }
   let file = null;
   btn.addEventListener('click', async () => {
     const label = btn.textContent;

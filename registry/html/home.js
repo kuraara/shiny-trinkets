@@ -1,7 +1,8 @@
 // Registry home page: cards for every app, with a live up/down dot.
 (async () => {
   const reg = await (await fetch('/_gadgets/registry.json', { cache: 'no-cache' })).json();
-  const url = (a) => (a.proxy ? `${location.protocol}//${location.hostname}:${a.proxy.port}${a.proxy.path || '/'}` : a.url);
+  // proxied gadgets use this page's scheme, apart from ones kept on plain HTTP ("tls": false)
+  const url = (a) => (a.proxy ? `${a.proxy.tls === false ? 'http:' : location.protocol}//${location.hostname}:${a.proxy.port}${a.proxy.path || '/'}` : a.url);
   const make = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
   for (const a of reg.apps) {

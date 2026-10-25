@@ -8,7 +8,7 @@ fs.mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 (async () => {
   const errors = [];
-  const browser = await puppeteer.launch({ executablePath: process.env.PUPPETEER_EXECUTABLE_PATH, args: ['--no-sandbox', '--disable-dev-shm-usage', '--autoplay-policy=no-user-gesture-required'] });
+  const browser = await puppeteer.launch({ executablePath: process.env.PUPPETEER_EXECUTABLE_PATH, args: ['--no-sandbox', '--disable-dev-shm-usage', '--autoplay-policy=no-user-gesture-required', '--ignore-certificate-errors'] });
   const page = await browser.newPage();
   page.on('pageerror', (e) => errors.push(`quote finder: ${e.message}`));
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
@@ -33,6 +33,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   console.log('video in quote finder:', JSON.stringify(v));
   const dl = await page.$eval('.clip-actions a', (a) => ({ text: a.textContent, href: a.href, download: a.download }));
   console.log('download link:', JSON.stringify(dl));
+  console.log('secure context:', await page.evaluate(() => window.isSecureContext), 'share API:', await page.evaluate(() => typeof navigator.share));
   await page.$eval('video.clip', (v) => v.scrollIntoView({ block: 'center' }));
   await sleep(500);
   await page.screenshot({ path: `${OUT}/c2-clip-ready.png` });
