@@ -181,3 +181,34 @@ for (const box of document.querySelectorAll('[data-panel-numbers]')) {
   apply();
   box.addEventListener('change', () => { try { localStorage.setItem('vt-panel-numbers', box.checked ? '1' : '0'); } catch { /* ignore */ } apply(); });
 }
+
+// Share a finished video (phones: save to Photos, send in Messages…). Only shown where the
+// browser can share files; up to 200 MB, beyond that Download is the better route.
+for (const btn of document.querySelectorAll('[data-share-file]')) {
+  const name = btn.dataset.shareName || 'video.mp4';
+  const type = name.endsWith('.mkv') ? 'video/x-matroska' : 'video/mp4';
+  if (!navigator.canShare || !navigator.canShare({ files: [new File([], name, { type })] })) continue;
+  btn.hidden = false;
+  let file = null;
+  btn.addEventListener('click', async () => {
+    const label = btn.textContent;
+    try {
+      if (!file) {
+        btn.disabled = true; btn.textContent = 'Preparing…';
+        const r = await fetch(btn.dataset.shareFile);
+        if (!r.ok) throw new Error(`couldn’t fetch the video (${r.status})`);
+        const len = Number(r.headers.get('Content-Length') || 0);
+        if (len > 200 << 20) throw new Error('too big to share from the browser; use Download');
+        file = new File([await r.blob()], name, { type });
+        btn.textContent = label; btn.disabled = false;
+      }
+      await navigator.share({ files: [file], title: name });
+    } catch (e) {
+      btn.disabled = false;
+      // iOS only shares straight after a tap; fetching a big video can outlast that
+      if (e.name === 'NotAllowedError' && file) { btn.textContent = 'Tap again to share'; return; }
+      btn.textContent = label;
+      if (e.name !== 'AbortError') alert(`Couldn’t share: ${e.message}`);
+    }
+  });
+}

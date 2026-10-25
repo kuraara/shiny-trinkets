@@ -64,3 +64,13 @@ mark { background: var(--mark); color: var(--mark-ink); border-radius: 3px; padd
 .coverage th { color: var(--muted); font-weight: 600; }
 .muted { color: var(--muted); font-size: .88rem; margin-top: 6px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* a finished clip, shown where it was made */
+.clipbox { margin-top: 8px; padding: 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--accent); display: grid; gap: 8px; }
+.clipbox progress { width: 100%; accent-color: var(--accent); }
+.clipbox video.clip { width: 100%; max-height: 60vh; border-radius: 8px; background: #000; display: block; }
+.clip-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.clip-actions a, .clip-actions button { font: inherit; font-size: .9rem; padding: 8px 14px; border-radius: 9px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; text-decoration: none; }
+.clip-actions .primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+.clip-name { margin: 0; overflow-wrap: anywhere; }
+.clipbox .quiet { color: var(--muted); font-size: .88rem; }

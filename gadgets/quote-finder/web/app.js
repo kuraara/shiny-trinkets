@@ -169,12 +169,16 @@ function result(h, re) {
       const res = await r.json();
       if (!r.ok) throw new Error(res.error || 'Something went wrong');
       pick = null; draw();
+      if (clip) {
+        const box = clipBox(res);
+        bar.after(box);
+        box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        return;
+      }
       const done = el('div', 'pickbar done');
-      const a = el('a', 'primary', clip ? 'Watch or download ↗' : 'Open the panel editor');
+      const a = el('a', 'primary', 'Open the panel editor');
       a.href = res.url;
-      if (clip) { a.target = '_blank'; a.rel = 'noopener'; }
-      done.append(el('span', 'pick-text', clip ? `Clip of ${res.lines} line${res.lines === 1 ? '' : 's'} on its way (a few seconds).`
-        : `Panels for ${res.lines} line${res.lines === 1 ? '' : 's'} are being made.`), a);
+      done.append(el('span', 'pick-text', `Panels for ${res.lines} line${res.lines === 1 ? '' : 's'} are being made.`), a);
       bar.after(done);
     } catch (e) {
       barText.textContent = e.message;
@@ -186,6 +190,73 @@ function result(h, re) {
   draw();
   li.append(head, lines, bar, actions);
   return li;
+}
+
+// A clip being made: follow the video-tools job, then show the clip here with Download and Share.
+function clipBox(res) {
+  const box = el('div', 'clipbox');
+  const text = el('p', 'pick-text', `Making the clip (${res.lines} line${res.lines === 1 ? '' : 's'})…`);
+  const prog = el('progress'); prog.max = 100; prog.value = 0;
+  box.append(text, prog);
+  const fail = (msg) => {
+    prog.remove();
+    text.textContent = msg;
+    const a = el('a', 'quiet', 'Open in Video Tools ↗');
+    a.href = res.toolsUrl || res.url; a.target = '_blank'; a.rel = 'noopener';
+    box.append(a);
+  };
+  (async () => {
+    const started = Date.now();
+    for (;;) {
+      let job;
+      try { job = await (await fetch(`/api/vt/jobs/${res.jobId}`, { cache: 'no-store' })).json(); }
+      catch { if (Date.now() - started > 600_000) return fail('Lost touch with Video Tools.'); await new Promise((r) => setTimeout(r, 2000)); continue; }
+      if (job.status === 'done') {
+        const out = (job.outputs || []).find((o) => o.kind === 'video');
+        if (!out) return fail('The clip finished but there’s no video in it.');
+        return showClip(box, res.jobId, out);
+      }
+      if (job.status === 'failed' || job.status === 'cancelled') return fail(`The clip couldn’t be made: ${job.error || job.status}.`);
+      prog.value = job.progress || 0;
+      if (job.message) text.textContent = `Making the clip: ${job.message}…`;
+      await new Promise((r) => setTimeout(r, 1200));
+    }
+  })();
+  return box;
+}
+
+function showClip(box, jobId, out) {
+  const src = `/api/vt/jobs/${jobId}/files/${encodeURIComponent(out.name)}`;
+  const v = el('video', 'clip');
+  v.controls = true; v.playsInline = true; v.preload = 'metadata'; v.src = src;
+  const mb = out.size ? ` (${(out.size / 1048576).toFixed(1)} MB)` : '';
+  const dl = el('a', 'primary', `Download${mb}`);
+  dl.href = src; dl.download = out.name;
+  const row = el('div', 'clip-actions');
+  row.append(dl);
+  const type = out.name.endsWith('.mkv') ? 'video/x-matroska' : 'video/mp4';
+  if (navigator.canShare && navigator.canShare({ files: [new File([], out.name, { type })] })) {
+    const share = el('button', '', 'Share…');
+    share.type = 'button';
+    let file = null;
+    share.addEventListener('click', async () => {
+      try {
+        if (!file) {
+          share.disabled = true; share.textContent = 'Preparing…';
+          file = new File([await (await fetch(src)).blob()], out.name, { type });
+          share.disabled = false; share.textContent = 'Share…';
+        }
+        await navigator.share({ files: [file], title: out.name });
+      } catch (e) {
+        share.disabled = false;
+        // iOS only shares straight after a tap; fetching the video can outlast that
+        share.textContent = e.name === 'NotAllowedError' && file ? 'Tap again to share' : 'Share…';
+        if (e.name !== 'AbortError' && e.name !== 'NotAllowedError') alert(`Couldn’t share: ${e.message}`);
+      }
+    });
+    row.append(share);
+  }
+  box.replaceChildren(v, row, el('p', 'muted clip-name', out.name));
 }
 
 let timer;

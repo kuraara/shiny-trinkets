@@ -29,6 +29,9 @@ templ JobPage(p Page, j jobs.Job, pv *app.PanelView) {
 				}
 			</p>
 		}
+		if j.Kind == "clip" && len(j.Inputs) > 0 {
+			<p class="inputs"><span class="dim">Cut from</span> <span>{ j.Inputs[0].Name }</span></p>
+		}
 		if j.Status.Active() {
 			@JobStatus(j)
 		}
@@ -54,8 +57,8 @@ templ JobPage(p Page, j jobs.Job, pv *app.PanelView) {
 		if j.Kind == "panel" && pv != nil {
 			@PanelReview(j, *pv)
 		}
-		if j.Kind == "join" && j.Status == jobs.Done {
-			@JoinResult(j)
+		if (j.Kind == "join" || j.Kind == "clip") && j.Status == jobs.Done {
+			@VideoResult(j)
 		}
 	}
 }
@@ -77,13 +80,18 @@ templ Notes(j jobs.Job) {
 	}
 }
 
-templ JoinResult(j jobs.Job) {
+// VideoResult shows a finished join or clip: play it here, download it, open it on its own, or
+// (on phones) share it to Photos, Messages and so on.
+templ VideoResult(j jobs.Job) {
 	for _, o := range j.Outputs {
 		if o.Kind == "video" {
-			<video class="player" controls preload="metadata" src={ string(fileURL(j.ID, o.Name)) }></video>
+			<video class="player" controls playsinline preload="metadata" src={ string(fileURL(j.ID, o.Name)) }></video>
 			<p class="actions">
-				<a class="btn" href={ fileURL(j.ID, o.Name) } download={ o.Name }>Download { o.Name } ({ human(o.Size) })</a>
+				<a class="btn" href={ fileURL(j.ID, o.Name) } download={ o.Name }>Download ({ human(o.Size) })</a>
+				<button class="btn btn-quiet" type="button" hidden data-share-file={ string(fileURL(j.ID, o.Name)) } data-share-name={ o.Name }>Share…</button>
+				<a class="btn btn-quiet" href={ fileURL(j.ID, o.Name) } target="_blank" rel="noopener">Open on its own</a>
 			</p>
+			<p class="dim">{ o.Name }</p>
 		}
 	}
 	@Notes(j)

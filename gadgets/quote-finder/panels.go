@@ -268,10 +268,13 @@ func round2(f float64) float64 { return float64(int(f*100+0.5)) / 100 }
 // ---- the panel editor reads and saves video-tools panel jobs through these (same origin, so the
 // browser can draw the frames on a canvas and export it)
 
-var (
-	jobIDRe    = regexp.MustCompile(`^j_[a-z0-9]{6,40}$`)
-	fileNameRe = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,80}$`)
-)
+var jobIDRe = regexp.MustCompile(`^j_[a-z0-9]{6,40}$`)
+
+// okFileName accepts a job output's name as video-tools makes them (clip names have spaces,
+// "!" and the like) but never anything that could step out of the job's folder.
+func okFileName(n string) bool {
+	return n != "" && len(n) <= 200 && !strings.ContainsAny(n, "/\\\x00") && !strings.HasPrefix(n, ".")
+}
 
 func (a *app) vtJob(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
@@ -284,11 +287,11 @@ func (a *app) vtJob(w http.ResponseWriter, r *http.Request) {
 
 func (a *app) vtFile(w http.ResponseWriter, r *http.Request) {
 	id, name := r.PathValue("id"), r.PathValue("name")
-	if !jobIDRe.MatchString(id) || !fileNameRe.MatchString(name) || !a.panels.enabled() {
+	if !jobIDRe.MatchString(id) || !okFileName(name) || !a.panels.enabled() {
 		http.NotFound(w, r)
 		return
 	}
-	a.vtProxy(w, r, "GET", "/jobs/"+id+"/files/"+name, nil)
+	a.vtProxy(w, r, r.Method, "/jobs/"+id+"/files/"+url.PathEscape(name), nil)
 }
 
 func (a *app) vtRender(w http.ResponseWriter, r *http.Request) {
@@ -301,11 +304,21 @@ func (a *app) vtRender(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *app) vtProxy(w http.ResponseWriter, r *http.Request, method, path string, body io.Reader) {
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
-	defer cancel()
+	ctx := r.Context() // files can be big videos: no time limit beyond the visitor's connection
+	if body != nil {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+	}
 	req, _ := http.NewRequestWithContext(ctx, method, a.panels.videoTools+path, body)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	// byte ranges: iPhones only play video from a server that answers them
+	for _, h := range []string{"Range", "If-Range", "If-None-Match", "If-Modified-Since"} {
+		if v := r.Header.Get(h); v != "" {
+			req.Header.Set(h, v)
+		}
 	}
 	if a.panels.toolsToken != "" {
 		req.Header.Set("Authorization", "Bearer "+a.panels.toolsToken)
@@ -316,7 +329,7 @@ func (a *app) vtProxy(w http.ResponseWriter, r *http.Request, method, path strin
 		return
 	}
 	defer res.Body.Close()
-	for _, h := range []string{"Content-Type", "Content-Length", "Last-Modified", "ETag"} {
+	for _, h := range []string{"Content-Type", "Content-Length", "Content-Range", "Accept-Ranges", "Last-Modified", "ETag"} {
 		if v := res.Header.Get(h); v != "" {
 			w.Header().Set(h, v)
 		}
