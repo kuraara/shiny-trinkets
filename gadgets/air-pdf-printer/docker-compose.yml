@@ -1,6 +1,6 @@
 # AirPrint → PDF on the Pi. iPhones and Macs see a printer called "PDF"; whatever you print
-# lands as a PDF in /path/to/printed-pdfs (straight in, no subfolders), listed at
-# http://<pi>:8632.
+# lands as a PDF in PDF_DIR on the Pi (straight in, no subfolders), listed on port 8632.
+# PI_ADDR and PDF_DIR come from registry/site.local.json (tools/trinket deploy fills them in).
 # Host networking is needed for AirPrint discovery (mDNS), which is why this runs on the Pi:
 # Docker Desktop on the Windows PC can't pass multicast through.
 services:
@@ -9,12 +9,12 @@ services:
     container_name: air-pdf-printer
     network_mode: host                      # CUPS on :631, Avahi (mDNS) on :5353
     volumes:
-      - /path/to/printed-pdfs:/var/spool/cups-pdf
+      - ${PDF_DIR:?set PDF_DIR}:/var/spool/cups-pdf
       - cups-jobs:/var/spool/cups   # job numbers keep counting across restarts (they're in the file names)
     # The Pi runs its own CUPS on 127.0.0.1:631, which stops this one listening on 0.0.0.0:631.
-    # Listening on the Pi's LAN address (<pi>) only avoids the clash, with no change on the Pi.
+    # Listening on the Pi's LAN address (PI_ADDR) only avoids the clash, with no change on the Pi.
     command: >
-      sh -c "sed -i 's/^Listen 0.0.0.0:631/Listen <pi>:631/' /etc/cups/cupsd.conf
+      sh -c "sed -i 's/^Listen 0.0.0.0:631/Listen ${PI_ADDR:?set PI_ADDR}:631/' /etc/cups/cupsd.conf
       && (grep -q '^ServerAlias' /etc/cups/cupsd.conf || echo 'ServerAlias *' >> /etc/cups/cupsd.conf)
       && sed -i -e 's|^#*AnonDirName.*|AnonDirName /var/spool/cups-pdf|' -e 's|^#*Out .*|Out /var/spool/cups-pdf|' -e 's|^#*Spool .*|Spool /var/spool/cups-pdf-work|' /etc/cups/cups-pdf.conf
       && chown nobody /var/spool/cups-pdf && chmod 755 /var/spool/cups-pdf
@@ -30,7 +30,7 @@ services:
     ports:
       - "8632:80"
     volumes:
-      - /path/to/printed-pdfs:/usr/share/nginx/html:ro
+      - ${PDF_DIR:?set PDF_DIR}:/usr/share/nginx/html:ro
     command: >
       sh -c "printf 'server { listen 80; root /usr/share/nginx/html; charset utf-8;
       location / { autoindex on; autoindex_exact_size off; autoindex_localtime on; }

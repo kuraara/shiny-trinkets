@@ -3,11 +3,12 @@
 #   docker build -f registry/Dockerfile -t gadget-registry:latest .
 # (tools/trinket deploy registry does this on the build box).
 
-# 1. registry.json + icons, from gadgets/*/gadget.json, registry/site.json and services.json
+# 1. registry.json + icons, from gadgets/*/gadget.json, registry/site.json (+ site.local.json, this
+#    network's addresses; not in git) and services.json
 FROM python:3.12-alpine AS assemble
 WORKDIR /repo
 COPY tools/trinket tools/trinket
-COPY registry/site.json registry/services.json registry/
+COPY registry/site*.json registry/services.json registry/
 COPY registry/icons/ registry/icons/
 COPY gadgets/ gadgets/
 RUN python3 tools/trinket check && python3 tools/trinket assemble --out /out

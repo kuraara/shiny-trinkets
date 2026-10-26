@@ -43,6 +43,10 @@ Nothing secret is ever committed.
 
 ## The network this was built for
 
-PC `<pc>` (Docker Desktop on Windows, Portainer agent) and Raspberry Pi
-`<pi>` (Portainer, Plex, the media). Those addresses live in `registry/site.json`,
-the manifests' MCP URLs and a few compose files; change them there for another network.
+A Windows PC (Docker Desktop, Portainer agent) that does the heavy lifting and all builds, and a
+Raspberry Pi (Portainer, Plex, the media). Their addresses and the paths on them are **not in this
+repo**: they go in `registry/site.local.json` (git-ignored; copy
+[`registry/site.local.example.json`](registry/site.local.example.json)). Manifests and
+`services.json` write a host's address as `{pc}` / `{pi}`, compose files as `${PC_ADDR}` /
+`${PI_ADDR}`, and `tools/trinket` fills them in when it builds and deploys. `tools/trinket check`
+refuses a local address written into a manifest or compose file.

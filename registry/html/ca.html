@@ -37,7 +37,7 @@
       <li>Open this page in <b>Safari</b> (Chrome can’t install it) and tap <b>Download the certificate</b>, then <b>Allow</b>.</li>
       <li>Open <b>Settings</b>: tap <b>Profile Downloaded</b> near the top, then <b>Install</b> (twice) and enter your passcode.</li>
       <li>Go to <b>Settings → General → About → Certificate Trust Settings</b> and turn on <b>Home Gadgets local CA</b>.</li>
-      <li>Open <a href="https://<pc>/">https://<pc></a>.</li>
+      <li>Open <a id="home" href="/">the gadgets over https</a>.</li>
     </ol>
   </section>
   <section>
@@ -60,9 +60,14 @@
       <li>Download the certificate, then <b>Settings → Security → Encryption &amp; credentials → Install a certificate → CA certificate</b>.</li>
     </ol>
   </section>
-  <p class="muted">The certificate can only vouch for addresses on the home network (the home network) and local names
+  <p class="muted">The certificate can only vouch for addresses on the home network and local names
     (.local, .lan, .home.arpa), never for real websites, so installing it can’t be used to impersonate anything
     outside the house.</p>
 </main>
+<script>
+  const home = document.getElementById('home');
+  home.href = `https://${location.hostname}/`;
+  home.textContent = home.href.replace(/\/$/, '');
+</script>
 </body>
 </html>

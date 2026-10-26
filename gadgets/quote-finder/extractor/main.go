@@ -57,7 +57,7 @@ var videoExt = map[string]bool{".mkv": true, ".mp4": true, ".m4v": true, ".avi":
 func main() {
 	c := cfg{
 		media:  env("MEDIA_DIR", "/media"),
-		url:    strings.TrimRight(env("INDEX_URL", "http://<pc>:8124"), "/"),
+		url:    strings.TrimRight(os.Getenv("INDEX_URL"), "/"),
 		token:  os.Getenv("INGEST_TOKEN"),
 		rescan: time.Duration(atoi(env("RESCAN_HOURS", "6"))) * time.Hour,
 		os:     newOpenSubs(),
@@ -71,6 +71,9 @@ func main() {
 	}
 	if c.token == "" {
 		log.Fatal("INGEST_TOKEN is required")
+	}
+	if c.url == "" {
+		log.Fatal("INDEX_URL is required (Quote Finder's direct port, e.g. http://<pc>:8124)")
 	}
 	log.Printf("extractor: media %s → %s, only %v, rescan every %s", c.media, c.url, c.only, c.rescan)
 	if a := os.Getenv("CLIP_ADDR"); a != "" {

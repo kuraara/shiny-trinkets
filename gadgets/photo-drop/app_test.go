@@ -337,7 +337,7 @@ func TestOrientation(t *testing.T) {
 }
 
 func TestQR(t *testing.T) {
-	svg, err := qrSVG("http://<pc>:8102/j/ABCDEF")
+	svg, err := qrSVG("http://pc.home.arpa:8102/j/ABCDEF")
 	if err != nil || !bytes.HasPrefix(svg, []byte("<svg")) {
 		t.Fatalf("qr: %v", err)
 	}

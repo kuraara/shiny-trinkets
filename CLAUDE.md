@@ -6,6 +6,9 @@ Read docs/ARCHITECTURE.md first. The short version:
   `tools/trinket new <id> --template go|static` starts it, `tools/trinket check` validates.
 - Commit straight to `master` (no feature branches). Never commit secrets: they live in
   `~/.config/shiny-trinkets/<stack>.env` (new stacks) or in the Portainer stack's environment.
+- The repo is **public**: no IP addresses, host names or local paths either. They live in
+  `registry/site.local.json` (git-ignored); write `{pc}` / `{pi}` in manifests and
+  `${PC_ADDR}` / `${PI_ADDR}` / an `env` name in compose files. In docs, write `<pc>`.
 - **The Pi never compiles or hosts development work** (it once ran out of memory). Build and test
   on the build box: `ssh -F ~/.ssh/config buildbox` (Go, Node, Chromium + puppeteer-core, the
   PC's Docker). Pi images are cross-compiled there and built on the Pi through Portainer

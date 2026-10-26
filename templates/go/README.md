@@ -2,7 +2,7 @@
 
 One paragraph: what it does and who it's for.
 
-https://<pc>:__PORT__ (through the gadget registry; http:// works too).
+`https://<pc>:__PORT__` (through the gadget registry; http:// works too).
 
 ## Working on it
 

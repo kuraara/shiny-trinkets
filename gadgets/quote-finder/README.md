@@ -19,14 +19,15 @@ show, episode and time, with the lines around it. Filter by show or movie.
   - **Make clip**: video-tools cuts the scene (a second either side) into an MP4 that plays
     anywhere, optionally with the subtitles burned in.
 
-https://<pc>:8104 (through the gadget registry). Machines use the direct, plain-HTTP port
+`https://<pc>:8104` (through the gadget registry). Machines use the direct, plain-HTTP port
 8124: the extractor's ingest and agents' MCP (`http://<pc>:8124/mcp`).
 
 ## How it works
 
 Two parts:
 
-- **`extractor/`** runs on the Pi, next to the media (`/path/to/video`, mounted read-only).
+- **`extractor/`** runs on the Pi, next to the media (`VIDEO_DIR` in `registry/site.local.json`,
+  mounted read-only).
   It walks the library, picks the best English *text* subtitle track in each file (full over
   forced/signs, plain over SDH), pulls it out with ffmpeg at the lowest CPU and disk priority,
   one file at a time, and sends it to the server. Rescans every 6 hours for new files and
@@ -50,7 +51,7 @@ Two parts:
 
 ## Agents (MCP)
 
-`http://<pc>:8104/mcp` (streamable HTTP). Tools: `search_quotes`, `get_scene`,
+`http://<pc>:8124/mcp` (streamable HTTP). Tools: `search_quotes`, `get_scene`,
 `make_panel_script`, `make_clip`, `list_titles`. Pair it with the video-tools MCP to name the
 speakers of a panel script or fetch a finished clip:
 

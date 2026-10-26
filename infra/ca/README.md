@@ -2,10 +2,10 @@
 
 HTTPS for the gadgets (and Portainer) without a domain: a small private certificate authority
 that phones and computers trust once, by installing its certificate
-(http://<pc>/ca.html walks through it on each kind of device).
+(`http://<pc>/ca.html` walks through it on each kind of device).
 
-- It is **name-constrained**: it can only vouch for the home network and `.local`, `.lan`,
-  `.home.arpa` names, never for a real website, so installing it can't be abused to impersonate
+- It is **name-constrained**: it can only vouch for addresses on the home network (`NET` when it
+  is made) and `.local`, `.lan`, `.home.arpa` names, never for a real website, so installing it can't be abused to impersonate
   anything outside the house.
 - Its key lives on the build box in `/work/ca` and nowhere else. Nothing in this folder is secret.
 
@@ -13,14 +13,15 @@ that phones and computers trust once, by installing its certificate
 
 | Script | Does |
 |---|---|
-| `make-ca.sh` | creates the authority (once; refuses to replace an existing one). Valid 10 years. |
+| `NET=<network>/<netmask> make-ca.sh` | creates the authority (once; refuses to replace an existing one). Valid 10 years. |
 | `issue.sh <name> "<SANs>"` | issues or renews a server certificate, 800 days (Apple's limit for private CAs) |
 | `install-registry.sh` | copies `server.*` into the `gadget-tls` volume and restarts the registry |
 
-What's issued today:
+Two certificates: one for the registry (both machines' addresses, so the PC and the Pi can share
+it) and one for Portainer on the Pi:
 
-    infra/ca/issue.sh server    "IP:<pc>, IP:<pi>, DNS:<pi-name>.local"
-    infra/ca/issue.sh portainer "IP:<pi>, DNS:<pi-name>.local"
+    infra/ca/issue.sh server    "IP:<pc address>, IP:<pi address>, DNS:<pi name>.local"
+    infra/ca/issue.sh portainer "IP:<pi address>, DNS:<pi name>.local"
 
 Portainer takes its certificate through its API (Settings → SSL certificate does the same):
 

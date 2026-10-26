@@ -1,0 +1,15 @@
+{
+  "$comment": "Copy to site.local.json (git-ignored) and fill in your network. tools/trinket lays it over site.json. Manifests and services.json write a host's address as {pc} / {pi}; compose files as ${PC_ADDR} / ${PI_ADDR} (<HOST>_ADDR), and the names under env as ${NAME}.",
+  "hosts": {
+    "pc": {
+      "addr": "pc.home.arpa"
+    },
+    "pi": {
+      "addr": "pi.home.arpa"
+    }
+  },
+  "env": {
+    "PDF_DIR": "/srv/printed-pdfs",
+    "VIDEO_DIR": "/srv/video"
+  }
+}

@@ -19,6 +19,10 @@ Standard library only (Python 3.9+). Deploying needs: ~/portainer-mcp.env (PORTA
 PORTAINER_API_KEY), and `ssh buildbox` working (see infra/buildbox). Secrets for a brand-new
 stack come from ~/.config/shiny-trinkets/<stack>.env (KEY=value lines); an existing stack keeps
 the environment it already has.
+
+This network's details (each host's address, paths on the hosts) are not in git: they go in
+registry/site.local.json, laid over site.json. Manifests and services.json write a host's address
+as {pc}; compose files use ${PC_ADDR} and the names under "env", which deploy fills in.
 """
 import argparse, io, json, os, re, shutil, ssl, subprocess, sys, tarfile, tempfile, urllib.request
 
@@ -35,8 +39,43 @@ def load_json(path):
         return json.load(f)
 
 
+LOCAL = os.path.join(REGISTRY, 'site.local.json')
+HOST_RE = re.compile(r'\{([a-z][a-z0-9-]*)\}')
+PRIVATE_IP = re.compile(r'(?<![\d.])(10|192\.168|172\.(1[6-9]|2\d|3[01]))(\.\d{1,3}){2,3}(?![\d.])')
+
+
+def merge(a, b):
+    out = dict(a)
+    for k, v in b.items():
+        out[k] = merge(out[k], v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
+    return out
+
+
 def site():
-    return load_json(os.path.join(REGISTRY, 'site.json'))
+    """registry/site.json, with registry/site.local.json (this network: addresses and paths;
+    not in git) laid over it."""
+    st = load_json(os.path.join(REGISTRY, 'site.json'))
+    if os.path.isfile(LOCAL):
+        st = merge(st, load_json(LOCAL))
+    return st
+
+
+def resolve(url, st):
+    """Fill in {pc}-style placeholders with the hosts' addresses. A host without one is left
+    as it is, and the browser uses the address the page was opened on."""
+    def sub(mt):
+        h = st['hosts'].get(mt.group(1))
+        return h['addr'] if h and h.get('addr') else mt.group(0)
+    return HOST_RE.sub(sub, url)
+
+
+def local_env(st, compose):
+    """What a compose file needs from site.local.json: <HOST>_ADDR for each host's address
+    (PC_ADDR, PI_ADDR) and everything under "env", for the names it refers to."""
+    pool = {f'{k.upper().replace("-", "_")}_ADDR': h['addr'] for k, h in st['hosts'].items() if h.get('addr')}
+    pool.update({k: str(v) for k, v in st.get('env', {}).items()})
+    used = set(re.findall(r'\$\{([A-Za-z_][A-Za-z0-9_]*)', compose))
+    return {k: v for k, v in pool.items() if k in used}
 
 
 def manifests():
@@ -121,9 +160,9 @@ def registry_entries(st=None):
                 px['protocols'] = https_ok(px['protocols'])
             base['proxy'] = px
         if 'url' in m:
-            base['url'] = m['url']
+            base['url'] = resolve(m['url'], st)
         if 'mcp' in m:
-            base['mcp'] = m['mcp']['url'] if isinstance(m['mcp'], dict) else m['mcp']
+            base['mcp'] = resolve(m['mcp']['url'] if isinstance(m['mcp'], dict) else m['mcp'], st)
         pages = m.get('pages', [])
         if pages:
             base['kind'] = 'hidden'          # the app itself is reached through its pages
@@ -139,7 +178,7 @@ def registry_entries(st=None):
             intents.append({'phrase': it['phrase'], 'desc': it.get('desc', ''), 'group': it.get('group', 'other'),
                             'app': it.get('page') or m['id'], **({'path': it['path']} if it.get('path') else {})})
     for s in services():
-        apps.append({k: v for k, v in s.items() if k != 'iconSpec'})
+        apps.append({k: (resolve(v, st) if k == 'url' else v) for k, v in s.items() if k != 'iconSpec'})
     order = {'gadget': 0, 'hidden': 1, 'service': 2, 'background': 3}
     apps.sort(key=lambda a: order.get(a['kind'], 9))
     return apps, intents
@@ -181,8 +220,40 @@ def cmd_assemble(a):
 # ---------------------------------------------------------------- checking
 
 
+def links():
+    """(where, url) for every address a manifest or service links to."""
+    for m in manifests():
+        where = os.path.relpath(os.path.join(m['_dir'], 'gadget.json'), ROOT)
+        if 'url' in m:
+            yield where, m['url']
+        if m.get('mcp'):
+            yield where, m['mcp']['url'] if isinstance(m['mcp'], dict) else m['mcp']
+    for s in services():
+        if 'url' in s:
+            yield f'registry/services.json ({s.get("id")})', s['url']
+
+
+def committed_config():
+    """The files trinket reads that are in git (site.local.json is the one that isn't)."""
+    out = [os.path.join(REGISTRY, 'site.json'), os.path.join(REGISTRY, 'services.json')]
+    for m in manifests():
+        out.append(os.path.join(m['_dir'], 'gadget.json'))
+        for s in m.get('deploy', {}).get('stacks', []):
+            out.append(os.path.join(m['_dir'], s.get('compose', 'docker-compose.yml')))
+    return [p for p in out if os.path.isfile(p)]
+
+
 def problems():
     st, errs = site(), []
+    for where, url in links():
+        for h in HOST_RE.findall(url):
+            if h not in st['hosts']:
+                errs.append(f'{where}: {{{h}}} in {url} isn\'t a host in registry/site.json')
+    for p in committed_config():   # the repo is public: addresses belong in site.local.json
+        for n, line in enumerate(open(p, encoding='utf-8'), 1):
+            if PRIVATE_IP.search(line):
+                errs.append(f'{os.path.relpath(p, ROOT)}:{n}: a local address; write {{host}} or ${{HOST_ADDR}} '
+                            f'and put the address in registry/site.local.json')
     seen_ids, seen_ports = {}, {}
     lo, hi = st.get('portRange', [8101, 8120])
     ms = manifests()
@@ -255,6 +326,11 @@ def cmd_check(_a):
     if errs:
         sys.exit(1)
     print(f'✓ {len(manifests())} gadgets and {len(services())} services look fine')
+    st = site()
+    bare = sorted({h for _, u in links() for h in HOST_RE.findall(u) if not st['hosts'].get(h, {}).get('addr')})
+    if bare:
+        print(f'  no address for {", ".join(bare)} (registry/site.local.json): links to '
+              f'{"it" if len(bare) == 1 else "them"} use the address the page was opened on')
 
 
 def cmd_list(_a):
@@ -448,14 +524,21 @@ def deploy_stack(m, s, st, do_build):
     if do_build:
         build(m, s, st)
     compose = strip_build(open(os.path.join(m['_dir'], s.get('compose', 'docker-compose.yml'))).read())
+    local = local_env(st, compose)
+    with_local = lambda env: [e for e in env if e['name'] not in local] + [{'name': k, 'value': v} for k, v in local.items()]
+    required = set(re.findall(r'\$\{([A-Za-z_][A-Za-z0-9_]*):\?', compose))
     stacks = json.loads(api('GET', '/api/stacks'))
     found = next((x for x in stacks if x['Name'] == s['name'] and x['EndpointId'] == ep), None)
+    env = with_local((found.get('Env') or []) if found else env_file(s['name']))
+    missing = sorted(required - {e['name'] for e in env})
+    if missing:
+        sys.exit(f'  {s["name"]} needs {", ".join(missing)}: add {"them" if len(missing) > 1 else "it"} to '
+                 f'registry/site.local.json ("env", or a host\'s "addr" for *_ADDR)')
     if found:
-        body = {'stackFileContent': compose, 'env': found.get('Env') or [], 'prune': False, 'pullImage': not s.get('build')}
+        body = {'stackFileContent': compose, 'env': env, 'prune': False, 'pullImage': not s.get('build')}
         api('PUT', f'/api/stacks/{found["Id"]}?endpointId={ep}', body)
-        print(f'  updated stack {found["Id"]} (kept its {len(found.get("Env") or [])} environment values)')
+        print(f'  updated stack {found["Id"]} (kept its environment; {len(local)} values from site.local.json)')
     else:
-        env = env_file(s['name'])
         missing = [k for k in s.get('secrets', []) if k not in {e['name'] for e in env}]
         if missing:
             sys.exit(f'  new stack needs {", ".join(missing)}: put them in ~/.config/shiny-trinkets/{s["name"]}.env')

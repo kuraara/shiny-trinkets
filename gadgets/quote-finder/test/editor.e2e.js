@@ -1,7 +1,8 @@
 // Panel editor + registry views in headless Chromium. Usage: node editor.e2e.js http://pc outdir
 const puppeteer = require('puppeteer-core');
 const fs = require('fs');
-const PC = process.argv[2] || 'http://<pc>';
+const PC = process.argv[2];
+if (!PC) { console.error('usage: node test/editor.e2e.js http://<pc> [outdir]'); process.exit(2); }
 const OUT = process.argv[3] || '/tmp/shots';
 fs.mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

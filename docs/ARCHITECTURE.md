@@ -3,8 +3,9 @@
 shiny-trinkets is a set of small self-hosted web apps ("gadgets") for a home network, plus a
 **registry** that puts them all behind one front door: a home page, a reverse proxy, a shared
 navbar, HTTPS, and status dots. Everything runs as Docker containers managed by Portainer on two
-machines: a Windows PC running Docker Desktop (<pc>, does the heavy lifting and all
-builds) and a Raspberry Pi (<pi>, media, Plex, Portainer itself).
+machines: a Windows PC running Docker Desktop (does the heavy lifting and all builds) and a
+Raspberry Pi (media, Plex, Portainer itself). The repo is public, so their addresses aren't in it
+(see [This network's details](#this-networks-details)).
 
 This document is the review of how it was put together, and the module design it moved to.
 
@@ -61,10 +62,10 @@ Schema: [`gadget.schema.json`](gadget.schema.json). The important parts:
     "protocols": ["http", "https"], // optional: narrow the site's protocols (Photo Drop: ["http"])
     "nav": "bar"                    // bar | fab | off: the injected navbar
   },
-  "url": "http://…",                // instead of proxy: a page served elsewhere (e.g. on the Pi)
+  "url": "http://{pi}:8632/",       // instead of proxy: a page served elsewhere ({pi} = the Pi's address)
   "pages": [ { "id": "cut-clip", "name": "Cut a Clip", "path": "/clip", … } ],  // one app, several tools
   "intents": [ { "phrase": "…know which show or movie a quote came from", "group": "video" } ],
-  "mcp": { "url": "http://<pc>:8124/mcp", "tools": "…" },
+  "mcp": { "url": "http://{pc}:8124/mcp", "tools": "…" },
   "uses": ["video-tools"],          // other gadgets it talks to (checked to exist)
   "deploy": { "stacks": [ { "name": "quote-finder", "host": "pc", "compose": "docker-compose.yml",
                              "build": { "image": "quote-finder:latest", "context": "." },
@@ -85,6 +86,7 @@ Schema: [`gadget.schema.json`](gadget.schema.json). The important parts:
 
 - `site.json`: title, hosts (with their Portainer endpoint and whether the build box shares
   their Docker), protocols, home ports, the gadget port range, intent groups.
+- `site.local.json` (not in git): this network's details, laid over `site.json` (below).
 - `services.json`: things it links to that aren't gadgets here (Plex, Home Assistant…).
 - `html/`: the home page (Cards / Tiles), the navbar (`_gadgets/nav.js`), the shared look
   (`_gadgets/ui.css`), the certificate page (`ca.html`).
@@ -93,6 +95,25 @@ Schema: [`gadget.schema.json`](gadget.schema.json). The important parts:
 Its image is built from the repo root: a first stage runs `tools/trinket check` and
 `tools/trinket assemble`, turning manifests + site + services into `registry.json` and an icon
 set; the second stage is nginx. A broken manifest fails the build, not the live site.
+
+### This network's details
+
+The repo is public, so nothing in it names this network. `registry/site.local.json` (git-ignored;
+start from `site.local.example.json`) holds each host's `addr` and an `env` of host paths:
+
+```jsonc
+{ "hosts": { "pc": { "addr": "…" }, "pi": { "addr": "…" } },
+  "env": { "PDF_DIR": "/path/on/the/pi", "VIDEO_DIR": "/path/on/the/pi" } }
+```
+
+- Manifests and `services.json` write an address as `{pc}` / `{pi}`; `trinket assemble` fills
+  them in. A host with no `addr` is left to the browser, which uses the address the page was
+  opened on.
+- Compose files write `${PC_ADDR:?…}` / `${PI_ADDR:?…}` (each host's `addr`) and the `env` names;
+  `trinket deploy` adds the ones a compose file refers to to its Portainer stack's environment,
+  and stops before deploying if a required one is missing.
+- `trinket check` fails on a private address written into `site.json`, `services.json`, a manifest
+  or a compose file, so they don't creep back in.
 
 ### How a request flows
 

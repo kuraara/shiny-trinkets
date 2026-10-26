@@ -1,4 +1,4 @@
-// Usage: node test-e2e.js http://<pc>:8104 outdir
+// Usage: node test/e2e.js http://<pc>:8104 outdir
 const puppeteer = require('puppeteer-core');
 const BASE = process.argv[2], OUT = process.argv[3];
 require('fs').mkdirSync(OUT, { recursive: true });

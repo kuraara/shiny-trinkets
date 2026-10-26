@@ -1,4 +1,5 @@
 # Runs on the Pi, next to the media. Reads only; one file at a time at the lowest priority.
+# PC_ADDR and VIDEO_DIR come from registry/site.local.json (tools/trinket deploy fills them in).
 services:
   subtitle-extractor:
     image: subtitle-extractor:latest
@@ -6,7 +7,7 @@ services:
     restart: unless-stopped
     environment:
       - INGEST_TOKEN=${INGEST_TOKEN}
-      - INDEX_URL=http://<pc>:8124   # Quote Finder direct (8104 is https for people)
+      - INDEX_URL=http://${PC_ADDR:?set PC_ADDR}:8124   # Quote Finder direct (8104 is for people)
       - MEDIA_DIR=/media
       - ONLY=${ONLY}          # e.g. "TvShows/Mike Tyson Mysteries"; empty = whole library
       - RESCAN_HOURS=6
@@ -20,6 +21,6 @@ services:
     ports:
       - "8105:8105"
     volumes:
-      - /path/to/video:/media:ro
+      - ${VIDEO_DIR:?set VIDEO_DIR}:/media:ro
     mem_limit: 256m
     cpus: 1.0

@@ -1,5 +1,5 @@
 {
-  "$comment": "Things the registry links to that are not gadgets in this repo (other apps on the PC and the Pi).",
+  "$comment": "Things the registry links to that are not gadgets in this repo (other apps on the PC and the Pi). {pc} / {pi} = that host's address, from site.local.json.",
   "services": [
     {
       "id": "home-assistant",
@@ -7,7 +7,7 @@
       "kind": "service",
       "host": "pc",
       "desc": "Home automation.",
-      "url": "http://<pc>:8123/",
+      "url": "http://{pc}:8123/",
       "iconSpec": {
         "top": "#38bdf8",
         "bottom": "#0369a1",
@@ -20,7 +20,7 @@
       "kind": "service",
       "host": "pc",
       "desc": "Firmware for the ESP devices.",
-      "url": "http://<pc>:6052/",
+      "url": "http://{pc}:6052/",
       "iconSpec": {
         "top": "#475569",
         "bottom": "#0f172a",
@@ -33,7 +33,7 @@
       "kind": "service",
       "host": "pi",
       "desc": "Manages Docker on both machines.",
-      "url": "https://<pi>:9443/",
+      "url": "https://{pi}:9443/",
       "iconSpec": {
         "top": "#22d3ee",
         "bottom": "#0e7490",
@@ -46,7 +46,7 @@
       "kind": "service",
       "host": "pi",
       "desc": "Cameras and HomeKit bridge.",
-      "url": "https://<pi>:10443/",
+      "url": "https://{pi}:10443/",
       "iconSpec": {
         "top": "#f43f5e",
         "bottom": "#9f1239",
@@ -59,7 +59,7 @@
       "kind": "service",
       "host": "pi",
       "desc": "Media server.",
-      "url": "http://<pi>:32400/web/",
+      "url": "http://{pi}:32400/web/",
       "iconSpec": {
         "top": "#facc15",
         "bottom": "#ca8a04",
@@ -72,7 +72,7 @@
       "kind": "service",
       "host": "pi",
       "desc": "Media server (usually stopped).",
-      "url": "http://<pi>:8096/",
+      "url": "http://{pi}:8096/",
       "iconSpec": {
         "top": "#818cf8",
         "bottom": "#4338ca",
@@ -85,7 +85,7 @@
       "kind": "service",
       "host": "pi",
       "desc": "Downloads.",
-      "url": "http://<pi>:8080/",
+      "url": "http://{pi}:8080/",
       "iconSpec": {
         "top": "#fbbf24",
         "bottom": "#d97706",
@@ -98,7 +98,7 @@
       "kind": "service",
       "host": "pi",
       "desc": "TV shows.",
-      "url": "http://<pi>:8989/",
+      "url": "http://{pi}:8989/",
       "iconSpec": {
         "top": "#60a5fa",
         "bottom": "#1d4ed8",
@@ -111,7 +111,7 @@
       "kind": "service",
       "host": "pi",
       "desc": "Movies.",
-      "url": "http://<pi>:7878/",
+      "url": "http://{pi}:7878/",
       "iconSpec": {
         "top": "#fb923c",
         "bottom": "#c2410c",
@@ -124,7 +124,7 @@
       "kind": "service",
       "host": "pi",
       "desc": "Game library (usually stopped).",
-      "url": "http://<pi>:8016/",
+      "url": "http://{pi}:8016/",
       "iconSpec": {
         "top": "#34d399",
         "bottom": "#047857",
@@ -137,7 +137,7 @@
       "kind": "service",
       "host": "pi",
       "desc": "Glances: CPU, memory and disk on the Pi.",
-      "url": "http://<pi>:61208/",
+      "url": "http://{pi}:61208/",
       "iconSpec": {
         "top": "#4ade80",
         "bottom": "#15803d",
@@ -150,7 +150,7 @@
       "kind": "service",
       "host": "pi",
       "desc": "The Claude Code container.",
-      "url": "http://<pi>:8765/",
+      "url": "http://{pi}:8765/",
       "iconSpec": {
         "top": "#f59e0b",
         "bottom": "#b45309",

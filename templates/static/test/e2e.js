@@ -2,7 +2,8 @@
 // Usage: node test/e2e.js https://<pc>:__PORT__ /tmp/shots
 const puppeteer = require('puppeteer-core');
 const fs = require('fs');
-const BASE = process.argv[2] || 'http://<pc>:__PORT__';
+const BASE = process.argv[2];
+if (!BASE) { console.error('usage: node test/e2e.js https://<pc>:__PORT__ [outdir]'); process.exit(2); }
 const OUT = process.argv[3] || '/tmp/shots';
 fs.mkdirSync(OUT, { recursive: true });
 (async () => {

@@ -23,9 +23,11 @@
     const dflt = s === 'https' ? 443 : 80;
     return `${s}://${location.hostname}${port && port !== dflt ? `:${port}` : ''}/`;
   };
+  // {pc}-style placeholders left in a URL (a host with no address in site.local.json): this host
+  const fill = (u) => u.replace(/\{[a-z][a-z0-9-]*\}/g, location.hostname);
   const appURL = (reg, app, path) => (app.proxy
     ? `${schemeFor(reg, app)}://${location.hostname}:${app.proxy.port}${path || app.proxy.path || '/'}`
-    : (path ? new URL(path, app.url).href : app.url));
+    : (path ? new URL(path, fill(app.url)).href : fill(app.url)));
 
   const registry = fetch(`${BASE}registry.json`, { cache: 'no-cache' }).then((r) => r.json());
   window.gadgets = {

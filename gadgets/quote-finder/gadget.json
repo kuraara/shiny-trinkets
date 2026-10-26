@@ -12,7 +12,7 @@
     "upstream": "http://quote-finder:8080"
   },
   "mcp": {
-    "url": "http://<pc>:8124/mcp",
+    "url": "http://{pc}:8124/mcp",
     "tools": "search_quotes, get_scene, make_panel_script, make_clip, list_titles"
   },
   "intents": [

@@ -1,8 +1,8 @@
 #!/bin/sh
 # Issue (or renew) a server certificate from the home CA.
 #   infra/ca/issue.sh <name> <subjectAltName>
-#   infra/ca/issue.sh server "IP:<pc>, IP:<pi>, DNS:<pi-name>.local"
-#   infra/ca/issue.sh portainer "IP:<pi>, DNS:<pi-name>.local"
+#   infra/ca/issue.sh server "IP:<pc address>, IP:<pi address>, DNS:<pi name>.local"
+#   infra/ca/issue.sh portainer "IP:<pi address>, DNS:<pi name>.local"
 # Writes $CA_DIR/<name>.key, <name>.crt and <name>-fullchain.crt (certificate + CA). 800 days:
 # Apple devices refuse longer-lived certificates from private authorities.
 set -eu

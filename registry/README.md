@@ -3,7 +3,7 @@
 The front door: a home page listing every gadget and service, a reverse proxy giving each
 gadget its own port, a navbar injected into every gadget's pages, status dots, and HTTPS.
 
-- Home page: http://<pc> and https://<pc>
+- Home page: `http://<pc>` and `https://<pc>` (`<pc>` = the PC's address)
 - Gadgets: each on its own port (8101–8120), **http and https on the same port**:
   Photo Stitch `:8101`, Photo Drop `:8102` (http only), Video Tools `:8103`, Quote Finder `:8104`.
 
@@ -16,7 +16,8 @@ To add a gadget you never edit this folder; see [docs/ADDING-A-GADGET.md](../doc
 | Path | Is |
 |---|---|
 | `site.json` | Site-wide settings: title, hosts (Portainer endpoint, build box), protocols, home ports, gadget port range, "I want to…" groups |
-| `services.json` | Things it links to that aren't gadgets in this repo: Plex, Home Assistant, Portainer… (with icon specs) |
+| `site.local.json` | **Not in git.** This network: each host's address and paths on the hosts (copy `site.local.example.json`) |
+| `services.json` | Things it links to that aren't gadgets in this repo: Plex, Home Assistant, Portainer… (with icon specs; addresses written `{pc}` / `{pi}`) |
 | `icons/` | The registry's own icons (its logo) |
 | `html/` | Home page (Cards / Tiles), `_gadgets/nav.js` (navbar + `window.gadgets`), `_gadgets/ui.css` (shared look), `ca.html` (installing the certificate) |
 | `nginx/40-gadgets.sh` | Writes the nginx config from `registry.json` when the container starts |
@@ -49,7 +50,7 @@ navbar names whichever page you're on.
 
 From the home certificate authority ([infra/ca](../infra/ca)), in the external Docker volume
 `gadget-tls` (`fullchain.crt`, `server.key`, `ca.crt`) mounted at `/etc/gadgets/tls`. New
-devices: open http://<pc>/ca.html (in Safari on an iPhone). Machines that don't trust
+devices: open `http://<pc>/ca.html` (in Safari on an iPhone). Machines that don't trust
 the home CA or can't follow redirects use direct ports: Quote Finder's ingest and MCP on
 `http://<pc>:8124`, video-tools' MCP on `:8090`.
 

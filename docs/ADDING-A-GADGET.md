@@ -46,6 +46,10 @@ gadgets follow:
   you get light/dark mode and the shared look for free.
 - Test at **phone width** (390 px) as well as desktop: `node test/e2e.js https://<pc>:8105`
   on the build box (it has Chromium and puppeteer).
+- **No addresses, host names or local paths in the repo** (it's public). In `gadget.json` write
+  `{pc}` / `{pi}`; in a compose file `${PC_ADDR:?set PC_ADDR}` and, for a folder on a host, a
+  name of your own (`${PHOTOS_DIR:?set PHOTOS_DIR}`) with its value under `env` in
+  `registry/site.local.json`. `tools/trinket deploy` fills them in.
 - Keep containers small (`mem_limit`), and the Pi's work light: anything heavy runs on the PC.
 - Secrets: `~/.config/shiny-trinkets/<stack>.env` on the machine you deploy from, never git.
 

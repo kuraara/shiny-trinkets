@@ -1,17 +1,15 @@
 {
-  "$comment": "Settings for the whole registry. Gadgets describe themselves in gadgets/<id>/gadget.json.",
+  "$comment": "Settings for the whole registry. Gadgets describe themselves in gadgets/<id>/gadget.json. Addresses and paths of this network go in site.local.json (not in git; see site.local.example.json).",
   "title": "Gadgets",
   "hosts": {
     "pc": {
       "name": "PC",
-      "addr": "<pc>",
       "short": "PC",
       "portainerEndpoint": 4,
       "buildbox": true
     },
     "pi": {
       "name": "Raspberry Pi",
-      "addr": "<pi>",
       "short": "Pi",
       "portainerEndpoint": 3
     }

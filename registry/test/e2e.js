@@ -1,4 +1,4 @@
-// Usage: node registry.e2e.js http://<pc> outdir
+// Usage: node test/e2e.js http://<pc> outdir
 const puppeteer = require('puppeteer-core');
 const fs = require('fs');
 const HOST = process.argv[2], OUT = process.argv[3];

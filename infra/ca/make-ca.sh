@@ -4,7 +4,8 @@
 # so installing it on a phone can't be used to impersonate a real website.
 set -eu
 CA_DIR=${CA_DIR:-/work/ca}
-NET=${NET:-<network>/<netmask>}
+# NET = the home network as <network>/<netmask>, e.g. NET=<network>/255.255.255.0 infra/ca/make-ca.sh
+NET=${NET:?set NET to the home network as <network>/<netmask>}
 umask 077
 mkdir -p "$CA_DIR" && cd "$CA_DIR"
 [ -e ca.key ] && { echo "$CA_DIR/ca.key already exists; not replacing it"; exit 1; }

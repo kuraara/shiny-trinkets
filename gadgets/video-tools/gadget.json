@@ -57,7 +57,7 @@
     }
   ],
   "mcp": {
-    "url": "http://<pc>:8090/mcp",
+    "url": "http://{pc}:8090/mcp",
     "tools": "list_clips, start_panel_transcript, get_job, get_panel_images, render_panel_transcript, join_clips, cut_clip, cancel_job"
   },
   "intents": [

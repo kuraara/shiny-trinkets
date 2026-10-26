@@ -5,3 +5,5 @@ bin/
 .env
 *.env
 *.key
+# this network: addresses and paths (see registry/site.local.example.json)
+*.local.json

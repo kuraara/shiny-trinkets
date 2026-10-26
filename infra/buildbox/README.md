@@ -15,7 +15,7 @@ The home certificate authority's key also lives here, in `/work/ca` (see infra/c
 Connecting: `ssh -F ~/.ssh/config buildbox` with a `~/.ssh/config` entry like
 
     Host buildbox
-      HostName <pc>
+      HostName <pc address>
       Port 2223
       User root
       IdentityFile ~/.ssh/buildbox

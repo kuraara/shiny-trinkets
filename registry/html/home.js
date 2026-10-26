@@ -7,7 +7,9 @@
     const here = location.protocol.replace(':', '');
     return ps.includes(here) ? here : ps[0];
   };
-  const url = (a) => (a.proxy ? `${scheme(a)}://${location.hostname}:${a.proxy.port}${a.proxy.path || '/'}` : a.url);
+  // {pc}-style placeholders left in a URL (a host with no address in site.local.json): this host
+  const url = (a) => (a.proxy ? `${scheme(a)}://${location.hostname}:${a.proxy.port}${a.proxy.path || '/'}`
+    : a.url && a.url.replace(/\{[a-z][a-z0-9-]*\}/g, location.hostname));
   const make = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
   for (const a of reg.apps) {
