@@ -24,12 +24,12 @@ import (
 
 	"github.com/a-h/templ"
 
-	videotools "github.com/kuraara/clowd-docker-stuff/video-tools"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/app"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/jobs"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/panel"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/storage"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/web/views"
+	videotools "github.com/kuraara/shiny-trinkets/gadgets/video-tools"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/app"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/jobs"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/panel"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/storage"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/web/views"
 )
 
 type Server struct {

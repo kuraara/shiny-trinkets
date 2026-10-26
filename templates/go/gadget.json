@@ -1,0 +1,25 @@
+{
+  "$schema": "../../docs/gadget.schema.json",
+  "id": "__ID__",
+  "name": "__NAME__",
+  "kind": "gadget",
+  "host": "__HOST__",
+  "desc": "One line: what it does.",
+  "about": "Two or three sentences for the Cards view: what it's for and how you use it.",
+  "icon": "web/icon.svg",
+  "iconSpec": {
+    "top": "__TOP__",
+    "bottom": "__BOTTOM__",
+    "glyph": "<path d=\"M32 12l5 13 13 1-10 9 3 14-11-7-11 7 3-14-10-9 13-1z\" {S}/>"
+  },
+  "proxy": { "port": __PORT__, "upstream": "http://__ID__:8080" },
+  "intents": [
+    { "phrase": "…do the thing this gadget does", "desc": "A sentence about it.", "group": "other" }
+  ],
+  "deploy": {
+    "stacks": [
+      { "name": "__ID__", "host": "__HOST__", "compose": "docker-compose.yml",
+        "build": { "image": "__ID__:latest", "context": "." } }
+    ]
+  }
+}

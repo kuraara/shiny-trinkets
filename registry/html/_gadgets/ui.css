@@ -1,0 +1,49 @@
+/* Shared look for gadgets, served by the registry to every gadget at /_gadgets/ui.css.
+   Gadgets don't have to use it; the templates do. Light and dark follow the device, and a page
+   can force one with <html data-theme="light|dark">.
+
+   Tokens:   --bg --card --ink --muted --line --chip --accent --accent-ink --good --bad --radius
+   Classes:  .page (centred column)  .card  .btn .btn.primary .btn.quiet  .field (label + input)
+             .seg (segmented control)  .row (wrapping flex row)  .muted  .visually-hidden */
+:root {
+  --bg: #f3f4f7; --card: #ffffff; --ink: #1b1d22; --muted: #5a6170; --line: #e1e4ea; --chip: #eceff4;
+  --accent: #2563eb; --accent-ink: #ffffff; --good: #15803d; --bad: #b91c1c; --radius: 14px;
+  --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 14px rgba(0,0,0,.05);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111318; --card: #1a1d24; --ink: #eef0f4; --muted: #a3aab6; --line: #2a2f39; --chip: #252a33;
+    --accent: #60a5fa; --accent-ink: #0b1220; --good: #4ade80; --bad: #f87171; --shadow: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111318; --card: #1a1d24; --ink: #eef0f4; --muted: #a3aab6; --line: #2a2f39; --chip: #252a33;
+  --accent: #60a5fa; --accent-ink: #0b1220; --good: #4ade80; --bad: #f87171; --shadow: none; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.page { max-width: 880px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 1.6rem; line-height: 1.2; letter-spacing: -.02em; margin: 0 0 6px; }
+h2 { font-size: 1.1rem; margin: 0 0 8px; }
+.muted { color: var(--muted); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn, button.btn { font: inherit; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  text-decoration: none; cursor: pointer; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn.quiet { background: none; }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn:focus-visible, .field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.field { display: grid; gap: 6px; margin: 0 0 14px; font-weight: 600; font-size: .95rem; }
+.field input, .field select, .field textarea { font: inherit; font-weight: 400; min-height: 44px; padding: 8px 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--chip); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span { display: block; text-align: center; padding: 8px 6px; border-radius: 8px; font-weight: 600; font-size: .9rem; }
+.seg input:checked + span { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.seg input:focus-visible + span { outline: 2px solid var(--accent); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

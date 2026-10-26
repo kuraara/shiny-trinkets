@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kuraara/shiny-trinkets/docs/gadget.schema.json",
+  "title": "gadget.json: a shiny-trinkets gadget manifest",
+  "description": "Describes one gadget (gadgets/<id>/gadget.json). tools/trinket check validates the parts that need the rest of the repo (unique ids and ports, hosts, files).",
+  "type": "object",
+  "required": ["id", "name", "kind", "host", "desc"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "$comment": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,40}$", "description": "Same as the folder name." },
+    "name": { "type": "string", "description": "As people see it: \"Quote Finder\"." },
+    "kind": { "enum": ["gadget", "service", "background"], "description": "gadget: an app here; service: something with its own page; background: no page." },
+    "host": { "type": "string", "description": "A key of hosts in registry/site.json (pc, pi)." },
+    "desc": { "type": "string", "description": "One line, for tiles and the menu." },
+    "about": { "type": "string", "description": "A few sentences for the Cards view." },
+    "icon": { "type": "string", "description": "Path of its icon (SVG) inside the folder. Default icon.svg." },
+    "iconSpec": { "$ref": "#/$defs/iconSpec" },
+    "proxy": {
+      "type": "object",
+      "description": "Served through the registry on its own port.",
+      "required": ["port", "upstream"],
+      "properties": {
+        "$comment": { "type": "string" },
+        "port": { "type": "integer", "description": "Public port, inside registry/site.json portRange." },
+        "upstream": { "type": "string", "description": "How the registry reaches it, e.g. http://my-gadget:8080 (the gadgets network)." },
+        "protocols": { "type": "array", "items": { "enum": ["http", "https"] }, "description": "Narrow the site's protocols; default both." },
+        "nav": { "enum": ["bar", "fab", "off"], "description": "The navbar injected into its pages." }
+      },
+      "additionalProperties": false
+    },
+    "url": { "type": "string", "description": "Instead of proxy: a page served elsewhere." },
+    "pages": {
+      "type": "array",
+      "description": "One app, several tools: each page shows up as a gadget of its own.",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "path", "desc"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,40}$" },
+          "name": { "type": "string" },
+          "path": { "type": "string", "pattern": "^/" },
+          "desc": { "type": "string" },
+          "about": { "type": "string" },
+          "icon": { "type": "string" },
+          "iconSpec": { "$ref": "#/$defs/iconSpec" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "intents": {
+      "type": "array",
+      "description": "\"I want to…\" phrases that lead here.",
+      "items": {
+        "type": "object",
+        "required": ["phrase"],
+        "properties": {
+          "phrase": { "type": "string", "pattern": "^…", "description": "Finishes \"I want to\": \"…cut a bit out of a longer video\"." },
+          "desc": { "type": "string" },
+          "group": { "type": "string", "description": "A key of groups in registry/site.json." },
+          "page": { "type": "string", "description": "Open this page of the gadget." },
+          "path": { "type": "string", "description": "Or this path." }
+        },
+        "additionalProperties": false
+      }
+    },
+    "mcp": {
+      "type": "object",
+      "properties": { "url": { "type": "string" }, "tools": { "type": "string" } },
+      "required": ["url"]
+    },
+    "uses": { "type": "array", "items": { "type": "string" }, "description": "Gadgets or services it talks to." },
+    "deploy": {
+      "type": "object",
+      "properties": {
+        "stacks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "host"],
+            "properties": {
+              "name": { "type": "string", "description": "Portainer stack name (found by name, not number)." },
+              "host": { "type": "string" },
+              "compose": { "type": "string", "description": "Compose file, relative to the gadget folder." },
+              "build": {
+                "type": "object",
+                "required": ["image"],
+                "properties": {
+                  "image": { "type": "string" },
+                  "context": { "type": "string" },
+                  "dockerfile": { "type": "string" },
+                  "args": { "type": "object", "additionalProperties": { "type": "string" } },
+                  "go": {
+                    "type": "object",
+                    "description": "Cross-compile a Go binary on the build box first (for the Pi).",
+                    "required": ["binary"],
+                    "properties": { "dir": { "type": "string" }, "binary": { "type": "string" }, "goos": { "type": "string" }, "goarch": { "type": "string" } }
+                  }
+                }
+              },
+              "secrets": { "type": "array", "items": { "type": "string" }, "description": "Environment values a new stack needs (from ~/.config/shiny-trinkets/<stack>.env)." }
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "iconSpec": {
+      "type": "object",
+      "required": ["top", "bottom", "glyph"],
+      "properties": {
+        "top": { "type": "string", "description": "Gradient colour, top left." },
+        "bottom": { "type": "string", "description": "Gradient colour, bottom right." },
+        "glyph": { "type": "string", "description": "SVG markup on a 64×64 grid; {S} = white stroke, {F} = white fill." }
+      }
+    }
+  }
+}

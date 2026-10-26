@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/app"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/jobs"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/panel"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/web"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/app"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/jobs"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/panel"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/web"
 )
 
 var protocolVersions = []string{"2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"}

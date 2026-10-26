@@ -1,0 +1,38 @@
+{
+  "$schema": "../../docs/gadget.schema.json",
+  "id": "photo-drop",
+  "name": "Photo Drop",
+  "kind": "gadget",
+  "host": "pc",
+  "desc": "Guests scan a code and drop photos onto a shared desk. You approve each one first.",
+  "about": "Run a live photo wall at a party: guests scan a QR code and send photos from their phones, you approve each one, and they land on a big screen like prints thrown on a desk.",
+  "icon": "web/static/icon.svg",
+  "proxy": {
+    "port": 8102,
+    "upstream": "http://photo-drop:8080",
+    "protocols": [
+      "http"
+    ],
+    "$comment": "plain HTTP only: party guests’ phones don’t trust the home certificate"
+  },
+  "intents": [
+    {
+      "phrase": "…let guests share photos on a big screen at a party",
+      "group": "photos",
+      "desc": "Guests scan a code and send photos; you approve each one and it lands on the TV like a print thrown on a desk."
+    }
+  ],
+  "deploy": {
+    "stacks": [
+      {
+        "name": "photo-drop",
+        "host": "pc",
+        "compose": "docker-compose.yml",
+        "build": {
+          "image": "photo-drop:latest",
+          "context": "."
+        }
+      }
+    ]
+  }
+}

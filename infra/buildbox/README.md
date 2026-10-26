@@ -7,5 +7,15 @@ builds, tests, headless Chromium for browser tests, and `docker build` against t
 - `/work` and the Go module cache are volumes, so they survive rebuilds.
 - It mounts the PC's Docker socket, which is effectively root on the PC's Docker. Keep the key safe.
 
-`redeploy.sh <folder> <stackId>` (run from the Pi): copies a gadget folder over, builds its image
-on the PC, and has Portainer redeploy the stack.
+`tools/trinket deploy <gadget>` (run from wherever the repo is checked out, e.g. the Pi) copies
+the gadget over, builds its image here against the PC's Docker (or cross-compiles a Go binary
+for the Pi), and has Portainer update the stack. Work folders: `/work/trinkets/<gadget>/<stack>`.
+The home certificate authority's key also lives here, in `/work/ca` (see infra/ca).
+
+Connecting: `ssh -F ~/.ssh/config buildbox` with a `~/.ssh/config` entry like
+
+    Host buildbox
+      HostName <pc>
+      Port 2223
+      User root
+      IdentityFile ~/.ssh/buildbox

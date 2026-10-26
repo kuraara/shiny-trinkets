@@ -22,7 +22,7 @@ COPY . .
 ARG VERSION=dev
 RUN templ generate \
  && CGO_ENABLED=0 go build -trimpath \
-      -ldflags "-s -w -X github.com/kuraara/clowd-docker-stuff/video-tools/internal/app.Version=${VERSION}" \
+      -ldflags "-s -w -X github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/app.Version=${VERSION}" \
       -o /out/video-tools ./cmd/server
 
 # --- runtime ---------------------------------------------------------------------------------

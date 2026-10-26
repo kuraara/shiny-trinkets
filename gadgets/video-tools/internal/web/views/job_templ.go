@@ -9,8 +9,8 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/app"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/jobs"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/app"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/jobs"
 )
 
 func JobPage(p Page, j jobs.Job, pv *app.PanelView) templ.Component {

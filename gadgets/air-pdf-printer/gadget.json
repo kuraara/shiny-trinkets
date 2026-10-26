@@ -1,0 +1,32 @@
+{
+  "$schema": "../../docs/gadget.schema.json",
+  "id": "air-pdf-printer",
+  "name": "AirPrint to PDF",
+  "kind": "service",
+  "host": "pi",
+  "desc": "Print from an iPhone or Mac to the “PDF” printer; the PDFs are listed here.",
+  "about": "Shows up as a printer called “AirPrint PDF @ <pi-name>” on iPhones and Macs. Whatever you print is saved as a PDF on the Pi (/path/to/printed-pdfs), and this page lists them to open or save.",
+  "icon": "icon.svg",
+  "iconSpec": {
+    "top": "#a3a3a3",
+    "bottom": "#525252",
+    "glyph": "<path d=\"M20 26V14h24v12\" {S}/><rect x=\"12\" y=\"26\" width=\"40\" height=\"16\" rx=\"3\" {S}/><path d=\"M20 38h24v12H20z\" {S}/><circle cx=\"45\" cy=\"32\" r=\"2\" {F}/>"
+  },
+  "url": "http://<pi>:8632/",
+  "intents": [
+    {
+      "phrase": "…turn something on my phone into a PDF",
+      "group": "documents",
+      "desc": "Print to the “AirPrint PDF” printer from an iPhone or Mac and the PDF is saved on the Pi."
+    }
+  ],
+  "deploy": {
+    "stacks": [
+      {
+        "name": "airprintserver",
+        "host": "pi",
+        "compose": "docker-compose.yml"
+      }
+    ]
+  }
+}

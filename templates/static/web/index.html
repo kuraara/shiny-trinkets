@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>__NAME__</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<!-- the gadgets' shared look (served by the registry); app.css adds this gadget's own bits -->
+<link rel="stylesheet" href="/_gadgets/ui.css">
+<link rel="stylesheet" href="app.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<main class="page">
+  <h1>__NAME__</h1>
+  <p class="muted">Say in one line what this gadget does.</p>
+  <section class="card">
+    <label class="field">Your name <input id="who" autocomplete="off" placeholder="Someone"></label>
+    <div class="row">
+      <button class="btn primary" id="go" type="button">Say hello</button>
+      <span id="out" aria-live="polite"></span>
+    </div>
+  </section>
+</main>
+</body>
+</html>

@@ -9,8 +9,8 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/app"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/config"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/app"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/config"
 )
 
 type Limit struct{ Name, Value, Env string }

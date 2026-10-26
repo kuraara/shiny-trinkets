@@ -11,12 +11,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/config"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/jobs"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/media"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/models"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/panel"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/storage"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/config"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/jobs"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/media"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/models"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/panel"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/storage"
 )
 
 // Version is set at build time (-ldflags "-X .../app.Version=...").

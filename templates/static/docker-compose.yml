@@ -1,0 +1,11 @@
+# __NAME__ (tools/trinket deploy __ID__). Reached through the gadget registry on port __PORT__.
+services:
+  __ID__:
+    image: __ID__:latest
+    build: .
+    container_name: __ID__
+    restart: unless-stopped
+    networks: [gadgets]
+networks:
+  gadgets:
+    external: true

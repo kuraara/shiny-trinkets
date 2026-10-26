@@ -1,0 +1,6 @@
+# Only the registry image builds from the repo root; it needs the manifests and icons, not
+# every gadget's sources' bulky bits.
+.git
+**/node_modules
+**/*.mp4
+**/*.mkv

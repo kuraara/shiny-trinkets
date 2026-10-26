@@ -1,9 +1,5 @@
-# Portainer stack for video-tools.
-#   Portainer: Stacks -> Add stack -> Repository
-#     Repository URL:  https://github.com/kuraara/clowd-docker-stuff
-#     Reference:       refs/heads/master
-#     Compose path:    video-tools/docker-compose.yml
-#   Then set any of the variables below under "Environment variables" (all optional).
+# Portainer stack for video-tools: tools/trinket deploy video-tools (builds on the build box and
+# updates the stack). Set any of the variables below in the stack's environment (all optional).
 #
 # First start downloads the speech models (~430 MB) into the data volume; joining clips works
 # straight away, panel transcripts start once the download finishes (shown on the Status page).

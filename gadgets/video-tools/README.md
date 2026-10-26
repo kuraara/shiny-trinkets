@@ -21,27 +21,22 @@ Quote Finder sends scenes here: panel scripts arrive with the subtitle lines alr
 Go (templ + htmx) for the web app, a Python worker for speech (Whisper via sherpa-onnx for text,
 Vosk for word timings, Praat for voice pitch) and rendering, ffmpeg for everything video.
 
-## Deploy with Portainer
+## Deploy
 
-1. **Stacks → Add stack → Repository**
-   - Repository URL: `https://github.com/kuraara/clowd-docker-stuff`
-   - Reference: `refs/heads/master`
-   - Compose path: `video-tools/docker-compose.yml`
-2. Optional **environment variables** (see [Configuration](#configuration)); the useful ones are
-   `PUBLIC_URL` (e.g. `http://<pc>:8090`), `AUTH_TOKEN` and `VIDEO_TOOLS_PORT` (default 8090).
-3. Deploy, then open `http://<host>:8090`.
+    tools/trinket deploy video-tools
 
-The compose file joins the gadget registry's `gadgets` network so Quote Finder can reach it as
-`http://video-tools:8080`; without the registry, create it first with `docker network create gadgets`.
+builds the image on the build box and creates or updates the Portainer stack (keeping its
+environment variables). Useful variables (see [Configuration](#configuration)): `PUBLIC_URL`
+(e.g. `http://<pc>:8090`), `AUTH_TOKEN` and `VIDEO_TOOLS_PORT` (default 8090). People
+reach it through the gadget registry on port 8103 (http or https); its three tools also appear as
+gadgets of their own (Panel Transcript `/panel`, Join Clips `/join`, Cut a Clip `/clip`), from
+`gadget.json` `pages`.
 
 On first start the speech models (~430 MB) download into the data volume in the background. Joining
 works immediately; panel transcripts wait for the download (progress is on the **Status** page).
 Rebuilding or updating the image never re-downloads them.
 
-To update: push to the branch, then **Pull and redeploy** in Portainer (tick *Re-pull image and
-redeploy* so it rebuilds).
-
-Without Portainer: `cd video-tools && docker compose up -d --build`.
+Without Portainer: `cd gadgets/video-tools && docker compose up -d --build`.
 
 ## Using it
 

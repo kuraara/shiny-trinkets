@@ -10,7 +10,7 @@ services:
       # "Make panels": scenes are cut by the extractor on the Pi, then sent to video-tools
       - CLIP_URL=http://<pi>:8105
       - VIDEO_TOOLS_URL=http://video-tools:8080
-      - VIDEO_TOOLS_PUBLIC_URL=https://<pc>:8103
+      - VIDEO_TOOLS_PUBLIC_URL=http://<pc>:8103   # fallback; pages ask the registry (gadgets.url)
       - VIDEO_TOOLS_TOKEN=${VIDEO_TOOLS_TOKEN:-}
     volumes:
       - quote-finder-data:/data

@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/storage"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/storage"
 )
 
 type Status string

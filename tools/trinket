@@ -1,0 +1,508 @@
+#!/usr/bin/env python3
+"""trinket: look after the gadgets in this repo.
+
+Every gadget is a folder under gadgets/ with a gadget.json manifest describing it (name, icon,
+port, pages, "I want to…" phrases, MCP endpoint, how to deploy it). The registry (home page,
+proxy and navbar) is assembled from those manifests, so adding a gadget never means editing
+the registry.
+
+  trinket list                     what's here: gadgets, ports, hosts, stacks
+  trinket check                    validate every manifest (CI-friendly exit code)
+  trinket new <id> [--name N] [--template go|static] [--host pc]
+                                   start a gadget from a template, with the next free port
+  trinket icons                    (re)draw icons from each manifest's iconSpec
+  trinket assemble --out DIR       write DIR/registry.json + DIR/icons/ (the registry image does this)
+  trinket deploy <id>|registry [--stack NAME] [--no-build]
+                                   build on the build box and create/update the Portainer stack(s)
+
+Standard library only (Python 3.9+). Deploying needs: ~/portainer-mcp.env (PORTAINER_URL,
+PORTAINER_API_KEY), and `ssh buildbox` working (see infra/buildbox). Secrets for a brand-new
+stack come from ~/.config/shiny-trinkets/<stack>.env (KEY=value lines); an existing stack keeps
+the environment it already has.
+"""
+import argparse, io, json, os, re, shutil, ssl, subprocess, sys, tarfile, tempfile, urllib.request
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+GADGETS = os.path.join(ROOT, 'gadgets')
+REGISTRY = os.path.join(ROOT, 'registry')
+ID_RE = re.compile(r'^[a-z][a-z0-9-]{1,40}$')
+
+# ---------------------------------------------------------------- loading
+
+
+def load_json(path):
+    with open(path) as f:
+        return json.load(f)
+
+
+def site():
+    return load_json(os.path.join(REGISTRY, 'site.json'))
+
+
+def manifests():
+    """Every gadget manifest, sorted by id, with '_dir' set to its folder."""
+    out = []
+    for name in sorted(os.listdir(GADGETS)):
+        p = os.path.join(GADGETS, name, 'gadget.json')
+        if os.path.isfile(p):
+            m = load_json(p)
+            m['_dir'] = os.path.join(GADGETS, name)
+            out.append(m)
+    return out
+
+
+def services():
+    return load_json(os.path.join(REGISTRY, 'services.json')).get('services', [])
+
+
+# ---------------------------------------------------------------- icons
+
+STROKE = 'fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"'
+FILL = 'fill="#fff"'
+
+
+def draw_icon(spec):
+    """A gradient tile with a white glyph; {S} and {F} in the glyph stand for stroke/fill styles."""
+    glyph = spec['glyph'].replace('{S}', STROKE).replace('{F}', FILL)
+
+    def dedupe(m):   # a glyph may override the stroke width: keep only the last one in a tag
+        t = m.group(0)
+        while t.count('stroke-width=') > 1:
+            t = re.sub(r'\s*stroke-width="[^"]*"', '', t, count=1)
+        return t
+    glyph = re.sub(r'<[^>]+>', dedupe, glyph)
+    return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+            '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+            f'<stop offset="0" stop-color="{spec["top"]}"/><stop offset="1" stop-color="{spec["bottom"]}"/>'
+            '</linearGradient></defs>'
+            f'<rect width="64" height="64" rx="14" fill="url(#g)"/>{glyph}</svg>\n')
+
+
+def icon_jobs(m):
+    """(icon file path, iconSpec or None) for a gadget and each of its pages."""
+    jobs = [(os.path.join(m['_dir'], m.get('icon', 'icon.svg')), m.get('iconSpec'))]
+    for p in m.get('pages', []):
+        jobs.append((os.path.join(m['_dir'], p.get('icon', f'icons/{p["id"]}.svg')), p.get('iconSpec')))
+    return jobs
+
+
+def cmd_icons(_a):
+    n = 0
+    for m in manifests():
+        for path, spec in icon_jobs(m):
+            if spec:
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, 'w') as f:
+                    f.write(draw_icon(spec))
+                n += 1
+    print(f'drew {n} icons')
+
+
+# ---------------------------------------------------------------- the registry's view
+
+
+def https_ok(protocols):
+    return [p for p in protocols if p in ('http', 'https')] or ['http', 'https']
+
+
+def registry_entries(st=None):
+    """The apps list the registry serves (registry.json), from manifests + services.
+
+    A gadget with pages becomes a hidden entry that owns the port plus one visible entry per
+    page; intents become a top-level list pointing at the entry they open."""
+    st = st or site()
+    apps, intents = [], []
+    for m in manifests():
+        base = {k: m[k] for k in ('id', 'name', 'kind', 'host', 'desc', 'about') if k in m}
+        if 'proxy' in m:
+            px = dict(m['proxy'])
+            px.pop('$comment', None)
+            if 'protocols' in px:
+                px['protocols'] = https_ok(px['protocols'])
+            base['proxy'] = px
+        if 'url' in m:
+            base['url'] = m['url']
+        if 'mcp' in m:
+            base['mcp'] = m['mcp']['url'] if isinstance(m['mcp'], dict) else m['mcp']
+        pages = m.get('pages', [])
+        if pages:
+            base['kind'] = 'hidden'          # the app itself is reached through its pages
+        apps.append(base)
+        for p in pages:
+            e = {'id': p['id'], 'name': p['name'], 'kind': m.get('kind', 'gadget'), 'host': m['host'],
+                 'desc': p.get('desc', ''), 'of': m['id']}
+            if p.get('about'):
+                e['about'] = p['about']
+            e['proxy'] = dict(base['proxy'], path=p['path'])
+            apps.append(e)
+        for it in m.get('intents', []):
+            intents.append({'phrase': it['phrase'], 'desc': it.get('desc', ''), 'group': it.get('group', 'other'),
+                            'app': it.get('page') or m['id'], **({'path': it['path']} if it.get('path') else {})})
+    for s in services():
+        apps.append({k: v for k, v in s.items() if k != 'iconSpec'})
+    order = {'gadget': 0, 'hidden': 1, 'service': 2, 'background': 3}
+    apps.sort(key=lambda a: order.get(a['kind'], 9))
+    return apps, intents
+
+
+def cmd_assemble(a):
+    st = site()
+    apps, intents = registry_entries(st)
+    out = a.out
+    os.makedirs(os.path.join(out, 'icons'), exist_ok=True)
+    reg = {'title': st.get('title', 'Gadgets'), 'hosts': st['hosts'], 'protocols': https_ok(st.get('protocols', [])),
+           'home': st.get('home', {'http': 80, 'https': 443}), 'groups': st.get('groups', {}),
+           'apps': apps, 'intents': intents}
+    with open(os.path.join(out, 'registry.json'), 'w') as f:
+        json.dump(reg, f, indent=1, ensure_ascii=False)
+    # icons: each gadget's own file (or drawn from its spec), the services' specs, the logo
+    n = 0
+    for m in manifests():
+        ids = [m['id']] + [p['id'] for p in m.get('pages', [])]
+        for icon_id, (path, spec) in zip(ids, icon_jobs(m)):
+            dst = os.path.join(out, 'icons', f'{icon_id}.svg')
+            if os.path.isfile(path):
+                shutil.copyfile(path, dst)
+            elif spec:
+                open(dst, 'w').write(draw_icon(spec))
+            else:
+                sys.exit(f'{m["id"]}: no icon at {os.path.relpath(path, ROOT)} and no iconSpec')
+            n += 1
+    for s in services():
+        if s.get('iconSpec'):
+            open(os.path.join(out, 'icons', f'{s["id"]}.svg'), 'w').write(draw_icon(s['iconSpec']))
+            n += 1
+    for f in os.listdir(os.path.join(REGISTRY, 'icons')):
+        shutil.copyfile(os.path.join(REGISTRY, 'icons', f), os.path.join(out, 'icons', f))
+        n += 1
+    print(f'assembled {len(apps)} entries, {len(intents)} intents, {n} icons into {out}')
+
+
+# ---------------------------------------------------------------- checking
+
+
+def problems():
+    st, errs = site(), []
+    seen_ids, seen_ports = {}, {}
+    lo, hi = st.get('portRange', [8101, 8120])
+    ms = manifests()
+    known = {m['id'] for m in ms} | {p['id'] for m in ms for p in m.get('pages', [])} | {s['id'] for s in services()}
+    for m in ms:
+        where = os.path.relpath(os.path.join(m['_dir'], 'gadget.json'), ROOT)
+        folder = os.path.basename(m['_dir'])
+        for k in ('id', 'name', 'kind', 'host', 'desc'):
+            if not m.get(k):
+                errs.append(f'{where}: "{k}" is missing')
+        if m.get('id') != folder:
+            errs.append(f'{where}: id "{m.get("id")}" should match its folder "{folder}"')
+        if m.get('host') not in st['hosts']:
+            errs.append(f'{where}: host "{m.get("host")}" isn\'t in registry/site.json')
+        if m.get('kind') not in ('gadget', 'service', 'background'):
+            errs.append(f'{where}: kind must be gadget, service or background')
+        for i in [m.get('id')] + [p.get('id') for p in m.get('pages', [])]:
+            if not i or not ID_RE.match(i):
+                errs.append(f'{where}: "{i}" isn\'t a good id (lowercase letters, digits, dashes)')
+            elif i in seen_ids:
+                errs.append(f'{where}: id "{i}" is also used by {seen_ids[i]}')
+            else:
+                seen_ids[i] = where
+        if 'proxy' in m:
+            port = m['proxy'].get('port')
+            if not isinstance(port, int) or not lo <= port <= hi:
+                errs.append(f'{where}: proxy.port must be a number in {lo}–{hi} (the ports the registry publishes)')
+            elif port in seen_ports:
+                errs.append(f'{where}: port {port} is also used by {seen_ports[port]}')
+            else:
+                seen_ports[port] = where
+            if not str(m['proxy'].get('upstream', '')).startswith(('http://', 'https://')):
+                errs.append(f'{where}: proxy.upstream must be a URL the registry can reach (e.g. http://my-gadget:8080)')
+            for pr in m['proxy'].get('protocols', []):
+                if pr not in ('http', 'https'):
+                    errs.append(f'{where}: proxy.protocols can only hold "http" and "https"')
+        elif m.get('kind') == 'gadget' and 'url' not in m:
+            errs.append(f'{where}: a gadget needs "proxy" (served through the registry) or "url"')
+        if m.get('pages') and 'proxy' not in m:
+            errs.append(f'{where}: pages need a proxy (they are paths on its port)')
+        for path, spec in icon_jobs(m):
+            if not os.path.isfile(path) and not spec:
+                errs.append(f'{where}: no icon at {os.path.relpath(path, ROOT)} (add the file or an iconSpec)')
+        pages = {p['id'] for p in m.get('pages', [])}
+        for it in m.get('intents', []):
+            if not str(it.get('phrase', '')).startswith('…'):
+                errs.append(f'{where}: intent phrases start with "…" (they finish "I want to…")')
+            if it.get('page') and it['page'] not in pages:
+                errs.append(f'{where}: intent page "{it["page"]}" isn\'t one of this gadget\'s pages')
+        for u in m.get('uses', []):
+            if u not in known:
+                errs.append(f'{where}: uses "{u}", which isn\'t a gadget or service here')
+        for s in m.get('deploy', {}).get('stacks', []):
+            if s.get('host') not in st['hosts']:
+                errs.append(f'{where}: stack {s.get("name")}: host "{s.get("host")}" isn\'t in registry/site.json')
+            c = os.path.join(m['_dir'], s.get('compose', 'docker-compose.yml'))
+            if not os.path.isfile(c):
+                errs.append(f'{where}: stack {s.get("name")}: {os.path.relpath(c, ROOT)} is missing')
+    for s in services():
+        if s['id'] in seen_ids:
+            errs.append(f'registry/services.json: id "{s["id"]}" is also a gadget')
+        seen_ids[s['id']] = 'registry/services.json'
+    return errs
+
+
+def cmd_check(_a):
+    errs = problems()
+    for e in errs:
+        print('✗', e)
+    if errs:
+        sys.exit(1)
+    print(f'✓ {len(manifests())} gadgets and {len(services())} services look fine')
+
+
+def cmd_list(_a):
+    st = site()
+    rows = [('ID', 'KIND', 'HOST', 'PORT', 'PROTOCOLS', 'STACKS')]
+    for m in manifests():
+        px = m.get('proxy', {})
+        prot = ','.join(px.get('protocols', st.get('protocols', ['http', 'https']))) if px else '-'
+        stacks = ' '.join(f'{s["name"]}@{s["host"]}' for s in m.get('deploy', {}).get('stacks', []))
+        rows.append((m['id'], m['kind'], m['host'], str(px.get('port', '-')), prot, stacks))
+        for p in m.get('pages', []):
+            rows.append((f'  {p["id"]}', 'page', '', f'{px.get("port")}{p["path"]}', '', ''))
+    w = [max(len(r[i]) for r in rows) for i in range(len(rows[0]))]
+    for r in rows:
+        print('  '.join(c.ljust(w[i]) for i, c in enumerate(r)).rstrip())
+    used = sorted(m['proxy']['port'] for m in manifests() if 'proxy' in m)
+    lo, hi = st.get('portRange', [8101, 8120])
+    print(f'\nports in use: {", ".join(map(str, used))}; next free: {next_port()} (range {lo}–{hi})')
+
+
+def next_port():
+    st = site()
+    lo, hi = st.get('portRange', [8101, 8120])
+    used = {m['proxy']['port'] for m in manifests() if 'proxy' in m}
+    for p in range(lo, hi + 1):
+        if p not in used:
+            return p
+    sys.exit(f'no free ports left in {lo}–{hi}: widen portRange in registry/site.json and the registry\'s published ports')
+
+
+# ---------------------------------------------------------------- new
+
+PALETTES = [('#38bdf8', '#0369a1'), ('#f472b6', '#be185d'), ('#a3e635', '#4d7c0f'), ('#fb923c', '#c2410c'),
+            ('#818cf8', '#4338ca'), ('#2dd4bf', '#0f766e'), ('#facc15', '#a16207'), ('#f87171', '#b91c1c')]
+
+
+def cmd_new(a):
+    gid = a.id
+    if not ID_RE.match(gid):
+        sys.exit('ids are lowercase letters, digits and dashes, starting with a letter')
+    dst = os.path.join(GADGETS, gid)
+    if os.path.exists(dst):
+        sys.exit(f'gadgets/{gid} already exists')
+    src = os.path.join(ROOT, 'templates', a.template)
+    if not os.path.isdir(src):
+        sys.exit(f'no template "{a.template}" (have: {", ".join(sorted(os.listdir(os.path.join(ROOT, "templates"))))})')
+    name = a.name or gid.replace('-', ' ').title()
+    port = next_port()
+    top, bottom = PALETTES[sum(map(ord, gid)) % len(PALETTES)]
+    subs = {'__ID__': gid, '__NAME__': name, '__PORT__': str(port), '__HOST__': a.host,
+            '__TOP__': top, '__BOTTOM__': bottom}
+    shutil.copytree(src, dst)
+    for dirpath, _dirs, files in os.walk(dst):
+        for fn in files:
+            p = os.path.join(dirpath, fn)
+            try:
+                text = open(p).read()
+            except UnicodeDecodeError:
+                continue
+            for k, v in subs.items():
+                text = text.replace(k, v)
+            open(p, 'w').write(text)
+    m = load_json(os.path.join(dst, 'gadget.json'))
+    m['_dir'] = dst
+    for path, spec in icon_jobs(m):
+        if spec:
+            open(path, 'w').write(draw_icon(spec))
+    print(f'created gadgets/{gid} from templates/{a.template}: "{name}" on port {port}\n')
+    print('next:')
+    print(f'  1. edit gadgets/{gid}/gadget.json (descriptions, "I want to…" phrases, icon glyph)')
+    print(f'  2. build it up; tools/trinket check')
+    print(f'  3. tools/trinket deploy {gid}   then   tools/trinket deploy registry')
+    print('  (docs/ADDING-A-GADGET.md has the whole walk-through)')
+
+
+# ---------------------------------------------------------------- deploy
+
+
+def portainer():
+    env = {}
+    p = os.path.expanduser('~/portainer-mcp.env')
+    if os.path.isfile(p):
+        for line in open(p):
+            if '=' in line and not line.startswith('#'):
+                k, v = line.strip().split('=', 1)
+                env[k] = v.strip('"\'')
+    url, key = os.environ.get('PORTAINER_URL', env.get('PORTAINER_URL')), os.environ.get('PORTAINER_API_KEY', env.get('PORTAINER_API_KEY'))
+    if not url or not key:
+        sys.exit('set PORTAINER_URL and PORTAINER_API_KEY (or put them in ~/portainer-mcp.env)')
+    return url.rstrip('/'), key
+
+
+def api(method, path, body=None, raw=None, ctype='application/json'):
+    url, key = portainer()
+    data = raw if raw is not None else (json.dumps(body).encode() if body is not None else None)
+    req = urllib.request.Request(url + path, data=data, method=method, headers={'X-API-Key': key})
+    if data is not None:
+        req.add_header('Content-Type', ctype)
+    ctx = ssl.create_default_context()
+    ctx.check_hostname, ctx.verify_mode = False, ssl.CERT_NONE   # Portainer's own certificate
+    with urllib.request.urlopen(req, context=ctx, timeout=1800) as r:
+        out = r.read()
+    return out
+
+
+def tar_dir(path, skip=('.git', 'node_modules', '__pycache__')):
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode='w') as t:
+        t.add(path, arcname='.', filter=lambda ti: None if os.path.basename(ti.name) in skip else ti)
+    return buf.getvalue()
+
+
+def ssh(cmd, stdin=None):
+    r = subprocess.run(['ssh', '-F', os.path.expanduser('~/.ssh/config'), 'buildbox', cmd], input=stdin,
+                       capture_output=True)
+    if r.returncode:
+        sys.exit(f'build box: {r.stderr.decode(errors="replace").strip()[-800:]}')
+    return r.stdout
+
+
+def strip_build(compose):
+    """Portainer stacks run images already built: drop `build:` (one line or a whole block)."""
+    out, skip = [], None
+    for line in compose.splitlines():
+        ind = len(line) - len(line.lstrip())
+        if skip is not None:
+            if line.strip() and ind <= skip:
+                skip = None
+            else:
+                continue
+        m = re.match(r'^(\s*)build:\s*(.*)$', line)
+        if m:
+            if not m.group(2).strip():
+                skip = len(m.group(1))
+            continue
+        out.append(line)
+    return '\n'.join(out) + '\n'
+
+
+def build(m, s, st):
+    b = s.get('build')
+    if not b:
+        return
+    host = st['hosts'][s['host']]
+    ctx = os.path.join(m['_dir'], b.get('context', '.'))
+    work = f'/work/trinkets/{m["id"]}/{s["name"]}'
+    args = ' '.join(f'--build-arg {k}={v}' for k, v in b.get('args', {}).items())
+    dockerfile = f'-f {b["dockerfile"]}' if b.get('dockerfile') else ''
+    if b.get('go'):   # cross-compile a Go binary on the build box first (the Pi doesn't compile)
+        g = b['go']
+        src = os.path.join(m['_dir'], g.get('dir', '.'))
+        print(f'  compiling {g["binary"]} for {g.get("goos", "linux")}/{g.get("goarch", "arm64")} on the build box')
+        ssh(f'rm -rf {work}/go && mkdir -p {work}/go && cd {work}/go && tar -xf - && '
+            f'GOOS={g.get("goos", "linux")} GOARCH={g.get("goarch", "arm64")} CGO_ENABLED=0 '
+            f'go build -trimpath -ldflags="-s -w" -o {g["binary"]} .', stdin=tar_dir(src))
+        binary = ssh(f'cat {work}/go/{g["binary"]}')
+        tmp = tempfile.mkdtemp()
+        shutil.copytree(ctx, tmp, dirs_exist_ok=True)
+        open(os.path.join(tmp, g['binary']), 'wb').write(binary)
+        os.chmod(os.path.join(tmp, g['binary']), 0o755)
+        ctx = tmp
+    if host.get('buildbox'):   # the build box shares this host's Docker
+        print(f'  building {b["image"]} on the build box')
+        ssh(f'rm -rf {work}/ctx && mkdir -p {work}/ctx && cd {work}/ctx && tar -xf - && '
+            f'docker build -q {args} {dockerfile} -t {b["image"]} . >/dev/null', stdin=tar_dir(ctx))
+    else:                      # build through Portainer on that host (images are prebuilt for it)
+        print(f'  building {b["image"]} on {s["host"]} through Portainer')
+        q = f'?t={b["image"]}&rm=1' + ''.join(f'&buildargs={json.dumps(b["args"])}' for _ in [0] if b.get('args'))
+        out = api('POST', f'/api/endpoints/{host["portainerEndpoint"]}/docker/build{q}', raw=tar_dir(ctx),
+                  ctype='application/x-tar').decode(errors='replace')
+        if '"error' in out:
+            sys.exit(f'build failed: {out[-800:]}')
+
+
+def env_file(stack):
+    p = os.path.expanduser(f'~/.config/shiny-trinkets/{stack}.env')
+    env = []
+    if os.path.isfile(p):
+        for line in open(p):
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                k, v = line.split('=', 1)
+                env.append({'name': k, 'value': v})
+    return env
+
+
+def deploy_stack(m, s, st, do_build):
+    host = st['hosts'][s['host']]
+    ep = host['portainerEndpoint']
+    print(f'{m["id"]}: stack {s["name"]} on {s["host"]}')
+    if do_build:
+        build(m, s, st)
+    compose = strip_build(open(os.path.join(m['_dir'], s.get('compose', 'docker-compose.yml'))).read())
+    stacks = json.loads(api('GET', '/api/stacks'))
+    found = next((x for x in stacks if x['Name'] == s['name'] and x['EndpointId'] == ep), None)
+    if found:
+        body = {'stackFileContent': compose, 'env': found.get('Env') or [], 'prune': False, 'pullImage': not s.get('build')}
+        api('PUT', f'/api/stacks/{found["Id"]}?endpointId={ep}', body)
+        print(f'  updated stack {found["Id"]} (kept its {len(found.get("Env") or [])} environment values)')
+    else:
+        env = env_file(s['name'])
+        missing = [k for k in s.get('secrets', []) if k not in {e['name'] for e in env}]
+        if missing:
+            sys.exit(f'  new stack needs {", ".join(missing)}: put them in ~/.config/shiny-trinkets/{s["name"]}.env')
+        out = json.loads(api('POST', f'/api/stacks/create/standalone/string?endpointId={ep}',
+                             {'name': s['name'], 'stackFileContent': compose, 'env': env}))
+        print(f'  created stack {out.get("Id")}')
+
+
+def cmd_deploy(a):
+    st = site()
+    if a.id == 'registry':   # the registry is built from the whole repo (it reads every manifest)
+        errs = problems()
+        if errs:
+            sys.exit('fix these first (tools/trinket check):\n' + '\n'.join(errs))
+        m = {'id': 'registry', '_dir': ROOT}
+        s = {'name': 'gadget-registry', 'host': 'pc', 'compose': 'registry/docker-compose.yml',
+             'build': {'image': 'gadget-registry:latest', 'context': '.', 'dockerfile': 'registry/Dockerfile'}}
+        return deploy_stack(m, s, st, not a.no_build)
+    m = next((x for x in manifests() if x['id'] == a.id), None)
+    if not m:
+        sys.exit(f'no gadget "{a.id}" (tools/trinket list)')
+    stacks = m.get('deploy', {}).get('stacks', [])
+    if a.stack:
+        stacks = [s for s in stacks if s['name'] == a.stack]
+    if not stacks:
+        sys.exit(f'{a.id}: nothing to deploy (no deploy.stacks in its gadget.json)')
+    for s in stacks:
+        deploy_stack(m, s, st, not a.no_build)
+
+
+# ---------------------------------------------------------------- main
+
+
+def main():
+    ap = argparse.ArgumentParser(prog='trinket', description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = ap.add_subparsers(dest='cmd', required=True)
+    sub.add_parser('list').set_defaults(fn=cmd_list)
+    sub.add_parser('check').set_defaults(fn=cmd_check)
+    sub.add_parser('icons').set_defaults(fn=cmd_icons)
+    p = sub.add_parser('assemble'); p.add_argument('--out', required=True); p.set_defaults(fn=cmd_assemble)
+    p = sub.add_parser('new'); p.add_argument('id'); p.add_argument('--name'); p.add_argument('--template', default='go')
+    p.add_argument('--host', default='pc'); p.set_defaults(fn=cmd_new)
+    p = sub.add_parser('deploy'); p.add_argument('id'); p.add_argument('--stack'); p.add_argument('--no-build', action='store_true')
+    p.set_defaults(fn=cmd_deploy)
+    a = ap.parse_args()
+    a.fn(a)
+
+
+if __name__ == '__main__':
+    main()

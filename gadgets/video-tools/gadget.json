@@ -1,0 +1,99 @@
+{
+  "$schema": "../../docs/gadget.schema.json",
+  "id": "video-tools",
+  "name": "Video Tools",
+  "kind": "gadget",
+  "host": "pc",
+  "desc": "Panel transcripts, joining clips and cutting clips.",
+  "icon": "icons/video-tools.svg",
+  "iconSpec": {
+    "top": "#a855f7",
+    "bottom": "#6d28d9",
+    "glyph": "<rect x=\"12\" y=\"18\" width=\"40\" height=\"28\" rx=\"4\" {S}/><path d=\"M12 25h40M12 39h40M19 18v7M27 18v7M37 18v7M45 18v7M19 39v7M27 39v7M37 39v7M45 39v7\" {S} stroke-width=\"2.6\"/><path d=\"M29 28.5v7l6-3.5z\" {F}/>"
+  },
+  "proxy": {
+    "port": 8103,
+    "upstream": "http://video-tools:8080"
+  },
+  "pages": [
+    {
+      "id": "panel-transcript",
+      "name": "Panel Transcript",
+      "path": "/panel",
+      "desc": "Turn a clip into a strip of subtitled stills.",
+      "about": "Upload a clip with people talking: it picks a still for each line, writes down what’s said and stacks the stills into one image with the lines as subtitles. You name the speakers before it’s made.",
+      "icon": "icons/panel-transcript.svg",
+      "iconSpec": {
+        "top": "#c084fc",
+        "bottom": "#7e22ce",
+        "glyph": "<rect x=\"16\" y=\"11\" width=\"32\" height=\"12\" rx=\"2.5\" {S} stroke-width=\"3\"/><rect x=\"16\" y=\"26\" width=\"32\" height=\"12\" rx=\"2.5\" {S} stroke-width=\"3\"/><rect x=\"16\" y=\"41\" width=\"32\" height=\"12\" rx=\"2.5\" {S} stroke-width=\"3\"/><path d=\"M22 19.5h20M22 34.5h14M22 49.5h17\" {S} stroke-width=\"2.2\"/>"
+      }
+    },
+    {
+      "id": "join-clips",
+      "name": "Join Clips",
+      "path": "/join",
+      "desc": "Join clips end to end, with fades if you like.",
+      "about": "Put several clips together into one video. Clips that match are joined in seconds without losing quality; add fades or crossfades, or mix phones and cameras, and it converts them to one format first.",
+      "icon": "icons/join-clips.svg",
+      "iconSpec": {
+        "top": "#a78bfa",
+        "bottom": "#5b21b6",
+        "glyph": "<rect x=\"9\" y=\"22\" width=\"19\" height=\"20\" rx=\"3\" {S} stroke-width=\"3\"/><rect x=\"36\" y=\"22\" width=\"19\" height=\"20\" rx=\"3\" {S} stroke-width=\"3\"/><path d=\"M28 32h8\" {S}/><path d=\"M15 29v6l5-3zM42 29v6l5-3z\" {F}/>"
+      }
+    },
+    {
+      "id": "cut-clip",
+      "name": "Cut a Clip",
+      "path": "/clip",
+      "desc": "Cut a stretch out of a longer video.",
+      "about": "Pick a start and an end and get just that part: an exact MP4 that plays on any phone (HDR colours fixed), or a fast copy in the original quality.",
+      "icon": "icons/cut-clip.svg",
+      "iconSpec": {
+        "top": "#e879f9",
+        "bottom": "#a21caf",
+        "glyph": "<rect x=\"12\" y=\"13\" width=\"40\" height=\"22\" rx=\"3\" {S} stroke-width=\"3\"/><path d=\"M12 19h40M12 29h40\" {S} stroke-width=\"2\"/><circle cx=\"23\" cy=\"46\" r=\"5\" {S} stroke-width=\"3\"/><circle cx=\"41\" cy=\"46\" r=\"5\" {S} stroke-width=\"3\"/><path d=\"M26.5 42.5L38 31M37.5 42.5L26 31\" {S} stroke-width=\"3\"/>"
+      }
+    }
+  ],
+  "mcp": {
+    "url": "http://<pc>:8090/mcp",
+    "tools": "list_clips, start_panel_transcript, get_job, get_panel_images, render_panel_transcript, join_clips, cut_clip, cancel_job"
+  },
+  "intents": [
+    {
+      "phrase": "…turn a scene into comic-style panels",
+      "desc": "A still for each line with the words underneath, stacked into one picture ready to post. Name who says what first.",
+      "group": "video",
+      "page": "panel-transcript"
+    },
+    {
+      "phrase": "…combine multiple clips into one video",
+      "desc": "Put clips end to end, with fades or crossfades. Clips from different phones and cameras are matched up for you.",
+      "group": "video",
+      "page": "join-clips"
+    },
+    {
+      "phrase": "…cut a bit out of a longer video",
+      "desc": "Pick where it starts and ends. Get an MP4 that plays on any phone, with subtitles if you want them.",
+      "group": "video",
+      "page": "cut-clip"
+    }
+  ],
+  "deploy": {
+    "stacks": [
+      {
+        "name": "video-tools",
+        "host": "pc",
+        "compose": "docker-compose.yml",
+        "build": {
+          "image": "video-tools:0.1.0",
+          "context": ".",
+          "args": {
+            "VERSION": "0.3.2"
+          }
+        }
+      }
+    ]
+  }
+}

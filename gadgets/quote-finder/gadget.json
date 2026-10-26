@@ -1,0 +1,64 @@
+{
+  "$schema": "../../docs/gadget.schema.json",
+  "id": "quote-finder",
+  "name": "Quote Finder",
+  "kind": "gadget",
+  "host": "pc",
+  "desc": "Search the dialogue of everything in Plex: find the episode from a quote.",
+  "about": "Remember a line but not the episode? Type what you remember and find the show, episode and moment it’s said, across everything in Plex. Then turn the scene into panels or a clip.",
+  "icon": "web/icon.svg",
+  "proxy": {
+    "port": 8104,
+    "upstream": "http://quote-finder:8080"
+  },
+  "mcp": {
+    "url": "http://<pc>:8124/mcp",
+    "tools": "search_quotes, get_scene, make_panel_script, make_clip, list_titles"
+  },
+  "intents": [
+    {
+      "phrase": "…know which show or movie a quote came from",
+      "group": "video",
+      "desc": "Type the bits you remember. It searches what’s said in everything on Plex and shows the episode and the moment."
+    }
+  ],
+  "uses": [
+    "video-tools"
+  ],
+  "deploy": {
+    "stacks": [
+      {
+        "name": "quote-finder",
+        "host": "pc",
+        "compose": "docker-compose.yml",
+        "build": {
+          "image": "quote-finder:latest",
+          "context": "."
+        },
+        "secrets": [
+          "INGEST_TOKEN"
+        ]
+      },
+      {
+        "name": "subtitle-extractor",
+        "host": "pi",
+        "compose": "extractor/docker-compose.yml",
+        "build": {
+          "image": "subtitle-extractor:latest",
+          "context": "extractor",
+          "go": {
+            "dir": "extractor",
+            "binary": "extractor",
+            "goarch": "arm64"
+          }
+        },
+        "secrets": [
+          "INGEST_TOKEN",
+          "OPENSUBTITLES_API_KEY",
+          "OPENSUBTITLES_USERNAME",
+          "OPENSUBTITLES_PASSWORD"
+        ]
+      }
+    ]
+  }
+}

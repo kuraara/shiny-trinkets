@@ -8,9 +8,9 @@ import (
 
 	"github.com/a-h/templ"
 
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/jobs"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/panel"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/storage"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/jobs"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/panel"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/storage"
 )
 
 // Page carries what the layout needs.

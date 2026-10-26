@@ -14,11 +14,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/app"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/config"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/mcp"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/storage"
-	"github.com/kuraara/clowd-docker-stuff/video-tools/internal/web"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/app"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/config"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/mcp"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/storage"
+	"github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/web"
 )
 
 func main() {

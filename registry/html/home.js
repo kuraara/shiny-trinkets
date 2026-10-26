@@ -1,8 +1,13 @@
 // Registry home page: cards for every app, with a live up/down dot.
 (async () => {
   const reg = await (await fetch('/_gadgets/registry.json', { cache: 'no-cache' })).json();
-  // proxied gadgets use this page's scheme, apart from ones kept on plain HTTP ("tls": false)
-  const url = (a) => (a.proxy ? `${a.proxy.tls === false ? 'http:' : location.protocol}//${location.hostname}:${a.proxy.port}${a.proxy.path || '/'}` : a.url);
+  // a gadget answers http, https or both on its port: keep this page's protocol when it can
+  const scheme = (a) => {
+    const ps = a.proxy.protocols || reg.protocols || ['http', 'https'];
+    const here = location.protocol.replace(':', '');
+    return ps.includes(here) ? here : ps[0];
+  };
+  const url = (a) => (a.proxy ? `${scheme(a)}://${location.hostname}:${a.proxy.port}${a.proxy.path || '/'}` : a.url);
   const make = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
   for (const a of reg.apps) {

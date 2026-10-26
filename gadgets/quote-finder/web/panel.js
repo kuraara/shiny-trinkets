@@ -395,6 +395,10 @@ async function load() {
   $('#editor').hidden = false;
   const cfg = await fetch('/api/config').then((r) => r.json()).catch(() => ({}));
   if (cfg.videoTools) $('#toolsLink').href = `${cfg.videoTools}/jobs/${jobId}`; else $('#toolsLink').hidden = true;
+  // the registry knows video-tools' port and protocols; prefer its link when it's there
+  window.gadgets?.url('video-tools', `/jobs/${jobId}`).then((u) => {
+    if (u) { $('#toolsLink').href = u; $('#toolsLink').hidden = false; }
+  }).catch(() => {});
   buildLines();
   if (navigator.canShare && IOS) { // the share sheet has "Save Image"; a download goes to Files
     $('#share').hidden = false;

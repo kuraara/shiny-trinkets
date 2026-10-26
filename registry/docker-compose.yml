@@ -1,17 +1,23 @@
-# Gadget registry: home page on port 443 (80 redirects), each gadget proxied on its own port over
-# HTTPS (see registry.json). The certificate (made by the home CA on the build box, see README)
-# is in the gadget-tls volume; without it everything falls back to plain HTTP.
+# Gadget registry: home page on 80 (http) and 443 (https); each gadget proxied on its own port,
+# answering http and https on that same port (see registry/README.md). Built from the repo root
+# (it reads every gadget's gadget.json): tools/trinket deploy registry.
+# The certificate (from the home CA on the build box) is in the gadget-tls volume; without it
+# everything is plain HTTP. TRINKET_PROTOCOLS switches the protocols without a rebuild.
 # Creates the "gadgets" network the gadget stacks join.
 services:
   registry:
     image: gadget-registry:latest
-    build: .
+    build:
+      context: ..
+      dockerfile: registry/Dockerfile
     container_name: gadget-registry
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
-      - "8101-8110:8101-8110"
+      - "8101-8120:8101-8120"      # gadget ports: registry/site.json portRange
+    environment:
+      - TRINKET_PROTOCOLS=${TRINKET_PROTOCOLS:-}   # e.g. "https" or "http"; empty = site.json (both)
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

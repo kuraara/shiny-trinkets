@@ -1,20 +1,46 @@
 // Gadget navbar. nginx adds <script src="/_gadgets/nav.js"> to every proxied gadget's pages.
 // A page can opt out with <meta name="gadget-nav" content="off">, or ask for the small
 // floating button instead of a bar with content="fab".
+//
+// It also gives every gadget page window.gadgets, for linking to other gadgets without knowing
+// their ports or protocols:   const url = await gadgets.url('video-tools', '/jobs/j_123');
 (() => {
   if (window.__gadgetNav) return;
   window.__gadgetNav = true;
-  const meta = document.querySelector('meta[name="gadget-nav"]');
-  const pageMode = meta && meta.content;
-  if (pageMode === 'off' || window.top !== window) return;
-
   const BASE = '/_gadgets/';
   const BAR_H = 44;
 
-  const homeURL = (reg) => `${location.protocol}//${location.hostname}${reg.homePort ? `:${reg.homePort}` : ''}/`;
-  // a gadget kept on plain HTTP ("tls": false) is linked as http:; others use this page's scheme
-  // (from a plain-HTTP page the registry redirects them to https)
-  const appURL = (app) => (app.proxy ? `${app.proxy.tls === false ? 'http:' : location.protocol}//${location.hostname}:${app.proxy.port}${app.proxy.path || '/'}` : app.url);
+  // A gadget answers http, https or both (on the same port). Links keep this page's protocol
+  // when the target supports it.
+  const schemeFor = (reg, app) => {
+    const ps = (app && app.proxy && app.proxy.protocols) || reg.protocols || ['http', 'https'];
+    const here = location.protocol.replace(':', '');
+    return ps.includes(here) ? here : ps[0];
+  };
+  const homeURL = (reg) => {
+    const s = schemeFor(reg, null);
+    const port = (reg.home || {})[s];
+    const dflt = s === 'https' ? 443 : 80;
+    return `${s}://${location.hostname}${port && port !== dflt ? `:${port}` : ''}/`;
+  };
+  const appURL = (reg, app, path) => (app.proxy
+    ? `${schemeFor(reg, app)}://${location.hostname}:${app.proxy.port}${path || app.proxy.path || '/'}`
+    : (path ? new URL(path, app.url).href : app.url));
+
+  const registry = fetch(`${BASE}registry.json`, { cache: 'no-cache' }).then((r) => r.json());
+  window.gadgets = {
+    registry,
+    // URL of another gadget (or one of its pages), e.g. gadgets.url('video-tools', '/jobs/j_1')
+    async url(id, path) {
+      const reg = await registry;
+      const app = reg.apps.find((a) => a.id === id);
+      return app ? appURL(reg, app, path) : null;
+    },
+  };
+
+  const meta = document.querySelector('meta[name="gadget-nav"]');
+  const pageMode = meta && meta.content;
+  if (pageMode === 'off' || window.top !== window) return;
   // Several gadgets can share a port (one app, several pages): the one whose path we're on wins,
   // else the entry without a path.
   const currentApp = (apps) => {
@@ -87,12 +113,12 @@
       el('span', { class: 'glyph' }, svg(ICON_GRID)), el('span', { class: 'name', text: 'All gadgets & services' })));
     const groups = [['gadget', 'Gadgets'], ['service', 'Services']];
     for (const [kind, label] of groups) {
-      const apps = reg.apps.filter((a) => a.kind === kind && appURL(a));
+      const apps = reg.apps.filter((a) => a.kind === kind && appURL(reg, a));
       if (!apps.length) continue;
       drawer.append(el('div', { class: 'group', text: label }));
       for (const a of apps) {
         const external = !a.proxy;
-        drawer.append(el('a', { class: `item${a === current ? ' current' : ''}`, href: appURL(a), 'aria-current': a === current ? 'page' : null },
+        drawer.append(el('a', { class: `item${a === current ? ' current' : ''}`, href: appURL(reg, a), 'aria-current': a === current ? 'page' : null },
           el('img', { src: `${BASE}icons/${a.id}.svg`, alt: '' }),
           el('span', { class: 'name', text: a.name }),
           el('span', { class: 'host', text: (reg.hosts[a.host] && (reg.hosts[a.host].short || reg.hosts[a.host].name)) || '' }),
@@ -108,7 +134,7 @@
     } else {
       opener = el('button', { class: 'icon burger', 'aria-label': 'Open menu', 'aria-expanded': 'false', onclick: open }, svg(ICON_MENU));
       const title = current
-        ? el('a', { class: 'brand', href: appURL(current) }, el('img', { src: `${BASE}icons/${current.id}.svg`, alt: '' }), el('span', { text: current.name }))
+        ? el('a', { class: 'brand', href: appURL(reg, current) }, el('img', { src: `${BASE}icons/${current.id}.svg`, alt: '' }), el('span', { text: current.name }))
         : el('a', { class: 'brand', href: home }, el('img', { src: `${BASE}icons/gadgets.svg`, alt: '' }), el('span', { text: reg.title || 'Gadgets' }));
       const bar = el('div', { class: 'bar' }, opener, title, el('span', { class: 'spacer' }),
         el('a', { class: 'icon', href: home, title: 'All gadgets', 'aria-label': 'All gadgets' }, svg(ICON_GRID)));
@@ -121,6 +147,6 @@
     document.body.append(host);
   }
 
-  const start = () => fetch(`${BASE}registry.json`, { cache: 'no-cache' }).then((r) => r.json()).then(build).catch(() => {});
+  const start = () => registry.then(build).catch(() => {});
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
 })();

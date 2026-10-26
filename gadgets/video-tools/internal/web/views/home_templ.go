@@ -8,7 +8,7 @@ package views
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/kuraara/clowd-docker-stuff/video-tools/internal/jobs"
+import "github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/jobs"
 
 func Home(p Page, recent []jobs.Job) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

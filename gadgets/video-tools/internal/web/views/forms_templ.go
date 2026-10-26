@@ -8,7 +8,7 @@ package views
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/kuraara/clowd-docker-stuff/video-tools/internal/storage"
+import "github.com/kuraara/shiny-trinkets/gadgets/video-tools/internal/storage"
 
 func FilePicker(files []storage.File, name string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

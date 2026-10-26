@@ -203,6 +203,8 @@ function clipBox(res) {
     text.textContent = msg;
     const a = el('a', 'quiet', 'Open in Video Tools ↗');
     a.href = res.toolsUrl || res.url; a.target = '_blank'; a.rel = 'noopener';
+    // the registry knows video-tools' port and protocols; prefer its link when it's there
+    window.gadgets?.url('video-tools', `/jobs/${res.jobId}`).then((u) => { if (u) a.href = u; }).catch(() => {});
     box.append(a);
   };
   (async () => {

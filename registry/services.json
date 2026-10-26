@@ -1,0 +1,185 @@
+{
+  "$comment": "Things the registry links to that are not gadgets in this repo (other apps on the PC and the Pi).",
+  "services": [
+    {
+      "id": "home-assistant",
+      "name": "Home Assistant",
+      "kind": "service",
+      "host": "pc",
+      "desc": "Home automation.",
+      "url": "http://<pc>:8123/",
+      "iconSpec": {
+        "top": "#38bdf8",
+        "bottom": "#0369a1",
+        "glyph": "<path d=\"M14 31L32 15l18 16M19 27v21h26V27\" {S}/><circle cx=\"32\" cy=\"35\" r=\"3.2\" {F}/><path d=\"M32 38v10M32 41l-5-4M32 43l5-4\" {S} stroke-width=\"2.6\"/>"
+      }
+    },
+    {
+      "id": "esphome",
+      "name": "ESPHome",
+      "kind": "service",
+      "host": "pc",
+      "desc": "Firmware for the ESP devices.",
+      "url": "http://<pc>:6052/",
+      "iconSpec": {
+        "top": "#475569",
+        "bottom": "#0f172a",
+        "glyph": "<rect x=\"20\" y=\"20\" width=\"24\" height=\"24\" rx=\"3\" {S}/><path d=\"M26 14v6M32 14v6M38 14v6M26 44v6M32 44v6M38 44v6M14 26h6M14 32h6M14 38h6M44 26h6M44 32h6M44 38h6\" {S} stroke-width=\"2.8\"/><rect x=\"27\" y=\"27\" width=\"10\" height=\"10\" rx=\"1.5\" {F}/>"
+      }
+    },
+    {
+      "id": "portainer",
+      "name": "Portainer",
+      "kind": "service",
+      "host": "pi",
+      "desc": "Manages Docker on both machines.",
+      "url": "https://<pi>:9443/",
+      "iconSpec": {
+        "top": "#22d3ee",
+        "bottom": "#0e7490",
+        "glyph": "<path d=\"M32 12v8M24 20h16\" {S}/><rect x=\"15\" y=\"28\" width=\"14\" height=\"10\" rx=\"1.5\" {S} stroke-width=\"3\"/><rect x=\"35\" y=\"28\" width=\"14\" height=\"10\" rx=\"1.5\" {S} stroke-width=\"3\"/><rect x=\"25\" y=\"40\" width=\"14\" height=\"10\" rx=\"1.5\" {S} stroke-width=\"3\"/><path d=\"M32 20v8\" {S} stroke-width=\"3\"/>"
+      }
+    },
+    {
+      "id": "scrypted",
+      "name": "Scrypted",
+      "kind": "service",
+      "host": "pi",
+      "desc": "Cameras and HomeKit bridge.",
+      "url": "https://<pi>:10443/",
+      "iconSpec": {
+        "top": "#f43f5e",
+        "bottom": "#9f1239",
+        "glyph": "<path d=\"M14 22l26-6 4 14-26 6z\" {S}/><path d=\"M24 35l3 9h-9M44 26l7-3v12l-7-3\" {S}/><circle cx=\"23\" cy=\"25\" r=\"2.4\" {F}/>"
+      }
+    },
+    {
+      "id": "plex",
+      "name": "Plex",
+      "kind": "service",
+      "host": "pi",
+      "desc": "Media server.",
+      "url": "http://<pi>:32400/web/",
+      "iconSpec": {
+        "top": "#facc15",
+        "bottom": "#ca8a04",
+        "glyph": "<rect x=\"12\" y=\"16\" width=\"40\" height=\"27\" rx=\"4\" {S}/><path d=\"M24 50h16M32 43v7\" {S}/><path d=\"M28 23.5v12l10-6z\" {F}/>"
+      }
+    },
+    {
+      "id": "jellyfin",
+      "name": "Jellyfin",
+      "kind": "service",
+      "host": "pi",
+      "desc": "Media server (usually stopped).",
+      "url": "http://<pi>:8096/",
+      "iconSpec": {
+        "top": "#818cf8",
+        "bottom": "#4338ca",
+        "glyph": "<path d=\"M32 14L50 46H14z\" {S}/><path d=\"M32 29l6.5 11h-13z\" {F}/>"
+      }
+    },
+    {
+      "id": "sabnzbd",
+      "name": "SABnzbd",
+      "kind": "service",
+      "host": "pi",
+      "desc": "Downloads.",
+      "url": "http://<pi>:8080/",
+      "iconSpec": {
+        "top": "#fbbf24",
+        "bottom": "#d97706",
+        "glyph": "<path d=\"M32 13v24M22 28l10 10 10-10\" {S}/><path d=\"M14 40v7a3 3 0 0 0 3 3h30a3 3 0 0 0 3-3v-7\" {S}/>"
+      }
+    },
+    {
+      "id": "sonarr",
+      "name": "Sonarr",
+      "kind": "service",
+      "host": "pi",
+      "desc": "TV shows.",
+      "url": "http://<pi>:8989/",
+      "iconSpec": {
+        "top": "#60a5fa",
+        "bottom": "#1d4ed8",
+        "glyph": "<rect x=\"12\" y=\"20\" width=\"40\" height=\"26\" rx=\"4\" {S}/><path d=\"M24 12l8 8 8-8\" {S}/><path d=\"M22 52h20\" {S}/>"
+      }
+    },
+    {
+      "id": "radarr",
+      "name": "Radarr",
+      "kind": "service",
+      "host": "pi",
+      "desc": "Movies.",
+      "url": "http://<pi>:7878/",
+      "iconSpec": {
+        "top": "#fb923c",
+        "bottom": "#c2410c",
+        "glyph": "<rect x=\"14\" y=\"26\" width=\"36\" height=\"22\" rx=\"3\" {S}/><path d=\"M14 26l3-10 33 0-3 10\" {S}/><path d=\"M24 16l-3 10M34 16l-3 10M44 16l-3 10\" {S} stroke-width=\"3\"/>"
+      }
+    },
+    {
+      "id": "romm",
+      "name": "RomM",
+      "kind": "service",
+      "host": "pi",
+      "desc": "Game library (usually stopped).",
+      "url": "http://<pi>:8016/",
+      "iconSpec": {
+        "top": "#34d399",
+        "bottom": "#047857",
+        "glyph": "<path d=\"M20 22h24a8 8 0 0 1 8 8v4a10 10 0 0 1-17 7h-6a10 10 0 0 1-17-7v-4a8 8 0 0 1 8-8z\" {S}/><path d=\"M22 28v8M18 32h8\" {S} stroke-width=\"3\"/><circle cx=\"41\" cy=\"29.5\" r=\"2.4\" {F}/><circle cx=\"46\" cy=\"34.5\" r=\"2.4\" {F}/>"
+      }
+    },
+    {
+      "id": "glances",
+      "name": "Pi monitor",
+      "kind": "service",
+      "host": "pi",
+      "desc": "Glances: CPU, memory and disk on the Pi.",
+      "url": "http://<pi>:61208/",
+      "iconSpec": {
+        "top": "#4ade80",
+        "bottom": "#15803d",
+        "glyph": "<rect x=\"12\" y=\"15\" width=\"40\" height=\"30\" rx=\"4\" {S}/><path d=\"M17 33h7l4-9 6 15 4-8h9\" {S} stroke-width=\"3\"/><path d=\"M24 51h16\" {S}/>"
+      }
+    },
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "kind": "service",
+      "host": "pi",
+      "desc": "The Claude Code container.",
+      "url": "http://<pi>:8765/",
+      "iconSpec": {
+        "top": "#f59e0b",
+        "bottom": "#b45309",
+        "glyph": "<rect x=\"12\" y=\"15\" width=\"40\" height=\"34\" rx=\"5\" {S}/><path d=\"M20 26l7 6-7 6M31 40h12\" {S}/>"
+      }
+    },
+    {
+      "id": "atv-tv-sync",
+      "name": "ATV TV Sync",
+      "kind": "background",
+      "host": "pc",
+      "desc": "Turns the TV on and off with the Apple TV (quiet after 9pm).",
+      "iconSpec": {
+        "top": "#64748b",
+        "bottom": "#334155",
+        "glyph": "<rect x=\"10\" y=\"17\" width=\"30\" height=\"21\" rx=\"3\" {S}/><path d=\"M19 45h12\" {S}/><rect x=\"44\" y=\"20\" width=\"10\" height=\"27\" rx=\"5\" {S} stroke-width=\"3\"/><circle cx=\"49\" cy=\"27\" r=\"2.2\" {F}/><path d=\"M25 23.5v5M21.5 25.5a5 5 0 1 0 7 0\" {S} stroke-width=\"2.6\"/>"
+      }
+    },
+    {
+      "id": "buildbox",
+      "name": "Build box",
+      "kind": "background",
+      "host": "pc",
+      "desc": "Builds and tests the gadgets (SSH on 2223).",
+      "iconSpec": {
+        "top": "#94a3b8",
+        "bottom": "#475569",
+        "glyph": "<path d=\"M32 12l18 10v20L32 52 14 42V22z\" {S}/><path d=\"M14 22l18 10 18-10M32 32v20\" {S}/>"
+      }
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "$comment": "Settings for the whole registry. Gadgets describe themselves in gadgets/<id>/gadget.json.",
+  "title": "Gadgets",
+  "hosts": {
+    "pc": {
+      "name": "PC",
+      "addr": "<pc>",
+      "short": "PC",
+      "portainerEndpoint": 4,
+      "buildbox": true
+    },
+    "pi": {
+      "name": "Raspberry Pi",
+      "addr": "<pi>",
+      "short": "Pi",
+      "portainerEndpoint": 3
+    }
+  },
+  "protocols": [
+    "http",
+    "https"
+  ],
+  "home": {
+    "http": 80,
+    "https": 443
+  },
+  "portRange": [
+    8101,
+    8120
+  ],
+  "groups": {
+    "video": "TV, films and video",
+    "photos": "Photos",
+    "documents": "Documents"
+  }
+}

@@ -1,4 +1,4 @@
-module github.com/kuraara/clowd-docker-stuff/video-tools
+module github.com/kuraara/shiny-trinkets/gadgets/video-tools
 
 go 1.24
 
