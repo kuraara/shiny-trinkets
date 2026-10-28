@@ -17,10 +17,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -37,7 +39,72 @@ const (
 	// Fallback clip edges, used if the speech can't be matched.
 	clipLead = 1000
 	clipTail = 1200
+	// The most panels one job can ask for.
+	maxPanels = 24
 )
+
+// givenLine is a subtitle line as video-tools takes it: seconds from the start of the clip.
+type givenLine struct {
+	Text  string  `json:"text"`
+	Start float64 `json:"start"`
+	End   float64 `json:"end"`
+}
+
+// panelTimes picks when to take the frames for n panels, for lines in spoken order. nil leaves
+// it to video-tools: one panel per line. Fewer panels than lines: the lines are split into n
+// runs of (nearly) equal length and each frame is taken in the middle of its run's longest line.
+// More panels than lines: one per line, then each extra one goes in the middle of the longest
+// stretch without a frame (a pause, a reaction, a long line).
+func panelTimes(lines []givenLine, n int) []float64 {
+	L := len(lines)
+	if L == 0 || n <= 0 || n == L {
+		return nil
+	}
+	mid := func(l givenLine) float64 { return (l.Start + l.End) / 2 }
+	var ts []float64
+	if n < L {
+		for k := range n {
+			lo, hi := k*L/n, (k+1)*L/n
+			best := lo
+			for i := lo + 1; i < hi; i++ {
+				if lines[i].End-lines[i].Start > lines[best].End-lines[best].Start {
+					best = i
+				}
+			}
+			ts = append(ts, mid(lines[best]))
+		}
+	} else {
+		for _, l := range lines {
+			ts = append(ts, mid(l))
+		}
+		first, last := lines[0].Start, lines[L-1].End
+		for len(ts) < n {
+			at, widest, from := 0, -1.0, first
+			for i := 0; i <= len(ts); i++ {
+				to := last
+				if i < len(ts) {
+					to = ts[i]
+				}
+				if to-from > widest {
+					at, widest = i, to-from
+				}
+				from = to
+			}
+			lo, hi := first, last
+			if at > 0 {
+				lo = ts[at-1]
+			}
+			if at < len(ts) {
+				hi = ts[at]
+			}
+			ts = slices.Insert(ts, at, (lo+hi)/2)
+		}
+	}
+	for i, t := range ts {
+		ts[i] = math.Round(t*1000) / 1000
+	}
+	return ts
+}
 
 type panelCfg struct {
 	clipURL     string // extractor on the Pi, e.g. http://<pi>:8105
@@ -130,8 +197,12 @@ func (a *app) makePanels(ctx context.Context, mediaID int64, from, to int) (pane
 	return a.makeScene(ctx, mediaID, from, to, sceneOpts{})
 }
 
-// sceneOpts: Clip makes a video clip instead of panels; Subtitles burns the lines into it.
-type sceneOpts struct{ Clip, Subtitles bool }
+// sceneOpts: Clip makes a video clip instead of panels; Subtitles burns the lines into it;
+// Panels asks for that many panels (0 = one per line).
+type sceneOpts struct {
+	Clip, Subtitles bool
+	Panels          int
+}
 
 func (a *app) makeScene(ctx context.Context, mediaID int64, from, to int, o sceneOpts) (panelResult, error) {
 	var res panelResult
@@ -140,6 +211,9 @@ func (a *app) makeScene(ctx context.Context, mediaID int64, from, to int, o scen
 	}
 	if to < from {
 		from, to = to, from
+	}
+	if o.Panels < 0 || o.Panels > maxPanels {
+		return res, fmt.Errorf("pick between 1 and %d panels", maxPanels)
 	}
 	path, h, lines, err := a.db.sceneLines(mediaID, from, to)
 	if err != nil {
@@ -221,15 +295,18 @@ func (a *app) makeScene(ctx context.Context, mediaID int64, from, to int, o scen
 	}
 
 	// 3. the panel job, with the subtitles re-timed to the clip
-	rel := func(ls []sceneLine) []map[string]any {
-		out := make([]map[string]any, len(ls))
+	rel := func(ls []sceneLine) []givenLine {
+		out := make([]givenLine, len(ls))
 		for i, l := range ls {
-			out[i] = map[string]any{"text": l.Text, "start": max(0, round2(float64(l.Start)/1000-key)), "end": round2(float64(l.End)/1000 - key)}
+			out[i] = givenLine{Text: l.Text, Start: max(0, round2(float64(l.Start)/1000-key)), End: round2(float64(l.End)/1000 - key)}
 		}
 		return out
 	}
 	gl := rel(lines)
 	endpoint, req2 := "/api/panel", map[string]any{"file_id": up.Files[0].ID, "lines": gl}
+	if ts := panelTimes(gl, o.Panels); ts != nil && !o.Clip {
+		req2["times"] = ts
+	}
 	if o.Clip {
 		endpoint = "/api/clip"
 		cs := max(0, lines[0].Start-clipLead)
@@ -288,12 +365,77 @@ func (a *app) toolsCall(ctx context.Context, method, path, ctype string, body io
 	return json.Unmarshal(b, out)
 }
 
+// retakePanels starts a new panel job on the same clip as job id, with n panels. The lines stay
+// the same (so names typed for them still fit); only the frames and which line goes where change.
+func (a *app) retakePanels(ctx context.Context, id string, n int) (panelResult, error) {
+	var res panelResult
+	if n < 1 || n > maxPanels {
+		return res, fmt.Errorf("pick between 1 and %d panels", maxPanels)
+	}
+	var old struct {
+		Kind   string `json:"kind"`
+		Title  string `json:"title"`
+		Inputs []struct {
+			ID string `json:"id"`
+		} `json:"inputs"`
+		Params struct {
+			Lines []givenLine `json:"lines"`
+		} `json:"params"`
+	}
+	if err := a.toolsCall(ctx, "GET", "/api/jobs/"+id, "", nil, &old); err != nil {
+		return res, err
+	}
+	if old.Kind != "panel" || len(old.Inputs) == 0 || len(old.Params.Lines) == 0 {
+		return res, errors.New("only panels made from Quote Finder can be re-taken; make them again from the search")
+	}
+	req := map[string]any{"file_id": old.Inputs[0].ID, "lines": old.Params.Lines}
+	if ts := panelTimes(old.Params.Lines, n); ts != nil {
+		req["times"] = ts
+	}
+	body, _ := json.Marshal(req)
+	var job struct {
+		ID     string `json:"id"`
+		Status string `json:"status"`
+	}
+	if err := a.toolsCall(ctx, "POST", "/api/panel", "application/json", strings.NewReader(string(body)), &job); err != nil {
+		if strings.Contains(err.Error(), "file") {
+			return res, errors.New("the scene has been cleared out (they're kept for a day); make the panels again from the search")
+		}
+		return res, err
+	}
+	return panelResult{JobID: job.ID, URL: "/panel.html?job=" + job.ID, Lines: len(old.Params.Lines), Title: old.Title, Status: job.Status}, nil
+}
+
+func (a *app) vtRetake(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !jobIDRe.MatchString(id) || !a.panels.enabled() {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no such job"})
+		return
+	}
+	var req struct {
+		Panels int `json:"panels"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad body"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	res, err := a.retakePanels(ctx, id, req.Panels)
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
 func (a *app) apiPanels(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Media     int64 `json:"media"`
 		From, To  int
 		Clip      bool `json:"clip"`
 		Subtitles bool `json:"subtitles"`
+		Panels    int  `json:"panels"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad body"})
@@ -301,7 +443,7 @@ func (a *app) apiPanels(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
 	defer cancel()
-	res, err := a.makeScene(ctx, req.Media, req.From, req.To, sceneOpts{Clip: req.Clip, Subtitles: req.Subtitles})
+	res, err := a.makeScene(ctx, req.Media, req.From, req.To, sceneOpts{Clip: req.Clip, Subtitles: req.Subtitles, Panels: req.Panels})
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
 		return

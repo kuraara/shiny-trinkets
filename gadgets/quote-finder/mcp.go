@@ -186,6 +186,7 @@ func mcpTools() []map[string]any {
 				"media_id": integer("From search_quotes."),
 				"from_ms":  integer("Start time of the first line (from get_scene)."),
 				"to_ms":    integer("Start time of the last line (from get_scene)."),
+				"panels":   map[string]any{"type": "integer", "minimum": 1, "maximum": 24, "description": "How many panels (default: one per line). Fewer groups lines together; more adds frames in pauses and long lines."},
 			}, "media_id", "from_ms", "to_ms"),
 		},
 		{
@@ -320,13 +321,14 @@ func (m *mcpServer) call(ctx context.Context, name string, raw json.RawMessage) 
 			MediaID int64 `json:"media_id"`
 			FromMS  int   `json:"from_ms"`
 			ToMS    int   `json:"to_ms"`
+			Panels  int   `json:"panels"`
 		}
 		if err := dec(&a); err != nil {
 			return mcpFail("bad arguments: %v", err)
 		}
 		cctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 		defer cancel()
-		res, err := m.a.makePanels(cctx, a.MediaID, a.FromMS, a.ToMS)
+		res, err := m.a.makeScene(cctx, a.MediaID, a.FromMS, a.ToMS, sceneOpts{Panels: a.Panels})
 		if err != nil {
 			return mcpFail("%v", err)
 		}

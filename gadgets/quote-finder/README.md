@@ -12,8 +12,10 @@ show, episode and time, with the lines around it. Filter by show or movie.
 - **Panels or clip…** on a result: tap the first and last line of the scene, then
   - **Make panels**: video-tools takes the frames for the subtitle lines (no speech recognition),
     then Quote Finder's **panel editor** (`panel.html?job=`) opens: name the speakers (with
-    video-tools' "who's talking" frame strips and voice pitch), and lay the panels out with
-    Photo Stitch's controls (panel shape, columns, gap and margin in % or px, background, image
+    video-tools' "who's talking" frame strips and voice pitch), move lines between panels
+    (‹ › on each line, or its dropdown), choose the **number of panels** (one per line to start;
+    fewer groups lines, more adds frames in pauses and long lines; it takes new frames from the
+    same scene and keeps the names), and lay the panels out with Photo Stitch's controls (panel shape, columns, gap and margin in % or px, background, image
     width, subtitle size, optional 1/4 panel numbers, PNG/JPEG). The image is drawn and saved in
     the browser, the same way video-tools draws it; names are sent back to video-tools too;
   - **Make clip**: video-tools cuts the scene (a second either side) into an MP4 that plays
@@ -52,7 +54,7 @@ Two parts:
 ## Agents (MCP)
 
 `http://<pc>:8124/mcp` (streamable HTTP). Tools: `search_quotes`, `get_scene`,
-`make_panel_script`, `make_clip`, `list_titles`. Pair it with the video-tools MCP to name the
+`make_panel_script` (optional `panels`: how many), `make_clip`, `list_titles`. Pair it with the video-tools MCP to name the
 speakers of a panel script or fetch a finished clip:
 
     claude mcp add --transport http quote-finder http://<pc>:8124/mcp

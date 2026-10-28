@@ -78,6 +78,7 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("GET /api/vt/jobs/{id}", a.vtJob)
 	mux.HandleFunc("GET /api/vt/jobs/{id}/files/{name}", a.vtFile)
 	mux.HandleFunc("POST /api/vt/jobs/{id}/render", a.sameOrigin(a.vtRender))
+	mux.HandleFunc("POST /api/vt/jobs/{id}/retake", a.sameOrigin(a.vtRetake))
 	mcp := &mcpServer{a: a}
 	mux.Handle("POST /mcp", mcp)
 	mux.Handle("GET /mcp", mcp) // answers 405: no event stream

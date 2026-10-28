@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -134,5 +135,84 @@ func TestMakePanels(t *testing.T) {
 	req.Header.Set("Origin", "http://evil.example")
 	if r, _ := http.DefaultClient.Do(req); r.StatusCode != 403 {
 		t.Fatalf("cross-origin %d", r.StatusCode)
+	}
+}
+
+func TestPanelTimes(t *testing.T) {
+	ls := []givenLine{{"a", 1, 2}, {"b", 2, 5}, {"c", 5, 6}, {"d", 7, 8}, {"e", 8, 8.5}, {"f", 9, 12}}
+	if panelTimes(ls, 6) != nil || panelTimes(ls, 0) != nil || panelTimes(nil, 3) != nil {
+		t.Fatal("one per line should be left to video-tools (nil)")
+	}
+	// two panels: lines a-c and d-f, each in the middle of its longest line (b, f)
+	if got := panelTimes(ls, 2); !slices.Equal(got, []float64{3.5, 10.5}) {
+		t.Fatalf("2 panels: %v", got)
+	}
+	// one panel: the longest line (b and f tie at 3 s; the earlier wins)
+	if got := panelTimes(ls, 1); !slices.Equal(got, []float64{3.5}) {
+		t.Fatalf("1 panel: %v", got)
+	}
+	// more panels than lines: every line keeps a frame, the extras fill the longest stretches
+	two := []givenLine{{"a", 0, 2}, {"b", 10, 12}}
+	got := panelTimes(two, 4)
+	if len(got) != 4 || !slices.IsSorted(got) || got[0] != 1 || got[len(got)-1] != 11 {
+		t.Fatalf("4 panels from 2 lines: %v", got)
+	}
+	if !slices.Contains(got, 6) { // the gap between the lines is split first
+		t.Fatalf("expected a frame in the middle of the gap: %v", got)
+	}
+	for _, n := range []int{7, 12, 24} {
+		got := panelTimes(ls, n)
+		if len(got) != n || !slices.IsSorted(got) || got[0] < 1 || got[n-1] > 12 {
+			t.Fatalf("%d panels: %v", n, got)
+		}
+	}
+}
+
+func TestRetakePanels(t *testing.T) {
+	var sent struct {
+		FileID string      `json:"file_id"`
+		Lines  []givenLine `json:"lines"`
+		Times  []float64   `json:"times"`
+	}
+	tools := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == "GET" && r.URL.Path == "/api/jobs/j_abc123":
+			io.WriteString(w, `{"id":"j_abc123","kind":"panel","title":"Show S01E02 4m10s.mkv","inputs":[{"id":"f_1"}],
+				"params":{"lines":[{"text":"one","start":1,"end":2},{"text":"two","start":3,"end":5},{"text":"three","start":6,"end":7}]}}`)
+		case r.Method == "GET" && r.URL.Path == "/api/jobs/j_join99":
+			io.WriteString(w, `{"id":"j_join99","kind":"join","inputs":[{"id":"f_2"}]}`)
+		case r.Method == "POST" && r.URL.Path == "/api/panel":
+			json.NewDecoder(r.Body).Decode(&sent)
+			w.WriteHeader(202)
+			io.WriteString(w, `{"id":"j_new456","status":"queued"}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer tools.Close()
+	a := &app{panels: panelCfg{clipURL: "http://unused", videoTools: tools.URL}}
+
+	res, err := a.retakePanels(context.Background(), "j_abc123", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.JobID != "j_new456" || res.URL != "/panel.html?job=j_new456" || res.Lines != 3 {
+		t.Fatalf("result %+v", res)
+	}
+	if sent.FileID != "f_1" || len(sent.Lines) != 3 || sent.Lines[1].Text != "two" || len(sent.Times) != 2 {
+		t.Fatalf("sent %+v", sent)
+	}
+	// the same count as lines goes back to video-tools' own choice (no times)
+	sent.Times = nil
+	if _, err := a.retakePanels(context.Background(), "j_abc123", 3); err != nil || sent.Times != nil {
+		t.Fatalf("3 panels: err %v, times %v", err, sent.Times)
+	}
+	for _, n := range []int{0, 25} {
+		if _, err := a.retakePanels(context.Background(), "j_abc123", n); err == nil {
+			t.Fatalf("%d panels should be refused", n)
+		}
+	}
+	if _, err := a.retakePanels(context.Background(), "j_join99", 2); err == nil {
+		t.Fatal("a join job can't be re-taken")
 	}
 }

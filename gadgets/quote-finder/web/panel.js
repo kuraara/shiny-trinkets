@@ -14,6 +14,7 @@ const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform ==
 const MAX_AREA = IOS ? 16_777_216 : 100_000_000;
 const MAX_SIDE = 16_384;
 const FONT = 'QFInter';
+const MAX_PANELS = 24;
 
 const jobId = new URLSearchParams(location.search).get('job') || '';
 const files = (name) => `/api/vt/jobs/${jobId}/files/${encodeURIComponent(name)}`;
@@ -253,8 +254,24 @@ function buildLines() {
     frames.forEach((_, fi) => { const o = el('option', '', `Panel ${fi + 1}`); o.value = fi; sel.append(o); });
     const off = el('option', '', 'Leave off'); off.value = -1; sel.append(off);
     sel.value = l.panel;
-    sel.addEventListener('change', () => { l.panel = parseInt(sel.value, 10); saveLines(); redraw(); });
-    top.append(sel);
+    // ‹ › push the line to the panel before or after
+    const prev = el('button', 'step', '‹'), next = el('button', 'step', '›');
+    prev.type = next.type = 'button';
+    const sync = () => {
+      prev.disabled = l.panel <= 0;
+      next.disabled = l.panel < 0 || l.panel >= frames.length - 1;
+      prev.setAttribute('aria-label', `Move line ${i + 1} to panel ${l.panel}`);
+      next.setAttribute('aria-label', `Move line ${i + 1} to panel ${l.panel + 2}`);
+      prev.title = 'To the panel before'; next.title = 'To the panel after';
+    };
+    const setPanel = (p) => { l.panel = p; sel.value = p; sync(); saveLines(); redraw(); };
+    prev.addEventListener('click', () => setPanel(l.panel - 1));
+    next.addEventListener('click', () => setPanel(l.panel + 1));
+    sel.addEventListener('change', () => setPanel(parseInt(sel.value, 10)));
+    sync();
+    const move = el('div', 'move');
+    move.append(prev, sel, next);
+    top.append(move);
     const who = el('input', 'speaker');
     who.setAttribute('list', 'speakers'); who.placeholder = 'Who says it?'; who.value = l.speaker;
     who.setAttribute('aria-label', `Speaker for line ${i + 1}`);
@@ -283,6 +300,46 @@ function buildLines() {
     return li;
   }));
   saveLines();
+}
+
+// ---------------------------------------------------------------- number of panels
+
+// A different number of panels means new frames: Quote Finder starts a fresh video-tools job on
+// the same scene with that many, and this page switches to it. Names and wording carry over.
+function setupCount() {
+  const inp = $('#panelCount'), btn = $('#retake');
+  inp.max = MAX_PANELS;
+  inp.value = frames.length;
+  const want = () => Math.min(MAX_PANELS, Math.max(1, parseInt(inp.value, 10) || frames.length));
+  const update = () => {
+    const n = want();
+    btn.hidden = n === frames.length;
+    $('#countHint').hidden = btn.hidden;
+    btn.textContent = `Take ${n} new frame${n === 1 ? '' : 's'}`;
+  };
+  const step = (d) => { inp.value = want() + d; inp.value = want(); update(); };
+  $('#countDown').addEventListener('click', () => step(-1));
+  $('#countUp').addEventListener('click', () => step(1));
+  inp.addEventListener('input', update);
+  inp.addEventListener('change', () => { inp.value = want(); update(); });
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = 'Starting…';
+    try {
+      const r = await fetch(`/api/vt/jobs/${jobId}/retake`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ panels: want() }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.jobId) throw new Error(j.error || 'Couldn’t take new frames.');
+      store.set(`qf-panel:${j.jobId}`, lines.map((l) => ({ speaker: l.speaker, text: l.text })));
+      location.replace(j.url);
+    } catch (e) {
+      alert(e.message);
+      btn.disabled = false;
+      update();
+    }
+  });
+  update();
 }
 
 // ---------------------------------------------------------------- export
@@ -328,7 +385,7 @@ $('#share').addEventListener('click', async () => {
 
 function onChange() { syncOutputs(); store.set('qf-panel-layout', opts()); redraw(); }
 for (const e of document.querySelectorAll('#editor input, #editor select')) {
-  if (e.closest('#lines')) continue;
+  if (e.closest('#lines') || e.id === 'panelCount') continue;
   e.addEventListener('input', onChange);
   e.addEventListener('change', onChange);
 }
@@ -380,7 +437,7 @@ async function load() {
     const sv = saved?.[i];
     return {
       text: sv?.text ?? ch.text ?? l.text, start: l.start, end: l.end, speaker: sv?.speaker ?? ch.speaker ?? '',
-      panel: sv ? sv.panel : (ch.frame ?? l.panel - 1), pitch: l.pitch_hz, sheet: l.contact_sheet_url ? base(l.contact_sheet_url) : '',
+      panel: Number.isInteger(sv?.panel) ? sv.panel : (ch.frame ?? l.panel - 1), pitch: l.pitch_hz, sheet: l.contact_sheet_url ? base(l.contact_sheet_url) : '',
     };
   });
   frames = await Promise.all(p.frames.map((f) => new Promise((res, rej) => {
@@ -390,6 +447,7 @@ async function load() {
     img.src = files(base(f.image_url));
   }))).catch((e) => { fail(e.message); return []; });
   if (!frames.length) return;
+  for (const l of lines) if (l.panel >= frames.length) l.panel = frames.length - 1;
   await fontsReady;
   $('#wait').hidden = true;
   $('#editor').hidden = false;
@@ -400,6 +458,7 @@ async function load() {
     if (u) { $('#toolsLink').href = u; $('#toolsLink').hidden = false; }
   }).catch(() => {});
   buildLines();
+  setupCount();
   if (navigator.canShare && IOS) { // the share sheet has "Save Image"; a download goes to Files
     $('#share').hidden = false;
     $('#share').textContent = 'Save to Photos…';

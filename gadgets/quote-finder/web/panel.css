@@ -34,6 +34,15 @@ h1#title { font-size: 1.3rem; margin: 0 0 14px; overflow-wrap: anywhere; }
 .plines { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 10px; }
 .pline { border: 1px solid var(--line); border-radius: 10px; padding: 8px; display: grid; gap: 6px; }
 .pl-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.move { display: flex; align-items: center; gap: 4px; }
+.step { font: inherit; font-weight: 700; font-size: 1.1rem; line-height: 1; min-width: 40px; height: 38px; padding: 0 8px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+.step:disabled { opacity: .35; cursor: default; }
+.count-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.count-row input[type=number] { width: 72px; text-align: center; }
+.take { font: inherit; font-weight: 600; padding: 9px 14px; border-radius: 10px; border: 0; background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+.take:disabled { opacity: .6; }
+.hint { font-size: .85rem; margin: 6px 0 0; }
 .pline select { padding: 5px 8px; font-size: .88rem; }
 .pline .speaker, .pline .ltext { font: inherit; width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
 .pline .speaker { font-weight: 700; }

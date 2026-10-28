@@ -36,7 +36,7 @@
     <section class="side-col">
       <details class="card group" open>
         <summary>Who says what</summary>
-        <p class="muted">Watch whose mouth moves in “Who’s talking?”, then type a name. Names you’ve typed are suggested.</p>
+        <p class="muted">Watch whose mouth moves in “Who’s talking?”, then type a name. Names you’ve typed are suggested. ‹ and › move a line to the panel before or after.</p>
         <ol id="lines" class="plines"></ol>
         <label class="check"><input type="checkbox" id="names" checked> Show speaker names</label>
         <datalist id="speakers"></datalist>
@@ -44,6 +44,16 @@
 
       <details class="card group" open>
         <summary>Layout</summary>
+        <div class="ctl">
+          <span class="lbl">Number of panels</span>
+          <div class="count-row">
+            <button type="button" class="step" id="countDown" aria-label="One panel fewer">−</button>
+            <input type="number" id="panelCount" min="1" max="24" step="1" inputmode="numeric" aria-label="Number of panels">
+            <button type="button" class="step" id="countUp" aria-label="One panel more">+</button>
+            <button type="button" class="take" id="retake" hidden>Take new frames</button>
+          </div>
+          <p class="muted hint" id="countHint" hidden>New frames come from the same scene (a few seconds). The names you’ve typed are kept; check which panel each line lands on.</p>
+        </div>
         <div class="ctl">
           <span class="lbl">Shape of each panel</span>
           <select id="ratio">
