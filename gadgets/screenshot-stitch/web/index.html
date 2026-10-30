@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Screenshot Stitch</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<!-- the gadgets' shared look (served by the registry); app.css adds this gadget's own bits -->
+<link rel="stylesheet" href="/_gadgets/ui.css">
+<link rel="stylesheet" href="app.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<main class="page wide">
+  <header class="brand">
+    <img src="icon.svg" alt="">
+    <div>
+      <h1>Screenshot Stitch</h1>
+      <p class="muted">Screenshots taken as you scroll, joined into one long image with the text lined up. Nothing leaves your device.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <section class="card controls">
+      <div id="drop" class="drop" tabindex="0">
+        <p><b>Add screenshots, top to bottom.</b> Drop them here, paste them (<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>V</kbd>) or</p>
+        <div class="row">
+          <label class="btn primary" for="pick">Choose screenshots</label>
+          <button class="btn" id="pasteBtn" type="button" hidden>Paste</button>
+        </div>
+        <input type="file" id="pick" accept="image/*" multiple hidden>
+      </div>
+      <ol id="list" class="list" aria-label="Screenshots in order"></ol>
+      <p class="muted hint" id="listHint" hidden>Each one should share a few lines with the one before. Drag to reorder, or use the arrows.</p>
+
+      <fieldset>
+        <legend>Bars</legend>
+        <p class="muted hint">Bars that stay put while you scroll (status bar, title, tabs, typing box) are found automatically and appear once.</p>
+        <label class="check"><input type="checkbox" id="keepTop" checked> Keep the top bar</label>
+        <label class="check"><input type="checkbox" id="keepBottom" checked> Keep the bottom bar</label>
+        <label class="check"><input type="checkbox" id="showJoins"> Mark the joins in the preview</label>
+      </fieldset>
+
+      <fieldset>
+        <legend>File</legend>
+        <label class="inline">Width
+          <select id="size">
+            <option value="full">As taken</option>
+            <option value="1080">1080 px</option>
+            <option value="720">720 px</option>
+          </select>
+        </label>
+        <label class="inline">Save as
+          <select id="format"><option value="png">PNG</option><option value="jpeg">JPEG</option></select>
+        </label>
+        <label class="inline" id="qualityRow" hidden>Quality <input type="range" id="quality" min="40" max="100" value="90"> <output id="qualityOut">90%</output></label>
+        <div id="tallRow" hidden>
+          <p class="muted hint" id="tallText"></p>
+          <div class="seg two" role="radiogroup" aria-label="When it's too tall">
+            <label><input type="radio" name="fit" value="split" checked><span>Split into parts</span></label>
+            <label><input type="radio" name="fit" value="shrink"><span>One smaller image</span></label>
+          </div>
+        </div>
+      </fieldset>
+    </section>
+
+    <section class="card preview">
+      <div class="preview-head">
+        <span id="dims" class="muted">Add screenshots to start</span>
+        <span class="spacer"></span>
+        <button class="btn" id="copyBtn" type="button" hidden>Copy</button>
+        <button class="btn" id="shareBtn" type="button" hidden>Save to Photos…</button>
+        <button class="btn primary" id="saveBtn" type="button" disabled>Download</button>
+      </div>
+      <p class="note" id="note" role="status" hidden></p>
+      <div class="canvas-wrap" id="wrap">
+        <canvas id="canvas" aria-label="Preview of the long image"></canvas>
+        <div class="empty" id="empty">Your long screenshot appears here.</div>
+      </div>
+    </section>
+  </div>
+</main>
+</body>
+</html>

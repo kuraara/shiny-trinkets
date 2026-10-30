@@ -1,0 +1,11 @@
+# Screenshot Stitch (tools/trinket deploy screenshot-stitch). Reached through the gadget registry on port 8105.
+services:
+  screenshot-stitch:
+    image: screenshot-stitch:latest
+    build: .
+    container_name: screenshot-stitch
+    restart: unless-stopped
+    networks: [gadgets]
+networks:
+  gadgets:
+    external: true

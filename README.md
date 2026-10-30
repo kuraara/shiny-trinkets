@@ -11,6 +11,7 @@ Raspberry Pi.
 | [Video Tools](gadgets/video-tools) | Panel transcripts (stills with the dialogue as subtitles), joining clips with fades, cutting clips; speech recognition and speaker hints. Web UI, JSON API and MCP. |
 | [Photo Drop](gadgets/photo-drop) | A live party photo wall: guests scan a QR code and send photos, you approve them, they land on the TV like prints thrown on a desk. |
 | [Photo Stitch](gadgets/photo-stitch) | Put photos together in a column, row or grid with borders, gaps and an exact size, entirely in the browser. |
+| [Screenshot Stitch](gadgets/screenshot-stitch) | Join screenshots taken while scrolling into one long image: finds where each carries on from the last, lines the text up and keeps the status bar and typing box once. In the browser. |
 | [AirPrint to PDF](gadgets/air-pdf-printer) | A printer called "PDF" for iPhones and Macs; whatever you print is saved as a PDF. |
 
 Plus the [registry](registry) (home page, proxy, navbar) and the [build box](infra/buildbox)

@@ -1,0 +1,39 @@
+{
+  "$schema": "../../docs/gadget.schema.json",
+  "id": "screenshot-stitch",
+  "name": "Screenshot Stitch",
+  "kind": "gadget",
+  "host": "pc",
+  "desc": "Join screenshots taken as you scroll into one long image, lined up on the text.",
+  "about": "For a long chat, article or receipt that doesn’t fit on one screen: take screenshots as you scroll, add them in order, and it finds where each one carries on from the last, lines the text up and keeps the status bar and typing box only once. Everything happens in your browser; nothing is uploaded.",
+  "icon": "web/icon.svg",
+  "iconSpec": {
+    "top": "#c084fc",
+    "bottom": "#7e22ce",
+    "glyph": "<rect x=\"13\" y=\"8\" width=\"24\" height=\"32\" rx=\"4\" {S}/><rect x=\"27\" y=\"24\" width=\"24\" height=\"32\" rx=\"4\" {S}/><path d=\"M18 16h14M18 22h9M32 33h14M32 39h10M32 45h12\" {S} stroke-width=\"3\"/>"
+  },
+  "proxy": {
+    "port": 8105,
+    "upstream": "http://screenshot-stitch:80"
+  },
+  "intents": [
+    {
+      "phrase": "…turn a long chat or page into one screenshot",
+      "group": "photos",
+      "desc": "Screenshots taken while scrolling, joined into one tall image with the text lined up."
+    }
+  ],
+  "deploy": {
+    "stacks": [
+      {
+        "name": "screenshot-stitch",
+        "host": "pc",
+        "compose": "docker-compose.yml",
+        "build": {
+          "image": "screenshot-stitch:latest",
+          "context": "."
+        }
+      }
+    ]
+  }
+}

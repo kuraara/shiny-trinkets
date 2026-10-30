@@ -1,0 +1,75 @@
+/* Screenshot Stitch's own styles. The shared look comes from /_gadgets/ui.css (tokens like var(--accent),
+   .card, .btn, .seg); the fallbacks here keep the page usable if it's opened directly, not through
+   the registry. */
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg, #f3f4f7); color: var(--ink, #1b1d22); }
+[hidden] { display: none !important; }
+.page.wide { max-width: 1280px; margin: 0 auto; padding: 20px 16px 48px; }
+.brand { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; }
+.brand img { width: 52px; height: 52px; border-radius: 12px; }
+.brand h1 { margin: 0 0 2px; }
+.brand p { margin: 0; }
+
+.layout { display: grid; gap: 16px; align-items: start; }
+@media (min-width: 900px) { .layout { grid-template-columns: 380px 1fr; } .preview { position: sticky; top: calc(var(--gadget-nav-h, 0px) + 12px); } }
+.card { background: var(--card, #fff); border: 1px solid var(--line, #e1e4ea); border-radius: var(--radius, 14px); padding: 16px; }
+
+.drop { border: 2px dashed var(--line, #ccd); border-radius: 12px; padding: 14px; text-align: center; }
+.drop p { margin: 0 0 10px; }
+.drop.over { border-color: var(--accent, #2563eb); background: color-mix(in srgb, var(--accent, #2563eb) 8%, transparent); }
+.drop .row { justify-content: center; }
+kbd { font: inherit; font-size: .85em; padding: 0 4px; border: 1px solid var(--line, #ccd); border-radius: 4px; }
+
+.list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.list li { display: grid; grid-template-columns: 22px 46px 1fr auto; gap: 8px; align-items: center; padding: 8px;
+  border: 1px solid var(--line, #e1e4ea); border-radius: 10px; background: var(--card, #fff); }
+.list li.dragging { opacity: .5; }
+.list .num { font-weight: 700; color: var(--muted, #5a6170); text-align: center; }
+.list .thumb { width: 46px; height: 64px; object-fit: cover; object-position: top; border-radius: 6px; border: 1px solid var(--line, #e1e4ea); }
+.list .meta { min-width: 0; }
+.list .meta b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .92rem; }
+.list .meta small { color: var(--muted, #5a6170); }
+.list .tools { display: flex; gap: 4px; }
+.list .tools button { font: inherit; min-width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line, #e1e4ea);
+  background: var(--card, #fff); color: var(--ink, #1b1d22); cursor: pointer; }
+.list .tools button:disabled { opacity: .35; cursor: default; }
+.join { grid-column: 2 / -1; font-size: .86rem; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.join .ok { color: var(--good, #15803d); font-weight: 600; }
+.join .bad { color: var(--bad, #b91c1c); font-weight: 600; }
+.join .hand { color: var(--muted, #5a6170); font-weight: 600; }
+.adjust { display: flex; gap: 4px; align-items: center; }
+.adjust input { width: 76px; font: inherit; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line, #e1e4ea);
+  background: var(--card, #fff); color: var(--ink, #1b1d22); text-align: center; }
+.adjust button, .linkish { font: inherit; font-size: .86rem; min-width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line, #e1e4ea);
+  background: var(--card, #fff); color: var(--ink, #1b1d22); cursor: pointer; }
+.linkish { border: 0; background: none; color: var(--accent, #2563eb); text-decoration: underline; padding: 0 2px; min-width: 0; }
+
+fieldset { border: 0; border-top: 1px solid var(--line, #e1e4ea); margin: 16px 0 0; padding: 12px 0 0; }
+legend { font-weight: 700; padding: 0 6px 0 0; }
+.hint { font-size: .86rem; margin: 4px 0 8px; }
+.check, .inline { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+.check input { width: 18px; height: 18px; }
+.inline select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line, #e1e4ea); background: var(--card, #fff); color: var(--ink, #1b1d22); }
+.inline input[type=range] { flex: 1; }
+
+.preview-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.preview-head .spacer { flex: 1; }
+.note { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; background: var(--chip, #eceff4); font-size: .9rem; }
+.canvas-wrap { position: relative; min-height: 220px; max-height: calc(100vh - var(--gadget-nav-h, 0px) - 140px); overflow: auto;
+  border-radius: 10px; background: repeating-conic-gradient(var(--chip, #eceff4) 0 25%, transparent 0 50%) 0 0 / 16px 16px; }
+@media (max-width: 899px) { .canvas-wrap { max-height: 70vh; } }
+#canvas { display: block; margin: 0 auto; }
+.empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted, #5a6170); }
+
+/* Buttons, in case the shared stylesheet isn't there (the gadget opened on its own) */
+.btn { font: inherit; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px;
+  padding: 0 16px; border-radius: 10px; border: 1px solid var(--line, #e1e4ea); background: var(--card, #fff); color: var(--ink, #1b1d22);
+  text-decoration: none; cursor: pointer; }
+.btn.primary { background: var(--accent, #2563eb); color: var(--accent-ink, #fff); border-color: transparent; }
+.btn:disabled { opacity: .55; cursor: default; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--chip, #eceff4); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span { display: block; text-align: center; padding: 8px 6px; border-radius: 8px; font-weight: 600; font-size: .9rem; }
+.seg input:checked + span { background: var(--card, #fff); box-shadow: 0 1px 3px rgba(0, 0, 0, .15); }
+.muted { color: var(--muted, #5a6170); }
