@@ -98,6 +98,14 @@ test('the top and bottom bars can be left off altogether', () => {
   assert.equal(bare.segments[0].y0, bare.joins[0].hdr);
 });
 
+test('bars marked by hand are used as given', () => {
+  const plan = planStitch(feats, { bars: { top: 80, bottom: 70 } });
+  assert.ok(plan.joins.every((j) => j.ok && j.hdr === 80 && j.ftr === 70), JSON.stringify(plan.joins));
+  assert.equal(plan.height, 80 + tops[2] + VIEW + 70);
+  const silly = planStitch(feats, { bars: { top: 5000, bottom: -3 } }); // kept to something sensible
+  assert.ok(silly.joins.every((j) => j.hdr <= 0.45 * 910 && j.ftr === 0));
+});
+
 test('splitting a tall image cuts between lines', () => {
   const tex = (r) => ((r % 30) < 14 ? 50 : 1); // text rows every 30, gaps between
   const cuts = splitRows(1000, 300, tex);

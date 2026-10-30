@@ -35,7 +35,21 @@
 
       <fieldset>
         <legend>Bars</legend>
-        <p class="muted hint">Bars that stay put while you scroll (status bar, title, tabs, typing box) are found automatically and appear once.</p>
+        <p class="muted hint">Bars that stay put while you scroll (status bar, title, tabs, search or typing box) appear once: the top one from the first screenshot, the bottom one from the last.</p>
+        <div class="seg two" role="radiogroup" aria-label="How to find the bars">
+          <label><input type="radio" name="bars" value="auto" checked><span>Find them</span></label>
+          <label><input type="radio" name="bars" value="mark"><span>Mark them</span></label>
+        </div>
+        <p class="muted hint" id="barsFound" hidden></p>
+        <div id="marker" class="marker" hidden>
+          <p class="muted hint">Drag the lines (or tap) to where the top bar ends and the bottom bar starts. The shaded parts are cut from the screenshots in between. Needed when content shows through the bars.</p>
+          <label class="inline" id="markShotRow">Show <select id="markShot" aria-label="Screenshot to mark on"></select></label>
+          <canvas id="markCanvas" aria-label="A screenshot with the top and bottom bars marked"></canvas>
+          <div class="mark-vals">
+            <div class="inline">Top bar <span class="adjust"><button type="button" id="topDown" aria-label="Top bar one pixel shorter">−</button><input type="number" id="topPx" min="0" step="1" inputmode="numeric" aria-label="Top bar height in pixels"><button type="button" id="topUp" aria-label="Top bar one pixel taller">+</button></span> px</div>
+            <div class="inline">Bottom bar <span class="adjust"><button type="button" id="bottomDown" aria-label="Bottom bar one pixel shorter">−</button><input type="number" id="bottomPx" min="0" step="1" inputmode="numeric" aria-label="Bottom bar height in pixels"><button type="button" id="bottomUp" aria-label="Bottom bar one pixel taller">+</button></span> px</div>
+          </div>
+        </div>
         <label class="check"><input type="checkbox" id="keepTop" checked> Keep the top bar</label>
         <label class="check"><input type="checkbox" id="keepBottom" checked> Keep the bottom bar</label>
         <label class="check"><input type="checkbox" id="showJoins"> Mark the joins in the preview</label>

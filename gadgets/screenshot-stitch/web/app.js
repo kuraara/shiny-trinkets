@@ -13,6 +13,8 @@ const items = []; // {id, name, img, w, h, url, feat, featW, li, joinEl}
 let nextId = 1;
 let plan = null;  // from planStitch, plus W0 (the common width) and feats
 const overrides = new Map(); // "idA>idB" -> overlap in rows, set by hand
+let bars = null;   // {top, bottom} marked by hand, in the common width's rows (kept when switching back)
+const marking = () => document.querySelector('input[name=bars]:checked').value === 'mark';
 const pairKey = (a, b) => `${a.id}>${b.id}`;
 
 function note(msg) { $('#note').textContent = msg; $('#note').hidden = !msg; }
@@ -201,9 +203,107 @@ async function replan() {
     const k = pairKey(items[i - 1], items[i]);
     if (overrides.has(k)) ov[i - 1] = overrides.get(k);
   }
-  plan = { ...planStitch(feats, { keepTop: $('#keepTop').checked, keepBottom: $('#keepBottom').checked, overrides: ov }), W0, feats };
+  plan = { ...planStitch(feats, { keepTop: $('#keepTop').checked, keepBottom: $('#keepBottom').checked, overrides: ov,
+    bars: marking() && bars ? bars : null }), W0, feats };
   showJoins();
+  showBars();
   draw();
+}
+
+// ---------------------------------------------------------------- the bars, found or marked
+
+function showBars() {
+  const j = plan && plan.joins[0];
+  const found = $('#barsFound');
+  found.hidden = marking() || !j;
+  if (j && !marking()) found.textContent = `Found a ${j.hdr} px top bar and a ${j.ftr} px bottom bar. If that’s wrong (some of the bars show through, or the text doubles up at a join), mark them.`;
+  $('#marker').hidden = !marking() || !items.length;
+  if (marking() && items.length) {
+    const sel = $('#markShot'), keep = sel.value;
+    sel.replaceChildren(...items.map((it, i) => Object.assign(document.createElement('option'), { value: i, textContent: `Screenshot ${i + 1}` })));
+    sel.value = keep && keep < items.length ? keep : '0';
+    $('#markShotRow').hidden = items.length < 2;
+    $('#topPx').value = bars.top;
+    $('#bottomPx').value = bars.bottom;
+    drawMarker();
+  }
+}
+
+// The chosen screenshot with the bars shaded and a line (and handle) at each edge.
+const mc = $('#markCanvas');
+function shotHeight(it) { return Math.round((it.h * plan.W0) / it.w); }
+function drawMarker() {
+  if (!plan || !marking()) return;
+  const it = items[parseInt($('#markShot').value, 10) || 0];
+  if (!it) return;
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  const cssW = Math.max(160, mc.parentElement.clientWidth);
+  const Hn = shotHeight(it), k = (cssW * dpr) / plan.W0;
+  mc.width = Math.round(cssW * dpr);
+  mc.height = Math.round(Hn * k);
+  const ctx = mc.getContext('2d');
+  ctx.drawImage(it.img, 0, 0, mc.width, mc.height);
+  const top = bars.top * k, bot = mc.height - bars.bottom * k;
+  ctx.fillStyle = 'rgba(255, 47, 208, .28)';
+  ctx.fillRect(0, 0, mc.width, top);
+  ctx.fillRect(0, bot, mc.width, mc.height - bot);
+  ctx.font = `700 ${Math.round(13 * dpr)}px system-ui, sans-serif`;
+  for (const [y, label, below] of [[top, 'Top bar ends', true], [bot, 'Bottom bar starts', false]]) {
+    ctx.fillStyle = '#ff2fd0';
+    ctx.fillRect(0, Math.round(y - dpr), mc.width, Math.max(2, 2 * dpr));
+    ctx.beginPath(); ctx.arc(mc.width - 22 * dpr, y, 11 * dpr, 0, Math.PI * 2); ctx.fill();
+    const tw = ctx.measureText(label).width;
+    ctx.fillRect(6 * dpr, below ? y + 4 * dpr : y - 24 * dpr, tw + 12 * dpr, 20 * dpr);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(label, 12 * dpr, below ? y + 19 * dpr : y - 9 * dpr);
+  }
+}
+
+function setBars(top, bottom, now = true) {
+  const it = items[parseInt($('#markShot').value, 10) || 0];
+  const most = it ? Math.floor(shotHeight(it) * 0.45) : 10_000;
+  bars = { top: Math.max(0, Math.min(most, Math.round(top))), bottom: Math.max(0, Math.min(most, Math.round(bottom))) };
+  $('#topPx').value = bars.top;
+  $('#bottomPx').value = bars.bottom;
+  drawMarker();
+  if (now) replan();
+}
+
+// drag a line, or tap and the nearer line jumps there
+let dragging = null;
+const rowAt = (e) => {
+  const r = mc.getBoundingClientRect(), it = items[parseInt($('#markShot').value, 10) || 0];
+  return { y: ((e.clientY - r.top) / r.height) * shotHeight(it), H: shotHeight(it) };
+};
+mc.addEventListener('pointerdown', (e) => {
+  if (!plan) return;
+  const { y, H } = rowAt(e);
+  dragging = Math.abs(y - bars.top) <= Math.abs(y - (H - bars.bottom)) ? 'top' : 'bottom';
+  mc.setPointerCapture(e.pointerId);
+  e.preventDefault();
+  moveTo(e);
+});
+function moveTo(e) {
+  const { y, H } = rowAt(e);
+  if (dragging === 'top') setBars(y, bars.bottom, false); else setBars(bars.top, H - y, false);
+}
+mc.addEventListener('pointermove', (e) => { if (dragging) moveTo(e); });
+for (const t of ['pointerup', 'pointercancel']) mc.addEventListener(t, () => { if (dragging) { dragging = null; replan(); } });
+$('#markShot').addEventListener('change', drawMarker);
+$('#topPx').addEventListener('change', () => setBars(parseFloat($('#topPx').value) || 0, bars.bottom));
+$('#bottomPx').addEventListener('change', () => setBars(bars.top, parseFloat($('#bottomPx').value) || 0));
+$('#topDown').addEventListener('click', () => setBars(bars.top - 1, bars.bottom));
+$('#topUp').addEventListener('click', () => setBars(bars.top + 1, bars.bottom));
+$('#bottomDown').addEventListener('click', () => setBars(bars.top, bars.bottom - 1));
+$('#bottomUp').addEventListener('click', () => setBars(bars.top, bars.bottom + 1));
+for (const r of document.querySelectorAll('input[name=bars]')) {
+  r.addEventListener('change', () => {
+    if (marking() && !bars) { // start from what was found
+      const j = plan && plan.joins[0];
+      bars = { top: j ? j.hdr : 0, bottom: j ? j.ftr : 0 };
+    }
+    replan();
+  });
 }
 
 // ---------------------------------------------------------------- drawing
@@ -365,8 +465,8 @@ for (const id of ['#showJoins', '#size', '#format']) $(id).addEventListener('cha
 for (const r of document.querySelectorAll('input[name=fit]')) r.addEventListener('change', draw);
 $('#quality').addEventListener('input', () => { $('#qualityOut').textContent = `${$('#quality').value}%`; });
 let rz = 0;
-addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => plan && draw()); });
+addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { if (plan) { draw(); drawMarker(); } }); });
 draw();
 
 // for automated checks
-window.__stitch = { addFiles, get plan() { return plan; }, output: () => plan && output(), files };
+window.__stitch = { addFiles, get plan() { return plan; }, get bars() { return bars; }, output: () => plan && output(), files };

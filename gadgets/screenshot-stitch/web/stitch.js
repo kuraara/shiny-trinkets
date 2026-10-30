@@ -98,8 +98,9 @@ function texturedBand(F, band, fromBottom) {
 // findOverlap looks for where B continues A: the shift s for which B's rows (below the top bar)
 // repeat A's rows s further down. Coarse pass over every shift, then the best few are checked
 // row by row over the whole overlap.
-export function findOverlap(A, B, hdr = 0, ftr = 0) {
-  const aEnd = A.height - texturedBand(A, ftr, true), bEnd = B.height - ftr;
+// exact: the bars were marked by hand, so the bottom one is used as given.
+export function findOverlap(A, B, hdr = 0, ftr = 0, exact = false) {
+  const aEnd = A.height - (exact ? ftr : texturedBand(A, ftr, true)), bEnd = B.height - ftr;
   const LA = aEnd - hdr, LB = bEnd - hdr;
   if (LA < 40 || LB < 40) return { ok: false, score: Infinity };
   // a few rows of margin next to the bars (anti-aliased edges, a shadow). Kept small: people often
@@ -148,23 +149,26 @@ function cut(A, B, s, y0, y1) {
 
 // planStitch works out which rows of each screenshot make the long image. The bars that stay put
 // (status bar, title, typing box) are left out of the matching and appear once: keepTop keeps the
-// first screenshot's top bar, keepBottom the last one's bottom bar. overrides[i] sets the overlap
-// (rows) of join i (screenshot i and i + 1) by hand. Rows are in the common width's scale.
-export function planStitch(feats, { keepTop = true, keepBottom = true, overrides = {} } = {}) {
+// first screenshot's top bar, keepBottom the last one's bottom bar. bars = {top, bottom} marks
+// them by hand (rows from the top and from the bottom of every screenshot) instead of finding
+// them: needed when content shows through them (iOS 26's see-through bars). overrides[i] sets the
+// overlap (rows) of join i (screenshot i and i + 1) by hand. Rows are in the common width's scale.
+export function planStitch(feats, { keepTop = true, keepBottom = true, overrides = {}, bars = null } = {}) {
   const n = feats.length;
   const starts = new Array(n).fill(0), ends = feats.map((F) => F.height);
   const joins = [];
   for (let i = 0; i + 1 < n; i++) {
     const A = feats[i], B = feats[i + 1];
-    const hdr = fixedBand(A, B, false);
-    const ftr = fixedBand(A, B, true);
+    const most = Math.floor(Math.min(A.height, B.height) * 0.45);
+    const hdr = bars ? Math.max(0, Math.min(most, Math.round(bars.top))) : fixedBand(A, B, false);
+    const ftr = bars ? Math.max(0, Math.min(most, Math.round(bars.bottom))) : fixedBand(A, B, true);
     const LA = A.height - ftr - hdr;
     let m;
     if (overrides[i] != null) {
       const ov = Math.max(0, Math.min(LA - 1, Math.round(overrides[i])));
       m = { ok: ov > 0, manual: true, score: null, shift: LA - ov };
     } else {
-      m = findOverlap(A, B, hdr, ftr);
+      m = findOverlap(A, B, hdr, ftr, !!bars);
     }
     const j = { hdr, ftr, ok: m.ok, manual: !!m.manual, score: m.score, overlap: 0 };
     if (m.ok) {
