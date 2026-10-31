@@ -67,19 +67,6 @@
       }
     },
     {
-      "id": "jellyfin",
-      "name": "Jellyfin",
-      "kind": "service",
-      "host": "pi",
-      "desc": "Media server (usually stopped).",
-      "url": "http://{pi}:8096/",
-      "iconSpec": {
-        "top": "#818cf8",
-        "bottom": "#4338ca",
-        "glyph": "<path d=\"M32 14L50 46H14z\" {S}/><path d=\"M32 29l6.5 11h-13z\" {F}/>"
-      }
-    },
-    {
       "id": "sabnzbd",
       "name": "SABnzbd",
       "kind": "service",

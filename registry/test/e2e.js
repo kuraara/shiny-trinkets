@@ -32,7 +32,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await sleep(1500);
   await page.screenshot({ path: `${OUT}/r4-phone-home.png` });
   // offline page: port with no app behind it is not configured; check status endpoint for a down app
-  out.jellyfinStatus = await page.evaluate(async () => (await fetch('/_gadgets/status/jellyfin')).status);
+  out.rommStatus = await page.evaluate(async () => (await fetch('/_gadgets/status/romm')).status); // RomM is usually stopped
   console.log(JSON.stringify({ out, errors }, null, 1));
   await browser.close();
 })().catch((e) => { console.error('FAILED', e); console.log(JSON.stringify({ errors })); process.exit(1); });
