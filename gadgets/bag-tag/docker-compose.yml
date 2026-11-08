@@ -1,0 +1,12 @@
+# Bag Tag (tools/trinket deploy bag-tag). Reached through the gadget registry on port 8106.
+services:
+  bag-tag:
+    image: bag-tag:latest
+    build: .
+    container_name: bag-tag
+    restart: unless-stopped
+    mem_limit: 256m
+    networks: [gadgets]
+networks:
+  gadgets:
+    external: true

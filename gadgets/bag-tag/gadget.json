@@ -1,0 +1,31 @@
+{
+  "$schema": "../../docs/gadget.schema.json",
+  "id": "bag-tag",
+  "name": "Bag Tag",
+  "kind": "gadget",
+  "host": "pc",
+  "desc": "Type a name, pick a font: get a two-colour bag tag ready to 3D print.",
+  "about": "Makes the flower-and-name school-bag tag for any name and font: a base and an inlay printed separately in two colours and pressed together, so no multi-material printer is needed. Shows a to-scale preview next to an AAA battery, then gives you the STLs.",
+  "icon": "web/icon.svg",
+  "iconSpec": {
+    "top": "#facc15",
+    "bottom": "#ca8a04",
+    "glyph": "<path d=\"M23 22l9-10 9 10v28a4 4 0 0 1-4 4H27a4 4 0 0 1-4-4z\" {S}/><circle cx=\"32\" cy=\"20\" r=\"2.6\" {F}/><circle cx=\"32.0\" cy=\"43.6\" r=\"3.1\" {F}/><circle cx=\"27.6\" cy=\"40.4\" r=\"3.1\" {F}/><circle cx=\"29.3\" cy=\"35.3\" r=\"3.1\" {F}/><circle cx=\"34.7\" cy=\"35.3\" r=\"3.1\" {F}/><circle cx=\"36.4\" cy=\"40.4\" r=\"3.1\" {F}/>"
+  },
+  "proxy": { "port": 8106, "upstream": "http://bag-tag:8080" },
+  "mcp": {
+    "url": "http://{pc}:8106/mcp",
+    "tools": "list_fonts, preview_bag_tag, make_bag_tag"
+  },
+  "intents": [
+    { "phrase": "…make a name tag for a school bag",
+      "desc": "Type the name and pick a font. You get the files for a two-colour tag (yellow base, white letters) to print on the Prusa.",
+      "group": "making" }
+  ],
+  "deploy": {
+    "stacks": [
+      { "name": "bag-tag", "host": "pc", "compose": "docker-compose.yml",
+        "build": { "image": "bag-tag:latest", "context": "." } }
+    ]
+  }
+}
