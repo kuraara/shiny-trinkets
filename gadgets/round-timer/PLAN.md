@@ -1,6 +1,7 @@
 # Round Timer: plan for a server-side version
 
-**Status: planned.** The app exists today as one self-contained page,
+**Status: phase 1 done** (9 Nov 2026): served unchanged on the Pi at `http://<pi>:8107` for now, over
+plain HTTP; it moves behind the registry's HTTPS when the PC is back. The app exists today as one self-contained page,
 [round-timer.html](round-timer.html), and it works on its own. This plan is about hosting it
 here as a gadget without losing that. The request is in [REQUESTS.md](REQUESTS.md), word for
 word; this page only arranges it. Language and framework are deliberately left open.
@@ -41,7 +42,7 @@ Each phase leaves a working app. Follow [../../docs/ADDING-A-GADGET.md](../../do
 and the rules in [../../CLAUDE.md](../../CLAUDE.md): build on the build box, test at 390 px and
 1280 px, no addresses in the repo.
 
-### 1. Serve the artifact unchanged
+### 1. Serve the artifact unchanged  [done]
 
 - Scaffold the gadget (`tools/trinket new round-timer`); the template choice is open.
 - Serve `round-timer.html` as the page, byte for byte. Add `/healthz`.

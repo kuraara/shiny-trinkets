@@ -1,0 +1,12 @@
+# Round Timer (tools/trinket deploy round-timer). For now on the Pi, on its own port over plain
+# HTTP, because the gadget registry (HTTPS) is on the PC. Moving behind the registry is a manifest
+# change: host pc, a "proxy" block instead of "url", and the gadgets network here.
+services:
+  round-timer:
+    image: round-timer:latest
+    build: .
+    container_name: round-timer
+    restart: unless-stopped
+    ports:
+      - "8107:80"
+    mem_limit: 32m

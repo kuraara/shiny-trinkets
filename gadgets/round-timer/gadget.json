@@ -1,0 +1,26 @@
+{
+  "$schema": "../../docs/gadget.schema.json",
+  "id": "round-timer",
+  "name": "Round Timer",
+  "kind": "gadget",
+  "host": "pi",
+  "desc": "Heavy-bag round timer: warm-up, rounds and breaks, with a combo for each round.",
+  "about": "Set a warm-up, the number of rounds and the round and break lengths in 15-second steps. The clock fills the screen and turns green for a round, orange with 30 seconds left and red at 10. Each round gets a heavy-bag combo, shown during the break before it, and a stats page follows the session.",
+  "icon": "web/icon.svg",
+  "iconSpec": {
+    "top": "#34b36b",
+    "bottom": "#1d7a45",
+    "glyph": "<circle cx=\"32\" cy=\"35\" r=\"16\" {S}/><path d=\"M32 35V25M28 13h8M32 13v6M45 22l3-3\" {S}/>"
+  },
+  "url": "http://{pi}:8107/",
+  "intents": [
+    { "phrase": "…time a heavy-bag session", "desc": "Rounds, breaks and a combo for each round, with the clock filling the screen.", "group": "training" },
+    { "phrase": "…get a combo to work on each round", "desc": "A bank of 35 heavy-bag combos, one per round, with the ones that hurt left out.", "group": "training" }
+  ],
+  "deploy": {
+    "stacks": [
+      { "name": "round-timer", "host": "pi", "compose": "docker-compose.yml",
+        "build": { "image": "round-timer:latest", "context": "." } }
+    ]
+  }
+}
