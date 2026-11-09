@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Round Timer</title>
+<style>
+  :root{
+    --ink:#14261e;
+    --rest-bg:#f5f6f2;
+    --work-bg:#2f9e5b;
+    --warn-bg:#ff8c2b;
+    --danger-bg:#e5352b;
+    --panel:#121212;
+    --panel-2:#1c1c1c;
+    --amber:#f5a623;
+    --line:#2c2c2c;
+    --muted:#8a8a8a;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    height:100%; margin:0; padding:0;
+    background:var(--panel);
+    color:#fff;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    overflow:hidden;
+    -webkit-user-select:none; user-select:none;
+  }
+  #app{ height:100vh; height:100dvh; width:100vw; position:relative; }
+  .screen{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    opacity:1; transition:opacity .2s ease;
+  }
+  .hidden{ opacity:0; pointer-events:none; }
+
+  /* ---------- SETUP SCREEN ---------- */
+  #setup{
+    background:var(--panel);
+    padding: max(20px, env(safe-area-inset-top)) 20px max(16px, env(safe-area-inset-bottom));
+    min-height:0;
+  }
+  #setupScroll{ flex:1 1 auto; min-height:0; overflow-y:scroll; -webkit-overflow-scrolling:touch; }
+  .brand{ display:flex; align-items:baseline; gap:10px; margin-bottom:22px; }
+  .brand .dot{ width:10px; height:10px; border-radius:50%; background:var(--amber); }
+  .brand h1{ font-size:22px; letter-spacing:2px; margin:0; font-weight:800; text-transform:uppercase; }
+  .brand span{ color:var(--muted); font-size:13px; letter-spacing:1px; }
+
+  .row{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:16px 16px;
+    margin-bottom:12px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .row .label{ display:flex; flex-direction:column; gap:2px; }
+  .row .label b{ font-size:15px; letter-spacing:.5px; text-transform:uppercase; }
+  .row .label small{ color:var(--muted); font-size:12px; }
+  .stepper{ display:flex; align-items:center; gap:14px; }
+  .stepper .val{ min-width:64px; text-align:center; font-variant-numeric: tabular-nums; font-size:20px; font-weight:700; }
+  .stepbtn{
+    width:38px; height:38px; border-radius:50%;
+    border:1px solid var(--line); background:#252525; color:#fff;
+    font-size:20px; font-weight:700; line-height:1;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .stepbtn:active{ background:#333; transform:scale(.94); }
+  .stepbtn.amber{ border-color:var(--amber); color:var(--amber); }
+
+  .summary{ text-align:center; color:var(--muted); font-size:13px; margin: 10px 0 20px; letter-spacing:.5px; }
+  .summary b{ color:#fff; }
+
+  .avoidSection{ margin-bottom:18px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{
+    border:1px solid var(--line); background:var(--panel-2); color:#ddd;
+    padding:9px 14px; border-radius:999px;
+    font-size:13px; font-weight:700; letter-spacing:.3px; cursor:pointer;
+  }
+  .chip:active{ transform:scale(.95); }
+  .chip.on{ background:var(--amber); border-color:var(--amber); color:#1a1200; }
+  .comboSection{ margin-bottom:12px; }
+  .comboHeader{
+    display:flex; flex-direction:column; gap:2px;
+    margin: 4px 0 10px; padding:0 2px;
+  }
+  .comboHeader b{ font-size:13px; letter-spacing:1.5px; text-transform:uppercase; }
+  .comboHeader span{ color:var(--muted); font-size:11.5px; }
+  .comboList{ display:flex; flex-direction:column; gap:8px; }
+  .comboRow{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:14px;
+    padding:10px 10px 10px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .comboRowMain{ display:flex; align-items:center; gap:12px; min-width:0; flex:1; }
+  .comboRoundLabel{ font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--muted); flex-shrink:0; width:52px; }
+  .comboIcons{ display:flex; gap:4px; flex-shrink:0; }
+  .comboName{ font-size:13px; font-weight:600; letter-spacing:.2px; color:#eee; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cycleBtn{
+    flex-shrink:0; width:32px; height:32px; border-radius:50%;
+    border:1px solid var(--amber); color:var(--amber); background:transparent;
+    font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .cycleBtn:active{ background:rgba(245,166,35,.15); transform:scale(.92); }
+
+  #startBtn{
+    flex-shrink:0; margin-top:8px;
+    width:100%; padding:18px; border:none; border-radius:16px;
+    background:var(--amber); color:#1a1200;
+    font-size:17px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;
+  }
+  #startBtn:active{ transform:scale(.98); }
+
+  /* ---------- Punch silhouette icons ---------- */
+  .picon-wrap{ display:flex; flex-direction:column; align-items:center; gap:1px; }
+  .picon-wrap svg{ display:block; fill:currentColor; }
+  .picon-wrap.sm{ width:20px; }
+  .picon-wrap.sm svg{ width:20px; height:30px; }
+  .picon-wrap.sm .pnum{ font-size:8px; }
+  .picon-wrap.lg{ width:40px; }
+  .picon-wrap.lg svg{ width:40px; height:60px; }
+  .picon-wrap.lg .pnum{ font-size:11px; }
+  .pnum{ font-weight:800; opacity:.55; letter-spacing:.5px; }
+
+  /* ---------- TIMER SCREEN ---------- */
+  #timer{
+    background:var(--rest-bg); color:var(--ink);
+    align-items:center; justify-content:center;
+    transition:background-color .35s ease, color .35s ease;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  #timer.work{ background:var(--work-bg); color:#fff; }
+  #timer.warn{ background:var(--warn-bg); color:#fff; }
+  #timer.danger{ background:var(--danger-bg); color:#fff; }
+  #timer.danger #clock{ animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.045); } }
+
+  #phaseWrap{ display:flex; flex-direction:column; align-items:center; width:100%; height:100%; justify-content:center; }
+  #phaseLabel{ font-size:clamp(15px, 4vw, 20px); font-weight:800; letter-spacing:3px; text-transform:uppercase; opacity:.85; margin-bottom:6px; }
+  #roundOf{ font-size:clamp(12px, 3vw, 15px); letter-spacing:2px; opacity:.6; margin-bottom:10px; text-transform:uppercase; }
+  #clock{
+    font-size: clamp(64px, 30vw, 200px);
+    font-weight:800; font-variant-numeric: tabular-nums; line-height:1; letter-spacing:-2px;
+    margin: 4px 0 8px;
+  }
+  #drillWrap{
+    display:none; flex-direction:column; align-items:center;
+    margin-bottom:16px; text-align:center; max-width:92vw;
+  }
+  #drillWrap.show{ display:flex; }
+  #drillTag{ font-size:11px; font-weight:800; letter-spacing:2px; opacity:.55; text-transform:uppercase; margin-bottom:2px; }
+  #drillName{ font-size:clamp(15px, 4.5vw, 22px); font-weight:800; letter-spacing:.3px; margin-bottom:8px; }
+  #drillIcons{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:8px; }
+  #shuffleBtn{
+    border:none; background:rgba(0,0,0,.12); color:inherit;
+    padding:6px 14px; border-radius:999px; font-size:12px; font-weight:700; letter-spacing:.5px; cursor:pointer;
+  }
+  #shuffleBtn:active{ transform:scale(.95); }
+  #nextUp{ font-size:clamp(12px, 3vw, 14px); letter-spacing:1px; opacity:.65; text-transform:uppercase; margin-bottom:26px; }
+  #controls{ display:flex; align-items:center; gap:18px; }
+  .ctrlbtn{
+    border:2px solid currentColor; background:transparent; color:inherit;
+    padding:14px 22px; border-radius:999px;
+    font-size:14px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;
+  }
+  .ctrlbtn:active{ transform:scale(.96); }
+  #endBtn{
+    position:absolute; top:calc(16px + env(safe-area-inset-top)); right:16px;
+    border:none; background:rgba(0,0,0,.12); color:inherit;
+    width:34px; height:34px; border-radius:50%; font-size:16px; cursor:pointer;
+  }
+  #muteBtn{
+    position:absolute; top:calc(16px + env(safe-area-inset-top)); left:16px;
+    border:none; background:rgba(0,0,0,.12); color:inherit;
+    width:34px; height:34px; border-radius:50%; font-size:15px; cursor:pointer;
+  }
+
+  #knackeredBtn{
+    margin-top:22px; border:2px solid transparent; background:rgba(0,0,0,.12); color:inherit;
+    padding:12px 22px; border-radius:999px;
+    font-size:13px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; cursor:pointer;
+  }
+  #knackeredBtn:active{ transform:scale(.96); }
+  #knackeredBtn.armed{ border-color:currentColor; }
+
+  /* ---------- STATS SCREEN ---------- */
+  #done{
+    display:none; position:absolute; inset:0; flex-direction:column;
+    background:var(--panel); color:#fff; min-height:0;
+    padding: max(20px, env(safe-area-inset-top)) 20px max(16px, env(safe-area-inset-bottom));
+  }
+  #doneScroll{ flex:1 1 auto; min-height:0; overflow-y:scroll; -webkit-overflow-scrolling:touch; }
+  .doneHead{ text-align:center; margin:8px 0 22px; }
+  .doneHead .kicker{ font-size:12px; font-weight:800; letter-spacing:2px; text-transform:uppercase; color:var(--amber); }
+  .doneHead h2{ font-size:26px; letter-spacing:1px; text-transform:uppercase; margin:6px 0 4px; }
+  .doneHead p{ color:var(--muted); font-size:14px; margin:0; }
+  .bigTime{
+    font-size:clamp(56px, 20vw, 96px); font-weight:800; line-height:1; letter-spacing:-2px;
+    font-variant-numeric: tabular-nums; margin:18px 0 4px;
+  }
+  .bigLabel{ font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
+  .statGrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:22px; }
+  .stat{ background:var(--panel-2); border:1px solid var(--line); border-radius:16px; padding:14px; }
+  .stat b{ display:block; font-size:24px; font-variant-numeric: tabular-nums; margin-bottom:2px; }
+  .stat span{ font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); }
+  .rtime{ flex-shrink:0; font-size:13px; font-weight:700; font-variant-numeric: tabular-nums; color:var(--muted); padding-right:4px; }
+  .rtime.ok{ color:#5fd38a; }
+  .noRounds{ color:var(--muted); font-size:13px; text-align:center; padding:8px 0 16px; }
+  #restartBtn{
+    flex-shrink:0; margin-top:8px; width:100%; padding:18px; border:none; border-radius:16px;
+    background:var(--amber); color:#1a1200;
+    font-size:17px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;
+  }
+  #restartBtn:active{ transform:scale(.98); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- SETUP -->
+  <div id="setup" class="screen">
+    <div id="setupScroll">
+      <div class="brand"><div class="dot"></div><h1>Round Timer</h1><span>boxing / interval training</span></div>
+
+      <div class="row">
+        <div class="label"><b>Warm-up</b><small>then a break before round 1</small></div>
+        <div class="stepper">
+          <button class="stepbtn" data-adj="warmup" data-delta="-15">−</button>
+          <div class="val" id="warmupVal">3:00</div>
+          <button class="stepbtn amber" data-adj="warmup" data-delta="15">+</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="label"><b>Round length</b><small>work interval</small></div>
+        <div class="stepper">
+          <button class="stepbtn" data-adj="round" data-delta="-15">−</button>
+          <div class="val" id="roundVal">3:00</div>
+          <button class="stepbtn amber" data-adj="round" data-delta="15">+</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="label"><b>Break length</b><small>between rounds</small></div>
+        <div class="stepper">
+          <button class="stepbtn" data-adj="break" data-delta="-15">−</button>
+          <div class="val" id="breakVal">1:00</div>
+          <button class="stepbtn amber" data-adj="break" data-delta="15">+</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="label"><b>Rounds</b><small>add or remove</small></div>
+        <div class="stepper">
+          <button class="stepbtn" data-adj="rounds" data-delta="-1">−</button>
+          <div class="val" id="roundsVal">6</div>
+          <button class="stepbtn amber" data-adj="rounds" data-delta="1">+</button>
+        </div>
+      </div>
+
+      <div class="summary" id="summary"></div>
+
+      <div class="avoidSection">
+        <div class="comboHeader">
+          <b>Go easy on</b>
+          <span id="avoidHint">tap a punch to leave it out of the combos</span>
+        </div>
+        <div class="chips" id="avoidChips"></div>
+      </div>
+
+      <div class="comboSection">
+        <div class="comboHeader">
+          <b>Round combos</b>
+          <span>tap ⟳ to cycle a round's combo before you start</span>
+        </div>
+        <div class="comboList" id="comboList"></div>
+      </div>
+    </div>
+
+    <button id="startBtn">Start Session</button>
+  </div>
+
+  <!-- TIMER -->
+  <div id="timer" class="screen hidden">
+    <button id="muteBtn">🔊</button>
+    <button id="endBtn">✕</button>
+    <div id="phaseWrap">
+      <div id="phaseLabel">Warm-up</div>
+      <div id="roundOf"></div>
+      <div id="clock">3:00</div>
+      <div id="drillWrap">
+        <div id="drillTag"></div>
+        <div id="drillName"></div>
+        <div id="drillIcons"></div>
+        <button id="shuffleBtn">🔀 New drill</button>
+      </div>
+      <div id="nextUp"></div>
+      <div id="controls">
+        <button class="ctrlbtn" id="pauseBtn">Pause</button>
+        <button class="ctrlbtn" id="skipBtn">Skip</button>
+      </div>
+      <button id="knackeredBtn">I'm knackered</button>
+    </div>
+  </div>
+
+  <!-- DONE -->
+  <div id="done">
+    <div id="doneScroll">
+      <div class="doneHead">
+        <div class="kicker" id="doneKicker">Session complete</div>
+        <h2 id="doneTitle">Nice work</h2>
+        <p id="doneSub"></p>
+        <div class="bigTime" id="doneTotal">0:00</div>
+        <div class="bigLabel">Total time</div>
+      </div>
+
+      <div class="statGrid">
+        <div class="stat"><b id="statRounds">0</b><span>Rounds finished</span></div>
+        <div class="stat"><b id="statPlan">0%</b><span>Of the plan</span></div>
+        <div class="stat"><b id="statWork">0:00</b><span>Round time</span></div>
+        <div class="stat"><b id="statRest">0:00</b><span>Warm-up &amp; rest</span></div>
+      </div>
+
+      <div class="comboHeader">
+        <b>Round by round</b>
+        <span>the combo you were on and how long you lasted</span>
+      </div>
+      <div class="comboList" id="doneRounds"></div>
+      <div style="height:12px"></div>
+    </div>
+    <button id="restartBtn">Back to setup</button>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var config = { warmup: 180, round: 180, brk: 60, rounds: 6 };
+  var MIN = { warmup: 0, round: 15, brk: 0, rounds: 1 };
+  var MAX = { warmup: 60*30, round: 60*30, brk: 60*10, rounds: 30 };
+
+  function fmt(s){
+    s = Math.max(0, Math.round(s));
+    var m = Math.floor(s/60), r = s%60;
+    return m + ":" + (r<10?"0":"") + r;
+  }
+
+  function renderSetup(){
+    document.getElementById('warmupVal').textContent = fmt(config.warmup);
+    document.getElementById('roundVal').textContent = fmt(config.round);
+    document.getElementById('breakVal').textContent = fmt(config.brk);
+    document.getElementById('roundsVal').textContent = config.rounds;
+    var totalWork = config.warmup + config.rounds*config.round + Math.max(0,config.rounds-1)*config.brk
+                    + (config.warmup>0 ? config.brk : 0);
+    document.getElementById('summary').innerHTML =
+      config.rounds + ' round' + (config.rounds===1?'':'s') + ' · about <b>' + fmt(totalWork) + '</b> total';
+  }
+
+  document.querySelectorAll('.stepbtn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var key = btn.getAttribute('data-adj');
+      var delta = parseInt(btn.getAttribute('data-delta'),10);
+      var map = { warmup:'warmup', round:'round', 'break':'brk', rounds:'rounds' };
+      var k = map[key];
+      var next = config[k] + delta;
+      config[k] = Math.min(MAX[k], Math.max(MIN[k], next));
+      renderSetup();
+      renderRoundCombos();
+    });
+  });
+
+  // ---------- Punch silhouette icons (a nod to "shadow" boxing) ----------
+  var CODE_LABEL = { 1:'Jab', 2:'Cross', 3:'Lead Hook', 4:'Rear Hook', 5:'Lead Uppercut', 6:'Rear Uppercut', slip:'Slip' };
+
+  var BODY = '<circle cx="20" cy="9" r="5"/><rect x="13" y="14" width="14" height="21" rx="5"/>'+
+             '<path d="M15 35 L12 58 L18 58 L20 38 Z"/><path d="M25 35 L28 58 L22 58 L20 38 Z"/>';
+  var GUARD = '<path d="M13 16 Q8 18 9 24 Q9 27 12 27 L15 25 Q13 22 14 18 Z"/><circle cx="10" cy="25" r="3"/>';
+  var PUNCH = {
+    1: '<path d="M27 17 L36 12 L38 15 L30 21 Z"/><circle cx="37" cy="13" r="4"/>',
+    2: '<path d="M27 19 L39 17 L39 21 L28 23 Z"/><circle cx="39" cy="19" r="4.2"/>',
+    3: '<path d="M27 17 L33 13 L37 18 L34 22 L28 20 Z"/><circle cx="36" cy="17" r="4"/>',
+    4: '<path d="M27 20 L33 24 L37 20 L34 16 L28 18 Z"/><circle cx="36" cy="21" r="4"/>',
+    5: '<path d="M25 30 L30 14 L34 16 L29 32 Z"/><circle cx="31" cy="15" r="4"/>',
+    6: '<path d="M23 32 L29 15 L33 17 L27 34 Z"/><circle cx="30" cy="16" r="4"/>'
+  };
+  function iconSVG(code){
+    if(code === 'slip'){
+      return '<svg class="picon" viewBox="0 0 40 60"><g transform="rotate(-14 20 34)">'+BODY+GUARD+
+        '<path d="M27 16 Q32 18 31 24 Q31 27 28 27 L25 25 Q27 22 26 18 Z"/><circle cx="30" cy="25" r="3"/>'+
+        '</g></svg>';
+    }
+    return '<svg class="picon" viewBox="0 0 40 60">'+BODY+GUARD+PUNCH[code]+'</svg>';
+  }
+  function iconsHTML(seq, size){
+    return seq.map(function(code){
+      return '<div class="picon-wrap '+size+'">'+iconSVG(code)+'<span class="pnum">'+(code==='slip'?'S':code)+'</span></div>';
+    }).join('');
+  }
+  function seqName(seq){
+    return seq.map(function(c){ return CODE_LABEL[c]; }).join(', ');
+  }
+
+  // Grouped by type so cycling with the ⟳ button walks through similar combos together.
+  // Lead-hook (3) combos are deliberately last, so they're easy to skip past.
+  var DRILLS = [
+    // Jab / cross basics
+    { seq:[1,2] },
+    { seq:[1,1,2] },
+    { seq:[1,1,1] },
+    { seq:[1,2,1] },
+    { seq:[2,1,2] },
+    { seq:[1,1,1,2] },
+    { seq:[1,1,2,2] },
+    { seq:[1,2,1,2] },
+    // Uppercuts
+    { seq:[1,6] },
+    { seq:[1,6,2] },
+    { seq:[1,1,6] },
+    { seq:[1,2,6] },
+    { seq:[1,2,6,2] },
+    { seq:[1,2,1,6] },
+    { seq:[1,5,2] },
+    { seq:[1,2,5,2] },
+    // Rear hook
+    { seq:[1,2,4] },
+    { seq:[1,1,4] },
+    { seq:[1,1,2,4] },
+    // Slips / movement
+    { seq:['slip',2] },
+    { seq:[1,'slip',2] },
+    { seq:[1,1,'slip',2] },
+    { seq:[2,'slip',2] },
+    { seq:[1,2,'slip',2] },
+    { seq:[1,2,'slip',1] },
+    { seq:[1,2,'slip',6] },
+    // Lead hook
+    { seq:[1,2,3] },
+    { seq:[1,3,2] },
+    { seq:[2,3,2] },
+    { seq:[3,2,3] },
+    { seq:[1,2,3,2] },
+    { seq:[1,6,3] },
+    { seq:[1,2,3,6] },
+    { seq:[2,5,3] },
+    { seq:[1,1,2,3] }
+  ];
+  DRILLS.forEach(function(d){ d.name = seqName(d.seq); });
+
+  // ---------- "Go easy on" filters ----------
+  // Any punch type switched on here is left out of cycling, shuffling and round assignments.
+  var AVOID_OPTIONS = [
+    { code:3, label:'Lead hook' },
+    { code:4, label:'Rear hook' },
+    { code:5, label:'Lead uppercut' },
+    { code:6, label:'Rear uppercut' },
+    { code:'slip', label:'Slips' }
+  ];
+  var avoid = {};
+  function isAllowed(d){
+    return d.seq.every(function(c){ return !avoid[c]; });
+  }
+  function allowedDrills(){
+    return DRILLS.filter(isAllowed);
+  }
+  // Next allowed combo after position `from`; prefers one not already in `taken` so rounds stay varied.
+  function nextAllowedIdx(from, taken){
+    var n = DRILLS.length, fallback = -1;
+    for(var step=1; step<=n; step++){
+      var k = (from + step) % n;
+      if(!isAllowed(DRILLS[k])) continue;
+      if(fallback < 0) fallback = k;
+      if(!taken || taken.indexOf(k) < 0) return k;
+    }
+    return fallback < 0 ? from : fallback;
+  }
+
+  function randomDrill(exclude){
+    var pool = allowedDrills();
+    var pick;
+    do{ pick = pool[Math.floor(Math.random()*pool.length)]; }
+    while(pool.length > 1 && exclude && pick.name === exclude.name);
+    return pick;
+  }
+
+  // Which combo (index into DRILLS) is assigned to each round, cyclable from setup.
+  // Seeded with this week's cardio/strength set (no lead hooks) — still fully editable with the cycle button.
+  // Seeds are listed as punch sequences rather than list positions, so re-ordering DRILLS can't break them.
+  var initialRoundSeqs = [ [1,1,2], [1,2,1,2], [1,2,4], [1,6,2], [1,1,'slip',2], [1,2,6,2] ];
+  function drillIndexFor(seq){
+    var key = JSON.stringify(seq);
+    for(var k=0;k<DRILLS.length;k++){ if(JSON.stringify(DRILLS[k].seq) === key) return k; }
+    return 0;
+  }
+  var roundDrillIdx = [];
+  function ensureRoundDrillIdxLength(){
+    while(roundDrillIdx.length < config.rounds){
+      var i = roundDrillIdx.length;
+      var seedIdx = drillIndexFor(initialRoundSeqs[i % initialRoundSeqs.length]);
+      if(!isAllowed(DRILLS[seedIdx])) seedIdx = nextAllowedIdx(seedIdx, roundDrillIdx);
+      roundDrillIdx.push(seedIdx);
+    }
+    while(roundDrillIdx.length > config.rounds) roundDrillIdx.pop();
+  }
+
+  // After a filter changes, swap any round whose combo is now off-limits.
+  function fixDisallowedRounds(){
+    for(var i=0;i<roundDrillIdx.length;i++){
+      if(!isAllowed(DRILLS[roundDrillIdx[i]])){
+        roundDrillIdx[i] = nextAllowedIdx(roundDrillIdx[i], roundDrillIdx);
+      }
+    }
+  }
+
+  function renderAvoid(){
+    var el = document.getElementById('avoidChips');
+    el.innerHTML = AVOID_OPTIONS.map(function(o){
+      var on = !!avoid[o.code];
+      return '<button class="chip'+(on?' on':'')+'" data-code="'+o.code+'">'+(on?'✕ ':'')+o.label+'</button>';
+    }).join('');
+    el.querySelectorAll('.chip').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var code = btn.getAttribute('data-code');
+        avoid[code] = !avoid[code];
+        ensureRoundDrillIdxLength();
+        fixDisallowedRounds();
+        renderAvoid();
+        renderRoundCombos();
+      });
+    });
+    document.getElementById('avoidHint').textContent =
+      'tap a punch to leave it out · ' + allowedDrills().length + ' of ' + DRILLS.length + ' combos in play';
+  }
+
+  function renderRoundCombos(){
+    ensureRoundDrillIdxLength();
+    var html = roundDrillIdx.map(function(di, i){
+      var d = DRILLS[di];
+      return '<div class="comboRow">'+
+               '<div class="comboRowMain">'+
+                 '<div class="comboRoundLabel">Round '+(i+1)+'</div>'+
+                 '<div class="comboIcons">'+iconsHTML(d.seq,'sm')+'</div>'+
+                 '<div class="comboName">'+d.name+'</div>'+
+               '</div>'+
+               '<button class="cycleBtn" data-round="'+i+'" aria-label="Cycle round '+(i+1)+' combo">⟳</button>'+
+             '</div>';
+    }).join('');
+    document.getElementById('comboList').innerHTML = html;
+    document.querySelectorAll('.cycleBtn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var i = parseInt(btn.getAttribute('data-round'),10);
+        roundDrillIdx[i] = nextAllowedIdx(roundDrillIdx[i]);
+        renderRoundCombos();
+      });
+    });
+  }
+  renderRoundCombos();
+  renderAvoid();
+  renderSetup();
+
+  // ---------- Build phase sequence ----------
+  function buildPhases(){
+    var seq = [];
+    if(config.warmup > 0){
+      seq.push({ type:'warmup', label:'Warm-up', dur:config.warmup });
+      if(config.brk > 0) seq.push({ type:'break', label:'Break', dur:config.brk });
+    }
+    ensureRoundDrillIdxLength();
+    for(var i=1;i<=config.rounds;i++){
+      seq.push({ type:'round', label:'Round', dur:config.round, idx:i, drill: DRILLS[roundDrillIdx[i-1]] });
+      if(i < config.rounds && config.brk > 0){
+        seq.push({ type:'break', label:'Break', dur:config.brk });
+      }
+    }
+    return seq;
+  }
+
+  // ---------- Audio ----------
+  var audioCtx = null, muted = false;
+  function beep(freq, dur, when){
+    if(muted) return;
+    try{
+      if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      var t = audioCtx.currentTime + (when||0);
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = 'sine'; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.3, t+0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(t); osc.stop(t+dur+0.02);
+    }catch(e){}
+  }
+  document.getElementById('muteBtn').addEventListener('click', function(){
+    muted = !muted;
+    this.textContent = muted ? '🔇' : '🔊';
+  });
+
+  // ---------- Wake lock ----------
+  var wakeLock = null;
+  function requestWake(){
+    if('wakeLock' in navigator){
+      navigator.wakeLock.request('screen').then(function(wl){ wakeLock = wl; }).catch(function(){});
+    }
+  }
+  function releaseWake(){
+    if(wakeLock){ wakeLock.release().catch(function(){}); wakeLock = null; }
+  }
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'visible' && running) requestWake();
+  });
+
+  // ---------- Timer engine ----------
+  var phases = [], phaseIdx = 0, endTime = 0, remaining = 0, running = false, paused = false, rafId = null;
+  var displayedDrillPhase = null;
+
+  var elTimer = document.getElementById('timer');
+  var elSetup = document.getElementById('setup');
+  var elDone = document.getElementById('done');
+  var elPhaseLabel = document.getElementById('phaseLabel');
+  var elRoundOf = document.getElementById('roundOf');
+  var elClock = document.getElementById('clock');
+  var elNextUp = document.getElementById('nextUp');
+  var elPauseBtn = document.getElementById('pauseBtn');
+  var elDrillWrap = document.getElementById('drillWrap');
+  var elDrillTag = document.getElementById('drillTag');
+  var elDrillName = document.getElementById('drillName');
+  var elDrillIcons = document.getElementById('drillIcons');
+
+  function phaseText(p){
+    if(!p) return '';
+    if(p.type === 'round') return 'Round ' + p.idx;
+    if(p.type === 'break') return 'Break';
+    return 'Warm-up';
+  }
+
+  function describeNext(){
+    var n = phases[phaseIdx+1];
+    if(!n) return 'Last one — finish strong';
+    return 'Next: ' + phaseText(n) + ' · ' + fmt(n.dur);
+  }
+
+  function applyBg(secLeft){
+    var p = phases[phaseIdx];
+    elTimer.classList.remove('work','warn','danger');
+    if(secLeft <= 10){ elTimer.classList.add('danger'); }
+    else if(secLeft <= 30){ elTimer.classList.add('warn'); }
+    else if(p.type === 'round'){ elTimer.classList.add('work'); }
+  }
+
+  function renderDrill(){
+    var p = phases[phaseIdx];
+    var drillPhase = null, tag = '';
+    if(p.type === 'round' && p.drill){ drillPhase = p; tag = 'This round'; }
+    else if(p.type === 'break'){
+      var nxt = phases[phaseIdx+1];
+      if(nxt && nxt.type === 'round' && nxt.drill){ drillPhase = nxt; tag = 'Up next'; }
+    }
+    displayedDrillPhase = drillPhase;
+    if(drillPhase){
+      elDrillTag.textContent = tag;
+      elDrillName.textContent = drillPhase.drill.name;
+      elDrillIcons.innerHTML = iconsHTML(drillPhase.drill.seq, 'lg');
+      elDrillWrap.classList.add('show');
+    } else {
+      elDrillWrap.classList.remove('show');
+    }
+  }
+
+  function startPhase(idx){
+    phaseIdx = idx;
+    var p = phases[phaseIdx];
+    if(!p){ finish(); return; }
+    remaining = p.dur;
+    endTime = Date.now() + remaining*1000;
+    elPhaseLabel.textContent = phaseText(p);
+    elRoundOf.textContent = p.type === 'round' ? ('of ' + config.rounds) : '';
+    elNextUp.textContent = describeNext();
+    elClock.textContent = fmt(remaining);
+    applyBg(remaining);
+    renderDrill();
+    beep(880, 0.18);
+  }
+
+  function tick(){
+    if(!running || paused) return;
+    var left = (endTime - Date.now())/1000;
+    if(left <= 0){
+      elClock.textContent = '0:00';
+      applyBg(0);
+      advancePhase(phases[phaseIdx].dur);
+      return;
+    }
+    var secLeft = Math.ceil(left);
+    elClock.textContent = fmt(secLeft);
+    applyBg(secLeft);
+    if(secLeft <= 3 && secLeft > 0 && Math.abs(left - secLeft) < 0.06){
+      beep(660, 0.12);
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  // ---------- Session stats ----------
+  var stats = { work:0, rest:0, rounds:[] };
+
+  // Seconds actually spent in the current phase (pauses don't count).
+  function currentElapsed(){
+    var p = phases[phaseIdx];
+    if(!p) return 0;
+    var left = paused ? remaining : (endTime - Date.now())/1000;
+    return Math.min(p.dur, Math.max(0, p.dur - left));
+  }
+
+  function recordPhase(elapsed){
+    var p = phases[phaseIdx];
+    if(!p) return;
+    if(p.type === 'round'){
+      stats.work += elapsed;
+      stats.rounds.push({
+        idx:p.idx, seq:p.drill.seq, name:p.drill.name,
+        elapsed:elapsed, dur:p.dur, done: elapsed >= p.dur - 0.5
+      });
+    } else {
+      stats.rest += elapsed;
+    }
+  }
+
+  function advancePhase(elapsed){
+    recordPhase(elapsed);
+    beep(1046, 0.25);
+    var next = phaseIdx + 1;
+    if(next >= phases.length){ finish(false); return; }
+    startPhase(next);
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function renderStats(early){
+    var total = stats.work + stats.rest;
+    var planned = phases.reduce(function(s,p){ return s + p.dur; }, 0);
+    var plannedRounds = phases.filter(function(p){ return p.type === 'round'; }).length;
+    var doneRounds = stats.rounds.filter(function(r){ return r.done; }).length;
+    var pct = planned ? Math.min(100, Math.round(total/planned*100)) : 0;
+    var last = stats.rounds.length ? stats.rounds[stats.rounds.length-1] : null;
+
+    document.getElementById('doneKicker').textContent = early ? 'Called it' : 'Session complete';
+    document.getElementById('doneTitle').textContent = early ? 'Good effort' : 'Nice work';
+    var sub;
+    if(!early){
+      sub = 'All ' + plannedRounds + ' round' + (plannedRounds===1?'':'s') + ' done.';
+    } else if(!last){
+      sub = 'Stopped before the first round — warming up counts.';
+    } else if(last.done && doneRounds === plannedRounds){
+      sub = 'Stopped right at the end — all ' + plannedRounds + ' rounds done.';
+    } else {
+      sub = 'Stopped in round ' + last.idx + ' of ' + plannedRounds + '.';
+    }
+    document.getElementById('doneSub').textContent = sub;
+    document.getElementById('doneTotal').textContent = fmt(total);
+    document.getElementById('statRounds').textContent = doneRounds + ' / ' + plannedRounds;
+    document.getElementById('statPlan').textContent = pct + '%';
+    document.getElementById('statWork').textContent = fmt(stats.work);
+    document.getElementById('statRest').textContent = fmt(stats.rest);
+
+    document.getElementById('doneRounds').innerHTML = stats.rounds.length
+      ? stats.rounds.map(function(r){
+          return '<div class="comboRow"><div class="comboRowMain">'+
+                   '<div class="comboRoundLabel">Round '+r.idx+'</div>'+
+                   '<div class="comboIcons">'+iconsHTML(r.seq,'sm')+'</div>'+
+                   '<div class="comboName">'+r.name+'</div>'+
+                 '</div>'+
+                 '<div class="rtime'+(r.done?' ok':'')+'">'+(r.done?'✓ ':'')+fmt(r.elapsed)+'</div></div>';
+        }).join('')
+      : '<div class="noRounds">No rounds started this time.</div>';
+    document.getElementById('doneScroll').scrollTop = 0;
+  }
+
+  function finish(early){
+    running = false;
+    paused = false;
+    cancelAnimationFrame(rafId);
+    releaseWake();
+    resetKnackered();
+    renderStats(early);
+    elTimer.classList.add('hidden');
+    elDone.style.display = 'flex';
+  }
+
+  // "I'm knackered": first tap arms it, second tap within 3s ends the session.
+  var knackeredTimer = null;
+  var elKnackered = document.getElementById('knackeredBtn');
+  function resetKnackered(){
+    clearTimeout(knackeredTimer);
+    knackeredTimer = null;
+    elKnackered.classList.remove('armed');
+    elKnackered.textContent = "I'm knackered";
+  }
+  elKnackered.addEventListener('click', function(){
+    if(!running) return;
+    if(!knackeredTimer){
+      elKnackered.classList.add('armed');
+      elKnackered.textContent = 'Tap again to stop';
+      knackeredTimer = setTimeout(resetKnackered, 3000);
+      return;
+    }
+    recordPhase(currentElapsed());
+    finish(true);
+  });
+
+  function startSession(){
+    phases = buildPhases();
+    if(phases.length === 0) return;
+    elSetup.classList.add('hidden');
+    elDone.style.display = 'none';
+    elTimer.classList.remove('hidden');
+    running = true; paused = false;
+    stats = { work:0, rest:0, rounds:[] };
+    resetKnackered();
+    elPauseBtn.textContent = 'Pause';
+    requestWake();
+    startPhase(0);
+    rafId = requestAnimationFrame(tick);
+  }
+
+  document.getElementById('startBtn').addEventListener('click', startSession);
+
+  document.getElementById('pauseBtn').addEventListener('click', function(){
+    if(!running) return;
+    paused = !paused;
+    if(paused){
+      remaining = (endTime - Date.now())/1000;
+      this.textContent = 'Resume';
+      cancelAnimationFrame(rafId);
+    } else {
+      endTime = Date.now() + remaining*1000;
+      this.textContent = 'Pause';
+      rafId = requestAnimationFrame(tick);
+    }
+  });
+
+  document.getElementById('skipBtn').addEventListener('click', function(){
+    if(!running) return;
+    cancelAnimationFrame(rafId);
+    var spent = currentElapsed();
+    paused = false;
+    elPauseBtn.textContent = 'Pause';
+    advancePhase(spent);
+  });
+
+  function endSession(){
+    running = false; paused = false;
+    cancelAnimationFrame(rafId);
+    releaseWake();
+    resetKnackered();
+    elTimer.classList.add('hidden');
+    elDone.style.display = 'none';
+    elSetup.classList.remove('hidden');
+    renderSetup();
+  }
+
+  document.getElementById('shuffleBtn').addEventListener('click', function(){
+    if(!displayedDrillPhase) return;
+    displayedDrillPhase.drill = randomDrill(displayedDrillPhase.drill);
+    renderDrill();
+  });
+
+  document.getElementById('endBtn').addEventListener('click', endSession);
+  document.getElementById('restartBtn').addEventListener('click', function(){
+    elDone.style.display = 'none';
+    elSetup.classList.remove('hidden');
+    renderSetup();
+  });
+
+  // prevent accidental pull-to-refresh / bounce, but allow scrolling inside #setupScroll
+  document.body.addEventListener('touchmove', function(e){
+    if(e.target.closest('#setupScroll, #doneScroll')) return;
+    e.preventDefault();
+  }, { passive:false });
+
+})();
+</script>
+</body>
+</html>
