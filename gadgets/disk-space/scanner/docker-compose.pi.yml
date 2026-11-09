@@ -1,0 +1,34 @@
+# Disk Space scanner for the Pi. Reads the whole Pi (mounted read-only at /host) once a night at
+# the lowest CPU and disk priority, and keeps the last few snapshots for the Disk Space gadget.
+# Changes nothing: the only capability it keeps is reading any folder (DAC_READ_SEARCH).
+services:
+  disk-scan:
+    image: disk-scan:latest
+    container_name: disk-scan
+    restart: unless-stopped
+    environment:
+      - LABEL=pi
+      - SCAN_ROOT=/host
+      - ROOT_NAME=/
+      - SCAN_AT=03:30             # every night (SCAN_DAYS=sun for weekly)
+      - TZ=${TZ:-UTC}
+      - TOKEN=${DISKSCAN_TOKEN}   # needed to download snapshots or start a scan
+      - EXCLUDE=${DISKSCAN_EXCLUDE:-}
+      - ADDR=:8080
+    ports:
+      - "8130:8080"
+    volumes:
+      - type: bind                # the whole Pi, read-only; mounts made later show up too
+        source: /
+        target: /host
+        read_only: true
+        bind:
+          propagation: rslave
+      - disk-scan-data:/data
+    cap_drop: [ALL]
+    cap_add: [DAC_READ_SEARCH]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    cpus: 0.5
+volumes:
+  disk-scan-data:

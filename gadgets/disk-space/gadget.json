@@ -1,0 +1,31 @@
+{
+  "$schema": "../../docs/gadget.schema.json",
+  "id": "disk-space",
+  "name": "Disk Space",
+  "kind": "background",
+  "host": "pi",
+  "desc": "What's using the disk on each machine, like ncdu. So far: the Pi's nightly scanner.",
+  "about": "A small scanner on each machine walks its disks at the lowest priority (nightly, or weekly for the NAS) and keeps snapshots in ncdu's format. The viewer, with drill-down, a treemap, what grew since last time and an MCP endpoint, comes next.",
+  "icon": "icon.svg",
+  "iconSpec": {
+    "top": "#f59e0b",
+    "bottom": "#b45309",
+    "glyph": "<rect x=\"12\" y=\"16\" width=\"40\" height=\"32\" rx=\"4\" {S}/><path d=\"M32 22v10h10\" {S}/><path d=\"M42 32a10 10 0 1 1-10-10\" {S}/><circle cx=\"44\" cy=\"42\" r=\"2\" {F}/>"
+  },
+  "deploy": {
+    "stacks": [
+      {
+        "name": "disk-scan",
+        "host": "pi",
+        "compose": "scanner/docker-compose.pi.yml",
+        "build": {
+          "image": "disk-scan:latest",
+          "context": "scanner"
+        },
+        "secrets": [
+          "DISKSCAN_TOKEN"
+        ]
+      }
+    ]
+  }
+}
