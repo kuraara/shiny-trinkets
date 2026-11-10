@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ask Me</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<main class="page">
+  <header>
+    <h1>Ask Me</h1>
+    <p class="muted">Questions from agents that couldn't reach you in their own session. Your answer goes straight back to them.</p>
+  </header>
+  <section aria-labelledby="open-h">
+    <h2 id="open-h">Waiting for you <span class="count" id="count"></span></h2>
+    <div id="open" class="stack"></div>
+    <p class="empty" id="none">Nothing waiting. New questions show up here by themselves.</p>
+  </section>
+  <section aria-labelledby="done-h">
+    <h2 id="done-h">Answered</h2>
+    <ul id="done" class="log"></ul>
+    <p class="empty" id="nodone">No answers yet.</p>
+  </section>
+  <p class="status muted" id="status" role="status"></p>
+</main>
+</body>
+</html>

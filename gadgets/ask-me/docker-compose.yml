@@ -1,0 +1,15 @@
+# Ask Me (tools/trinket deploy ask-me). On the Pi for now, on its own port: the page at
+# http://<pi>:8108 and the MCP endpoint at /mcp. Questions are kept in the ask-me-data volume.
+services:
+  ask-me:
+    image: ask-me:latest
+    build: .
+    container_name: ask-me
+    restart: unless-stopped
+    ports:
+      - "8108:8080"
+    volumes:
+      - ask-me-data:/data
+    mem_limit: 64m
+volumes:
+  ask-me-data:

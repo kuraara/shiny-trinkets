@@ -1,0 +1,45 @@
+{
+  "$schema": "../../docs/gadget.schema.json",
+  "id": "ask-me",
+  "name": "Ask Me",
+  "kind": "gadget",
+  "host": "pi",
+  "desc": "Questions from agents that couldn't reach you; answer them here.",
+  "about": "When an agent working for you has a question and gets no reply in its own session within 5 minutes, it leaves the question here through MCP. Answer by tapping a suggestion or typing, and the answer goes straight back to the agent, which may be waiting for it.",
+  "icon": "web/icon.svg",
+  "iconSpec": {
+    "top": "#4f9a84",
+    "bottom": "#2f6f5e",
+    "glyph": "<path d=\"M14 18h36v22H30l-9 8v-8h-7z\" {S}/><path d=\"M29 25a4 4 0 1 1 5 4c-1.5.5-2 1.4-2 3\" {S}/><circle cx=\"32\" cy=\"36\" r=\"1.5\" {F}/>"
+  },
+  "intents": [
+    {
+      "phrase": "…answer questions my agents left for me",
+      "desc": "Questions agents couldn't get answered in their own session, with suggested answers as buttons.",
+      "group": "other"
+    }
+  ],
+  "deploy": {
+    "stacks": [
+      {
+        "name": "ask-me",
+        "host": "pi",
+        "compose": "docker-compose.yml",
+        "build": {
+          "image": "ask-me:latest",
+          "context": ".",
+          "go": {
+            "dir": ".",
+            "binary": "ask-me",
+            "goarch": "arm64"
+          }
+        }
+      }
+    ]
+  },
+  "url": "http://{pi}:8108/",
+  "mcp": {
+    "url": "http://{pi}:8108/mcp",
+    "tools": "ask_user, get_answer, list_my_questions, withdraw_question"
+  }
+}
