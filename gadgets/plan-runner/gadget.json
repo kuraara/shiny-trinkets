@@ -1,0 +1,43 @@
+{
+  "$schema": "../../docs/gadget.schema.json",
+  "id": "plan-runner",
+  "name": "Plan Runner",
+  "kind": "gadget",
+  "host": "pc",
+  "desc": "Hand a build plan to an agent on the build server; it builds, tests, commits and pushes.",
+  "about": "Agents send a plan for a git repository over MCP. One job at a time, an agent (Claude Code here; a separate work instance uses Codex) carries it out in a fresh clone, building and testing as it goes and committing per phase, then the runner pushes. The page shows each job's plan, commits and live log.",
+  "icon": "web/icon.svg",
+  "iconSpec": {
+    "top": "#5b7bd5",
+    "bottom": "#3355aa",
+    "glyph": "<rect x=\"16\" y=\"12\" width=\"26\" height=\"34\" rx=\"3\" {S}/><path d=\"M22 21h14M22 28h14M22 35h8\" {S}/><path d=\"M40 40l8 6-8 6z\" {F}/>"
+  },
+  "intents": [
+    {
+      "phrase": "…have an agent carry out a build plan",
+      "desc": "Send a plan for a repository; it's built, tested, committed and pushed while you do something else.",
+      "group": "making"
+    }
+  ],
+  "deploy": {
+    "stacks": [
+      {
+        "name": "plan-runner",
+        "host": "pc",
+        "compose": "docker-compose.yml",
+        "build": {
+          "image": "plan-runner:latest",
+          "context": "."
+        },
+        "secrets": [
+          "PLANRUNNER_TOKEN"
+        ]
+      }
+    ]
+  },
+  "url": "http://{pc}:8129/",
+  "mcp": {
+    "url": "http://{pc}:8129/mcp",
+    "tools": "submit_plan, get_job, get_log, list_jobs, cancel_job"
+  }
+}

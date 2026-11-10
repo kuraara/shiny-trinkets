@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plan Runner</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<main class="page">
+  <header>
+    <h1>Plan Runner</h1>
+    <p class="muted" id="info">Build plans sent here over MCP are carried out one at a time in a fresh clone, then pushed.</p>
+  </header>
+  <div class="layout">
+    <section aria-labelledby="jobs-h" class="jobs">
+      <h2 id="jobs-h">Jobs</h2>
+      <ul id="jobs" class="list"></ul>
+      <p class="empty" id="nojobs">No jobs yet. Agents submit them with the submit_plan MCP tool.</p>
+    </section>
+    <section aria-labelledby="job-h" class="detail" id="detail" hidden>
+      <div class="row"><h2 id="job-h">Job</h2><span class="spacer"></span><button class="btn" id="cancel" type="button" hidden>Cancel</button></div>
+      <h3 id="title"></h3>
+      <dl id="facts"></dl>
+      <details id="plan-d"><summary>The plan</summary><pre id="plan"></pre></details>
+      <div id="commits-box" hidden><h4>Commits</h4><ul id="commits" class="mono"></ul></div>
+      <h4>Log</h4>
+      <pre id="log" class="log" tabindex="0" aria-live="off"></pre>
+    </section>
+  </div>
+  <p class="status muted" id="status" role="status"></p>
+</main>
+</body>
+</html>
