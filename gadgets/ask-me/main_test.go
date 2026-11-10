@@ -147,3 +147,55 @@ func TestPageAndList(t *testing.T) {
 		t.Error("page title missing")
 	}
 }
+
+func TestAuth(t *testing.T) {
+	_, st, _ := newServer(t)
+	srv := httptest.NewServer(withAuth("s3cret", routes(st)))
+	defer srv.Close()
+	noFollow := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	get := func(path string, hdr map[string]string) *http.Response {
+		req, _ := http.NewRequest("GET", srv.URL+path, nil)
+		for k, v := range hdr {
+			req.Header.Set(k, v)
+		}
+		r, err := noFollow.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r.Body.Close()
+		return r
+	}
+	for path, want := range map[string]int{"/healthz": 200, "/icon.svg": 200, "/": 401, "/api/questions": 401} {
+		if c := get(path, nil).StatusCode; c != want {
+			t.Errorf("%s without key: %d, want %d", path, c, want)
+		}
+	}
+	if c := get("/api/questions", map[string]string{"Authorization": "Bearer s3cret"}).StatusCode; c != 200 {
+		t.Errorf("bearer: %d", c)
+	}
+	if c := get("/api/questions", map[string]string{"Authorization": "Bearer nope"}).StatusCode; c != 401 {
+		t.Errorf("wrong bearer: %d", c)
+	}
+	r := get("/?key=s3cret", nil)
+	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/" {
+		t.Fatalf("sign-in link: %d to %q", r.StatusCode, r.Header.Get("Location"))
+	}
+	var cookie string
+	for _, c := range r.Cookies() {
+		if c.Name == cookieName {
+			cookie = c.Name + "=" + c.Value
+		}
+	}
+	if c := get("/", map[string]string{"Cookie": cookie}).StatusCode; c != 200 {
+		t.Errorf("page with cookie: %d", c)
+	}
+	if c := get("/?key=wrong", nil).StatusCode; c != 401 {
+		t.Errorf("wrong key: %d", c)
+	}
+	body, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+	resp, _ := http.Post(srv.URL+"/mcp", "application/json", bytes.NewReader(body))
+	resp.Body.Close()
+	if resp.StatusCode != 401 {
+		t.Errorf("mcp without token: %d", resp.StatusCode)
+	}
+}

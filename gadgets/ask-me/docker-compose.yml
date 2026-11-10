@@ -10,6 +10,9 @@ services:
       - "8108:8080"
     volumes:
       - ask-me-data:/data
+    environment:
+      # agents send "Authorization: Bearer <token>"; a browser opens /?key=<token> once
+      - TOKEN=${ASKME_TOKEN:?set ASKME_TOKEN}
     mem_limit: 64m
 volumes:
   ask-me-data:

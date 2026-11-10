@@ -23,7 +23,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	srv := &http.Server{Addr: addr, Handler: routes(st), ReadHeaderTimeout: 10 * time.Second}
+	token := os.Getenv("TOKEN")
+	if token == "" {
+		log.Printf("no TOKEN set: anyone who can reach this can ask and answer")
+	}
+	srv := &http.Server{Addr: addr, Handler: withAuth(token, routes(st)), ReadHeaderTimeout: 10 * time.Second}
 	log.Printf("ask-me listening on %s", addr)
 	log.Fatal(srv.ListenAndServe())
 }

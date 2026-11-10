@@ -20,7 +20,11 @@ These are also the MCP server's instructions, so an agent connected to it reads 
 
 - Questions are kept in `/data/questions.json` (volume `ask-me-data`): every open question and
   the last 200 answered or withdrawn ones.
-- No login: anyone on the home network can answer. It holds questions, not secrets.
+- **Token auth** (`TOKEN`, from the stack's `ASKME_TOKEN`; first deploy reads it from
+  `~/.config/shiny-trinkets/ask-me.env`). Agents send `Authorization: Bearer <token>`. A phone or
+  browser opens `http://<pi>:8108/?key=<token>` once: that sets a cookie for a year and drops the
+  key from the address. Without it the page says it's locked. `/healthz` stays open.
+  Register an agent with `claude mcp add -s user -t http ask-me http://<pi>:8108/mcp -H "Authorization: Bearer <token>"`.
 - Answering twice, or answering a withdrawn question, is refused (409), so an agent never gets
   two different answers.
 
@@ -30,6 +34,6 @@ These are also the MCP server's instructions, so an agent connected to it reads 
     tools/trinket deploy ask-me         # cross-compiles on the build box, builds on the Pi
     tools/trinket deploy registry       # when gadget.json changes
     go vet ./... && go test ./...       # on the build box
-    node test/e2e.js http://<pi>:8108 /tmp/shots   # on the build box; posts and answers 2 test questions
+    ASKME_TOKEN=... node test/e2e.js http://<pi>:8108 /tmp/shots   # on the build box; posts and answers 2 test questions
 
 The source is at `/src` in the container.

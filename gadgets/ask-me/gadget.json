@@ -33,7 +33,10 @@
             "binary": "ask-me",
             "goarch": "arm64"
           }
-        }
+        },
+        "secrets": [
+          "ASKME_TOKEN"
+        ]
       }
     ]
   },
