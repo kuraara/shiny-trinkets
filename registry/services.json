@@ -154,7 +154,15 @@
         "top": "#64748b",
         "bottom": "#334155",
         "glyph": "<rect x=\"10\" y=\"17\" width=\"30\" height=\"21\" rx=\"3\" {S}/><path d=\"M19 45h12\" {S}/><rect x=\"44\" y=\"20\" width=\"10\" height=\"27\" rx=\"5\" {S} stroke-width=\"3\"/><circle cx=\"49\" cy=\"27\" r=\"2.2\" {F}/><path d=\"M25 23.5v5M21.5 25.5a5 5 0 1 0 7 0\" {S} stroke-width=\"2.6\"/>"
-      }
+      },
+      "actions": [
+        {
+          "id": "tv-power",
+          "label": "TV power",
+          "title": "Send the TV's IR power toggle (on ↔ off). Works any time, quiet hours or not.",
+          "upstream": "http://atv-actions:8080/tv/power"
+        }
+      ]
     },
     {
       "id": "buildbox",

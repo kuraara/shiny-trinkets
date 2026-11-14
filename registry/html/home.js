@@ -16,19 +16,27 @@
     const box = document.getElementById(a.kind);
     if (!box) continue;
     const href = url(a);
-    const card = make(href ? 'a' : 'div', 'card');
-    if (href) card.href = href;
+    const acts = a.actions || [];
+    // a card with buttons can't itself be a link (buttons inside a link misbehave): its name links instead
+    const card = make(href && !acts.length ? 'a' : 'div', 'card');
+    if (href && !acts.length) card.href = href;
     card.dataset.search = `${a.name} ${a.desc || ''} ${a.about || ''} ${reg.hosts[a.host]?.name || ''}`.toLowerCase();
     card.title = a.desc || a.name;
     const icon = make('img'); icon.src = `/_gadgets/icons/${a.id}.svg`; icon.alt = '';
     const body = make('div', 'body');
     const top = make('div', 'top');
-    top.append(make('b', '', a.name));
+    if (href && acts.length) { const n = make('a', 'name', a.name); n.href = href; top.append(n); }
+    else top.append(make('b', '', a.name));
     const status = make('span', 'status');
     const dot = make('i', 'dot');
     const label = make('span', 'label', href ? 'checking' : 'no web page');
     status.append(dot, label);
     top.append(status);
+    if (acts.length) {
+      const box = make('span', 'actions');
+      for (const x of acts) box.append(actionButton(a, x));
+      top.append(box);
+    }
     body.append(top);
     if (a.desc) body.append(make('p', 'desc', a.desc));
     if (a.about) body.append(make('p', 'about', a.about));
@@ -39,6 +47,44 @@
     card.append(icon, body);
     box.append(card);
     if (href) check(a.id, dot, label);
+  }
+
+  // A card action: POST /_gadgets/action/<app>/<action>; the reply's message (or error) shows
+  // under the button for a few seconds. confirm: the first tap only arms it.
+  function actionButton(app, x) {
+    const wrap = make('span', 'act');
+    const btn = make('button', 'act-btn', x.label);
+    btn.type = 'button';
+    btn.title = x.title || x.label;
+    const msg = make('span', 'act-msg');
+    msg.setAttribute('role', 'status');
+    let armed = null, clear = null;
+    const say = (text, bad) => {
+      msg.textContent = text; msg.classList.toggle('bad', !!bad);
+      clearTimeout(clear); clear = setTimeout(() => { msg.textContent = ''; }, 5000);
+    };
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (x.confirm && !armed) {
+        btn.textContent = 'Tap again'; btn.classList.add('armed');
+        armed = setTimeout(() => { armed = null; btn.textContent = x.label; btn.classList.remove('armed'); }, 3000);
+        return;
+      }
+      clearTimeout(armed); armed = null; btn.classList.remove('armed');
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const r = await fetch(`/_gadgets/action/${app.id}/${x.id}`, { method: 'POST', headers: { 'X-Gadget-Action': '1' }, cache: 'no-store' });
+        const j = await r.json().catch(() => ({}));
+        if (r.ok) say(j.message || 'Done');
+        else say(j.error || j.message || `Didn't work (${r.status})`, true);
+      } catch {
+        say("Couldn't reach it", true);
+      } finally {
+        btn.disabled = false; btn.textContent = x.label;
+      }
+    });
+    wrap.append(btn, msg);
+    return wrap;
   }
 
   async function check(id, dot, label) {

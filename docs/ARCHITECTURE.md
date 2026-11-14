@@ -67,12 +67,19 @@ Schema: [`gadget.schema.json`](gadget.schema.json). The important parts:
   "intents": [ { "phrase": "…know which show or movie a quote came from", "group": "video" } ],
   "mcp": { "url": "http://{pc}:8124/mcp", "tools": "…" },
   "uses": ["video-tools"],          // other gadgets it talks to (checked to exist)
+  "actions": [ { "id": "tv-power", "label": "TV power", "upstream": "http://atv-actions:8080/tv/power" } ],
   "deploy": { "stacks": [ { "name": "quote-finder", "host": "pc", "compose": "docker-compose.yml",
                              "build": { "image": "quote-finder:latest", "context": "." },
                              "secrets": ["INGEST_TOKEN"] } ] }
 }
 ```
 
+- **actions** are small buttons on the card, next to its status (for a background service that has
+  no page of its own, like "TV power" on ATV TV Sync). Pressing one POSTs to
+  `/_gadgets/action/<id>/<action>` with the header `X-Gadget-Action: 1`; the registry only accepts
+  that (POST with the header, so a link or another site's form can't set it off) and passes it to
+  `upstream`, which answers JSON `{message}` or `{error}` to show under the button. `confirm: true`
+  asks for a second tap. Services in `services.json` can have them too.
 - **pages** replace the hidden-entry trick: Video Tools is one app on one port whose three pages
   appear as three gadgets in the registry and navbar.
 - **intents** are the "I want to…" phrases (the landing view in [ROADMAP.md](ROADMAP.md)); each

@@ -144,6 +144,26 @@ def https_ok(protocols):
     return [p for p in protocols if p in ('http', 'https')] or ['http', 'https']
 
 
+def resolve_actions(actions, st):
+    """A card's action buttons, with {pc}-style placeholders in their upstream filled in."""
+    return [dict(x, upstream=resolve(x['upstream'], st)) for x in actions]
+
+
+def action_problems(where, actions):
+    errs, ids = [], set()
+    for x in actions:
+        if not re.fullmatch(r'[a-z][a-z0-9-]*', str(x.get('id', ''))):
+            errs.append(f'{where}: action ids are lowercase-dashes ({x.get("id")!r})')
+        elif x['id'] in ids:
+            errs.append(f'{where}: two actions are called "{x["id"]}"')
+        ids.add(x.get('id'))
+        if not str(x.get('label', '')).strip():
+            errs.append(f'{where}: action "{x.get("id")}" needs a label')
+        if not re.match(r'https?://', str(x.get('upstream', ''))):
+            errs.append(f'{where}: action "{x.get("id")}" needs an http(s) upstream')
+    return errs
+
+
 def registry_entries(st=None):
     """The apps list the registry serves (registry.json), from manifests + services.
 
@@ -163,6 +183,8 @@ def registry_entries(st=None):
             base['url'] = resolve(m['url'], st)
         if 'mcp' in m:
             base['mcp'] = resolve(m['mcp']['url'] if isinstance(m['mcp'], dict) else m['mcp'], st)
+        if m.get('actions'):
+            base['actions'] = resolve_actions(m['actions'], st)
         pages = m.get('pages', [])
         if pages:
             base['kind'] = 'hidden'          # the app itself is reached through its pages
@@ -178,7 +200,10 @@ def registry_entries(st=None):
             intents.append({'phrase': it['phrase'], 'desc': it.get('desc', ''), 'group': it.get('group', 'other'),
                             'app': it.get('page') or m['id'], **({'path': it['path']} if it.get('path') else {})})
     for s in services():
-        apps.append({k: (resolve(v, st) if k == 'url' else v) for k, v in s.items() if k != 'iconSpec'})
+        e = {k: (resolve(v, st) if k == 'url' else v) for k, v in s.items() if k != 'iconSpec'}
+        if s.get('actions'):
+            e['actions'] = resolve_actions(s['actions'], st)
+        apps.append(e)
     order = {'gadget': 0, 'hidden': 1, 'service': 2, 'background': 3}
     apps.sort(key=lambda a: order.get(a['kind'], 9))
     return apps, intents
@@ -303,6 +328,7 @@ def problems():
                 errs.append(f'{where}: intent phrases start with "…" (they finish "I want to…")')
             if it.get('page') and it['page'] not in pages:
                 errs.append(f'{where}: intent page "{it["page"]}" isn\'t one of this gadget\'s pages')
+        errs += action_problems(where, m.get('actions', []))
         for u in m.get('uses', []):
             if u not in known:
                 errs.append(f'{where}: uses "{u}", which isn\'t a gadget or service here')
@@ -316,6 +342,7 @@ def problems():
         if s['id'] in seen_ids:
             errs.append(f'registry/services.json: id "{s["id"]}" is also a gadget')
         seen_ids[s['id']] = 'registry/services.json'
+        errs += action_problems(f'registry/services.json ({s["id"]})', s.get('actions', []))
     return errs
 
 

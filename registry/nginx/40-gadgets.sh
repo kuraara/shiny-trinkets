@@ -82,6 +82,24 @@ HOME
   }
 EOP
   done
+  # card actions: POST /_gadgets/action/<app>/<action> with "X-Gadget-Action: 1" goes to the
+  # action's upstream. The header (which a plain link or a form on another site can't add) and
+  # POST-only keep it from being set off by accident.
+  jq -r '.apps[] | .id as $app | (.actions // [])[] | [$app, .id, .upstream] | @tsv' "$REG" |
+  while IFS="$(printf '\t')" read -r app aid up; do
+    cat <<EOA
+  location = /_gadgets/action/$app/$aid {
+    limit_except POST { deny all; }
+    if (\$http_x_gadget_action != "1") { return 403; }
+    set \$action "$up";
+    proxy_pass \$action\$is_args\$args;
+    proxy_ssl_verify off;
+    proxy_connect_timeout 3s;
+    proxy_read_timeout 60s;
+    add_header Cache-Control no-store always;
+  }
+EOA
+  done
 } > "$INC/home.inc"
 
 {

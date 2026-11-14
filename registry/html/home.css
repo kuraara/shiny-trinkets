@@ -57,6 +57,27 @@ a.card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); display: inline-block; }
 .dot.up { background: var(--up); }
 .dot.down { background: var(--down); }
+/* card actions: small buttons beside the status (see "actions" in docs/gadget.schema.json) */
+.top .name { flex: 1; font-weight: 700; font-size: 1.02rem; color: inherit; text-decoration: none; }
+.top .name:hover { color: var(--accent); }
+.cards.big .top .name { font-size: 1.12rem; }
+/* a card with actions lets them drop to their own line rather than squeeze the name */
+.top:has(.actions) { flex-wrap: wrap; row-gap: 4px; }
+.top:has(.actions) > b, .top:has(.actions) > .name { flex: 1 1 8em; min-width: 0; }
+.status { white-space: nowrap; }
+.actions { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+.act { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.act-btn { font: inherit; font-size: .78rem; font-weight: 600; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line); background: var(--chip); color: var(--ink); cursor: pointer; white-space: nowrap; }
+.act-btn:hover { border-color: var(--accent); }
+.act-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.act-btn:disabled { opacity: .6; cursor: progress; }
+.act-btn.armed { border-color: var(--down); color: var(--down); }
+.act-msg { font-size: .72rem; line-height: 1.25; color: var(--up); text-align: right; max-width: 14em; }
+.act-msg.bad { color: var(--down); }
+.act-msg:empty { display: none; }
+body[data-view="tiles"] .actions { justify-content: center; }
+body[data-view="tiles"] .act { align-items: center; }
+body[data-view="tiles"] .act-msg { text-align: center; max-width: 100%; }
 footer { margin-top: 32px; color: var(--muted); font-size: .85rem; }
 code { font-size: .9em; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

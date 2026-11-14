@@ -69,6 +69,22 @@
       "properties": { "url": { "type": "string", "description": "e.g. http://{pc}:8124/mcp" }, "tools": { "type": "string" } },
       "required": ["url"]
     },
+    "actions": {
+      "type": "array",
+      "description": "Small buttons on the gadget's card (e.g. \"TV power\"). The home page POSTs to /_gadgets/action/<id>/<action id> with the header X-Gadget-Action: 1, the registry passes it on to upstream, and the upstream's JSON {message} or {error} shows beside the button. Services in registry/services.json can have them too.",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "upstream"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "label": { "type": "string", "description": "The button text: one or two words." },
+          "title": { "type": "string", "description": "Tooltip: what pressing it does." },
+          "upstream": { "type": "string", "description": "Where the registry sends the POST, as the registry reaches it: http://<container>:<port>/path on the gadgets network, or http://{pc}:<port>/path." },
+          "confirm": { "type": "boolean", "description": "Needs a second tap within 3 s, for things you don't want to set off by accident." }
+        },
+        "additionalProperties": false
+      }
+    },
     "uses": { "type": "array", "items": { "type": "string" }, "description": "Gadgets or services it talks to." },
     "deploy": {
       "type": "object",
