@@ -1,0 +1,27 @@
+# ATV TV Sync actions: the web endpoint behind the gadget page's "TV power" and "White noise"
+# buttons. The image is built on the build box (see README.md): the atv-tv-sync image plus its
+# monitor.py, actions.py and noise.py.
+# The registry reaches it as http://atv-actions:8080 on the gadgets network, and the TV sync asks
+# it about noise on its own network. Nothing is published except the two UDP ports the Apple TV
+# sends AirPlay timing and resend requests to.
+services:
+  atv-actions:
+    image: atv-actions:latest
+    container_name: atv-actions
+    restart: unless-stopped
+    environment:
+      - NOISE_MINUTES=${NOISE_MINUTES:-600}      # the noise stops itself after this long
+      - NOISE_COLOR=${NOISE_COLOR:-white}        # white | pink | brown
+      - NOISE_LEVEL=${NOISE_LEVEL:-0.2}          # 0 to 1 of full scale
+      - NOISE_VOLUME=${NOISE_VOLUME:-}           # AirPlay volume 0-100; empty = leave it alone
+      - NOISE_SLEEP_AFTER=${NOISE_SLEEP_AFTER:-1}  # 1 = put the Apple TV back to sleep if the noise woke it
+    ports:
+      - "16100-16101:16100-16101/udp"
+    networks: [gadgets, atv-tv-sync]
+    mem_limit: 256m
+networks:
+  gadgets:
+    external: true
+  atv-tv-sync:
+    external: true
+    name: atv-tv-sync_default

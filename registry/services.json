@@ -149,7 +149,7 @@
       "name": "ATV TV Sync",
       "kind": "background",
       "host": "pc",
-      "desc": "Turns the TV on and off with the Apple TV (quiet after 9pm).",
+      "desc": "Turns the TV on and off with the Apple TV (quiet after 9pm), and plays white noise through it.",
       "iconSpec": {
         "top": "#64748b",
         "bottom": "#334155",
@@ -161,6 +161,12 @@
           "label": "TV power",
           "title": "Send the TV's IR power toggle (on ↔ off). Works any time, quiet hours or not.",
           "upstream": "http://atv-actions:8080/tv/power"
+        },
+        {
+          "id": "white-noise",
+          "label": "White noise",
+          "title": "Start white noise on the Apple TV (it plays through the soundbar and the TV stays off), or stop it if it's playing. Stops itself after 10 hours.",
+          "upstream": "http://atv-actions:8080/noise/toggle"
         }
       ]
     },
