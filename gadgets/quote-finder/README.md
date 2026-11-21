@@ -75,3 +75,10 @@ The Pi doesn't compile anything. On the build box:
 then build `extractor/Dockerfile` on the Pi (it only adds ffmpeg to Alpine). `test/e2e.js`
 drives the search page in headless Chromium; `test/panels.e2e.js` makes panels and a clip
 from a real scene at phone size.
+
+## Files with no subtitles, and foreign dialogue
+
+[`whisper/`](whisper) holds the one-off Whisper jobs: speech-to-text for files with no usable
+English track (ingested here as "speech to text (whisper …)") and translated copies of tracks
+that only say "[speaking Spanish]". Their SRT files go next to the videos through
+[Subtitle Writer](../subtitle-writer).

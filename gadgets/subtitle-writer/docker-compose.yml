@@ -1,0 +1,28 @@
+# Subtitle Writer (tools/trinket deploy subtitle-writer). On the Pi, next to the media: the only
+# thing that writes subtitle files into the library. MCP at http://<pi>:8131/mcp, API at
+# /api/subtitles, both need the token. Tiny limits: the Pi is busy (Plex).
+services:
+  subtitle-writer:
+    image: subtitle-writer:latest
+    build: .
+    container_name: subtitle-writer
+    restart: unless-stopped
+    user: "1000:1001"           # owner of the media files; written files are group-writable
+    ports:
+      - "8131:8080"
+    volumes:
+      - ${VIDEO_DIR:?set VIDEO_DIR}:/media   # read-write: subtitles go next to the videos
+      - subtitle-writer-data:/data           # the manifest of files it wrote
+    environment:
+      - TOKEN=${SUBWRITER_TOKEN:?set SUBWRITER_TOKEN}
+      - NAME_STYLE=${SUBWRITER_NAME_STYLE:-dot}
+      - TZ=${TZ:-UTC}
+      - GOMEMLIMIT=24MiB
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    mem_limit: 32m
+    cpus: 0.25
+    pids_limit: 32
+volumes:
+  subtitle-writer-data:

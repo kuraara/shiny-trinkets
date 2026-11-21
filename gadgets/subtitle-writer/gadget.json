@@ -1,0 +1,35 @@
+{
+  "$schema": "../../docs/gadget.schema.json",
+  "id": "subtitle-writer",
+  "name": "Subtitle Writer",
+  "kind": "background",
+  "host": "pi",
+  "desc": "Puts subtitles made elsewhere (Whisper, translations) next to the videos, for Plex.",
+  "about": "The one service allowed to write into the media library. Machines that make subtitles (Whisper speech-to-text on the PC, translated copies) hand them over through MCP or a small API; it writes them next to the video as <video>.<label>.<lang>.srt so Plex offers them as subtitle tracks. It only writes .srt files, only next to videos that exist, and only ever replaces or removes files it wrote itself.",
+  "icon": "icon.svg",
+  "iconSpec": {
+    "top": "#8b5cf6",
+    "bottom": "#5b21b6",
+    "glyph": "<rect x=\"10\" y=\"16\" width=\"44\" height=\"32\" rx=\"4\" {S}/><path d=\"M18 36h12M34 36h12M18 42h20\" {S}/><path d=\"M40 22l4 4 8-8\" {S}/>"
+  },
+  "uses": ["quote-finder"],
+  "deploy": {
+    "stacks": [
+      {
+        "name": "subtitle-writer",
+        "host": "pi",
+        "compose": "docker-compose.yml",
+        "build": {
+          "image": "subtitle-writer:latest",
+          "context": ".",
+          "go": { "dir": ".", "binary": "subtitle-writer", "goarch": "arm64" }
+        },
+        "secrets": ["SUBWRITER_TOKEN"]
+      }
+    ]
+  },
+  "mcp": {
+    "url": "http://{pi}:8131/mcp",
+    "tools": "put_subtitle, list_subtitles, remove_subtitle"
+  }
+}
