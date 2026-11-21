@@ -40,16 +40,16 @@
         ]
       },
       {
-        "name": "subtitle-extractor",
-        "host": "pi",
-        "compose": "extractor/docker-compose.yml",
+        "name": "subtitle-extractor-pc",
+        "host": "pc",
+        "compose": "extractor/docker-compose.pc.yml",
         "build": {
-          "image": "subtitle-extractor:latest",
+          "image": "subtitle-extractor:pc",
           "context": "extractor",
           "go": {
             "dir": "extractor",
             "binary": "extractor",
-            "goarch": "arm64"
+            "goarch": "amd64"
           }
         },
         "secrets": [

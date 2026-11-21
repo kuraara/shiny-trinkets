@@ -28,8 +28,10 @@ show, episode and time, with the lines around it. Filter by show or movie.
 
 Two parts:
 
-- **`extractor/`** runs on the Pi, next to the media (`VIDEO_DIR` in `registry/site.local.json`,
-  mounted read-only).
+- **`extractor/`** runs on the PC (stack `subtitle-extractor-pc`, `extractor/docker-compose.pc.yml`) and
+  reads the Pi's video folder over SMB: a read-only guest share called `video` on the Pi, so the
+  Pi's CPU stays free for Plex. (`extractor/docker-compose.yml` is the old Pi setup, stack
+  `subtitle-extractor`, now stopped; run only one.)
   It walks the library, picks the best English *text* subtitle track in each file (full over
   forced/signs, plain over SDH), pulls it out with ffmpeg at the lowest CPU and disk priority,
   one file at a time, and sends it to the server. Rescans every 6 hours for new files and

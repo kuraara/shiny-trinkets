@@ -1,0 +1,36 @@
+# The extractor on the PC instead of the Pi: same program, reading the Pi's video folder over SMB
+# (a read-only, guest "video" share on the Pi), so the Pi's CPU stays free for Plex.
+# Paths in the index are relative to the folder, so nothing is re-read on the switch.
+# Run only one extractor: stop the Pi's stack first. Quote Finder's CLIP_URL then points at
+# http://subtitle-extractor:8105 (the gadgets network) instead of the Pi.
+# PI_ADDR comes from registry/site.local.json. The share is read-only with guest access (no password).
+services:
+  subtitle-extractor:
+    image: subtitle-extractor:pc
+    container_name: subtitle-extractor
+    restart: unless-stopped
+    environment:
+      - INGEST_TOKEN=${INGEST_TOKEN}
+      - INDEX_URL=http://quote-finder:8080
+      - MEDIA_DIR=/media
+      - ONLY=${ONLY}
+      - RESCAN_HOURS=6
+      - CLIP_ADDR=:8105
+      - OPENSUBTITLES_API_KEY=${OPENSUBTITLES_API_KEY}
+      - OPENSUBTITLES_USERNAME=${OPENSUBTITLES_USERNAME}
+      - OPENSUBTITLES_PASSWORD=${OPENSUBTITLES_PASSWORD}
+    volumes:
+      - pi-video:/media:ro
+    networks: [gadgets]
+    mem_limit: 512m
+    cpus: 2.0
+volumes:
+  pi-video:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: //${PI_ADDR:?set PI_ADDR}/video
+      o: "guest,ro,vers=3.0,iocharset=utf8"
+networks:
+  gadgets:
+    external: true
