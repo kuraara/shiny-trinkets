@@ -8,18 +8,29 @@ Every other cue stays byte-identical; this is checked before the file is saved.
 
 In: /in.json (rows: media_id, title, kind, path, source, idx, start_ms, end_ms, text, full|partial)
 Out: OUT_DIR/<path>.srt and OUT_DIR/report.json. Env: MODEL, THREADS, OUT_DIR, LIMIT, ONLY.
+REUSE=<an earlier report.json>: take single-speaker cues' translations from it instead of running
+Whisper again (cues shared with English speech are always redone).
 """
-import collections, json, os, re, subprocess, tempfile, time
+import collections, difflib, json, os, re, subprocess, tempfile, time
 
 MODEL = os.environ.get("MODEL", "/models/ggml-medium.bin")
 THREADS = os.environ.get("THREADS", "2")
 OUT = os.environ.get("OUT_DIR", "/out/translated")
 LIMIT = int(os.environ.get("LIMIT", "0"))
 ONLY = os.environ.get("ONLY", "")
+REUSE = os.environ.get("REUSE", "")
+# Translations dropped after reading them all (hallucinations, garbage, and two lines in a
+# children's episode that came out wrong): (file name contains, cue start ms).
+DROP = {("Cross.2024.S02E06", 1940147), ("DuckTales.2017-S02E14", 114750), ("Beavis.And.Butt.Head.S04E01", 96868),
+        ("Peppa.Pig.S07E33", 223990), ("Peppa.Pig.S07E33", 256923), ("The.Expanse.S01E01", 1583804),
+        ("The.Westies.2026.S01E04", 2941981),
+        # fictional languages (Huttese/Tusken, Belter): whatever Whisper makes of them isn't a translation
+        ("The.Book.of.Boba.Fett.S01E02", None), ("The.Expanse.S01E01", None)}
 NICE = ["nice", "-n", "15"]
+# Bracket word -> Whisper language; anything else (and Irish/Gaelic, which Whisper lacks) is "auto".
 LANG = {"spanish": "es", "french": "fr", "german": "de", "italian": "it", "russian": "ru", "korean": "ko",
         "japanese": "ja", "chinese": "zh", "mandarin": "zh", "cantonese": "yue", "arabic": "ar", "hindi": "hi",
-        "portuguese": "pt", "indonesian": "id", "gaelic": "ga", "irish": "ga", "hawaiian": "haw",
+        "portuguese": "pt", "indonesian": "id", "hawaiian": "haw",
         "swedish": "sv", "norwegian": "no"}
 HALLU = re.compile(r"^(thank you\.?|thanks for watching!?|you\.?|bye\.?|\.+|subtitles? by .*|\[.*\]|\(.*\)|♪.*|-)$", re.I)
 TIME = re.compile(r"(\d+):(\d\d):(\d\d)[,.](\d{1,3})\s*-->\s*(\d+):(\d\d):(\d\d)[,.](\d{1,3})")
@@ -72,7 +83,10 @@ def translate(path, start, end, lang, amap):
         subprocess.run(NICE + ["whisper-cli", "-m", MODEL, "-f", wav, "-t", THREADS, "-tr", "-l", lang, "-nt", "-np",
                                "-otxt", "-of", os.path.join(td, "o")],
                        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return " ".join(open(os.path.join(td, "o.txt"), encoding="utf-8", errors="replace").read().split())
+        o = os.path.join(td, "o.txt")
+        if not os.path.exists(o):  # e.g. a language Whisper doesn't know
+            return ""
+        return " ".join(open(o, encoding="utf-8", errors="replace").read().split())
 
 
 def lang_of(bracket):
@@ -82,12 +96,43 @@ def lang_of(bracket):
     return "auto"
 
 
+FOREIGN = re.compile(r"non[- ]?english|foreign|spanish|french|german|italian|russian|korean|japanese|chinese|mandarin|"
+                     r"cantonese|arabic|hindi|portuguese|indonesian|gaelic|hawaiian|creole|native language|"
+                     r"other language|own language|another language", re.I)
+
+
 def is_placeholder_line(l):
-    return bool(BR.search(l)) and not BR.sub("", TAG.sub("", l)).strip(" -–—.,…:")
+    """A line that is only brackets, one of them a foreign-speech note ("[laughter]" alone isn't)."""
+    l = TAG.sub("", l)
+    return any(FOREIGN.search(b) for b in BR.findall(l)) and not BR.sub("", l).strip(" -–—.,…:")
 
 
 def norm(s):
     return re.sub(r"\W+", " ", s).strip().lower()
+
+
+def tidy(tr):
+    """Drop Whisper's own notes ("(speaking in foreign language)", "[music]") from a translation."""
+    return " ".join(BR.sub(" ", tr).split()).strip()
+
+
+def strip_english(tr, english):
+    """Whisper also hears the English the other speaker says in a shared cue: remove it when the
+    translation starts with (something close to) it. Returns "" if nothing else is left."""
+    t = tr.lstrip(" -–—")
+    for o in english:
+        words = norm(o).split()
+        if not words:
+            continue
+        toks = list(re.finditer(r"\w+", t))
+        if len(toks) < len(words):
+            if difflib.SequenceMatcher(None, norm(t), " ".join(words)).ratio() >= 0.75:
+                return ""
+            continue
+        head = " ".join(m.group(0).lower() for m in toks[:len(words)])
+        if difflib.SequenceMatcher(None, head, " ".join(words)).ratio() >= 0.75:
+            t = t[toks[len(words) - 1].end():].lstrip(" .,!?-–—")
+    return t.strip()
 
 
 rows = json.load(open("/in.json"))
@@ -96,6 +141,11 @@ for r in sorted(rows, key=lambda r: (r[3], r[6])):
     if ONLY in r[3]:
         byfile.setdefault(r[3], []).append(r)
 os.makedirs(OUT, exist_ok=True)
+prev = {}
+if REUSE:
+    for x in json.load(open(REUSE)):
+        for c in x["cues"]:
+            prev[(x["path"], c["at_ms"])] = c
 rp = os.path.join(OUT, "report.json")
 report = json.load(open(rp)) if os.path.exists(rp) else []
 seen = {x["path"] for x in report}
@@ -130,18 +180,27 @@ for path, rs in byfile.items():
             rec["cues"].append({"at_ms": r[6], "text": r[8], "result": "placeholder line not found; left as is"})
             continue
         lang = lang_of(" ".join(BR.findall(r[8])))
-        try:
-            tr = translate(src, r[6], r[7], lang, amap)
-        except subprocess.CalledProcessError as e:
-            rec["cues"].append({"at_ms": r[6], "text": r[8], "result": f"whisper failed: {e}"})
+        if any(f in path and ms_ in (r[6], None) for f, ms_ in DROP):
+            rec["cues"].append({"at_ms": r[6], "text": r[8], "lang": lang, "result": "dropped after review; left as is"})
             continue
-        if r[9] == "partial":  # Whisper may repeat the English the other speaker says in the same cue
-            for k, l in enumerate(tl):
-                o = clean(l).strip(" -–—")
-                if k not in hold and norm(o) and norm(tr).startswith(norm(o)):
-                    tr = tr[len(o):].lstrip(" .,!?-") or tr
-        if not tr or HALLU.match(tr.strip()):
-            rec["cues"].append({"at_ms": r[6], "text": r[8], "lang": lang, "result": f"no usable translation ({tr!r}); left as is"})
+        p = prev.get((path, r[6]))
+        if r[9] == "full" and p and p["result"] == "translated":
+            tr = p["translation"]
+        elif r[9] == "full" and p and p["result"].startswith("no usable"):
+            rec["cues"].append(dict(p))
+            continue
+        else:
+            try:
+                tr = translate(src, r[6], r[7], lang, amap)
+            except subprocess.CalledProcessError as e:
+                rec["cues"].append({"at_ms": r[6], "text": r[8], "result": f"whisper failed: {e}"})
+                continue
+        raw = tr
+        if r[9] == "partial":
+            tr = strip_english(tr, [clean(l) for k, l in enumerate(tl) if k not in hold])
+        tr = tidy(tr)
+        if not tr or HALLU.match(tr.strip()) or not re.search(r"\w", tr):
+            rec["cues"].append({"at_ms": r[6], "text": r[8], "lang": lang, "result": f"no usable translation ({raw!r}); left as is"})
             continue
         new = list(b["lines"])
         k = b["ti"] + (hold[0] if hold else len(tl) - 1)
