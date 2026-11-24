@@ -21,6 +21,16 @@ in REQUESTS.md).
   upcoming round's combo is shown (4). Each combo is drawn as little shadow silhouettes (4). A
   "Go easy on" row of chips leaves lead hooks, rear hooks, uppercuts or slips out of the mix
   (15, 16).
+- **Guided warm-up** (22): while the warm-up runs, a new move shows every 30 seconds or so (jog
+  on the spot, arm circles, hip circles, torso twists, squats, light shadow boxing), with a beep on
+  each change. It can be switched off.
+- **Exercises** (22): optional strength and cardio that back up the bag work, as a **finisher**
+  after the last round or **between rounds**, each with a length and a blue screen. Tap what you
+  have at home (1 kg weights, 3 kg weights, things around the house) and only exercises you can do
+  are offered. Each slot has a swap button, and the stats page lists them too.
+- **Content for other agents** (23): every combo, exercise, warm-up move and equipment item is
+  plain JSON in one block of the page, with a checker and [AGENTS.md](AGENTS.md), so a specialist
+  agent can add or remove them without touching the code.
 - **Ending** (17): an "I'm knackered" button ends the session early, and a stats page follows
   (total time, rounds finished, share of the plan, round time versus rest, each round's combo and
   how long it lasted). Finishing normally shows the same page.
@@ -55,6 +65,9 @@ and the rules in [../../CLAUDE.md](../../CLAUDE.md): build on the build box, tes
 Done when: the page at the gadget's address behaves exactly like the file on the phone.
 
 ### 2. Routines as data, separate from the timer
+
+*Started inside the page:* the content pack (see [AGENTS.md](AGENTS.md)) is the first form of
+this. This phase moves it behind the server.
 
 The timer must still work with nothing else running (request 11).
 

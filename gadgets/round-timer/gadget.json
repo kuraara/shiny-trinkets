@@ -4,8 +4,8 @@
   "name": "Round Timer",
   "kind": "gadget",
   "host": "pi",
-  "desc": "Heavy-bag round timer: warm-up, rounds and breaks, with a combo for each round.",
-  "about": "Set a warm-up, the number of rounds and the round and break lengths in 15-second steps. The clock fills the screen and turns green for a round, orange with 30 seconds left and red at 10. Each round gets a heavy-bag combo, shown during the break before it, and a stats page follows the session.",
+  "desc": "Heavy-bag round timer: warm-up, rounds and breaks, a combo for each round, and optional exercises.",
+  "about": "Set a warm-up, the number of rounds and the round and break lengths in 15-second steps. The clock fills the screen and turns green for a round, orange with 30 seconds left and red at 10. Each round gets a heavy-bag combo, shown during the break before it. Add a guided warm-up and a few strength and cardio exercises (a finisher, or one between rounds) chosen from what you have at home, and a stats page follows the session.",
   "icon": "web/icon.svg",
   "iconSpec": {
     "top": "#34b36b",
@@ -15,7 +15,8 @@
   "url": "http://{pi}:8107/",
   "intents": [
     { "phrase": "…time a heavy-bag session", "desc": "Rounds, breaks and a combo for each round, with the clock filling the screen.", "group": "training" },
-    { "phrase": "…get a combo to work on each round", "desc": "A bank of 35 heavy-bag combos, one per round, with the ones that hurt left out.", "group": "training" }
+    { "phrase": "…get a combo to work on each round", "desc": "A bank of 35 heavy-bag combos, one per round, with the ones that hurt left out.", "group": "training" },
+    { "phrase": "…add some strength and cardio to my boxing session", "desc": "Exercises that back up the bag work, from bodyweight to light weights, as a finisher or between rounds.", "group": "training" }
   ],
   "deploy": {
     "stacks": [

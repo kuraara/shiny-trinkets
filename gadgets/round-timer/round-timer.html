@@ -9,6 +9,7 @@
     --ink:#14261e;
     --rest-bg:#f5f6f2;
     --work-bg:#2f9e5b;
+    --ex-bg:#2d6cdf;
     --warn-bg:#ff8c2b;
     --danger-bg:#e5352b;
     --panel:#121212;
@@ -52,7 +53,7 @@
     border-radius:16px;
     padding:16px 16px;
     margin-bottom:12px;
-    display:flex; align-items:center; justify-content:space-between;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
   }
   .row .label{ display:flex; flex-direction:column; gap:2px; }
   .row .label b{ font-size:15px; letter-spacing:.5px; text-transform:uppercase; }
@@ -81,6 +82,23 @@
   .chip:active{ transform:scale(.95); }
   .chip.on{ background:var(--amber); border-color:var(--amber); color:#1a1200; }
   .comboSection{ margin-bottom:12px; }
+  .exSection{ margin-bottom:12px; }
+  .row.col{ flex-direction:column; align-items:stretch; gap:12px; }
+  .seg{ display:flex; gap:3px; padding:3px; background:#252525; border:1px solid var(--line); border-radius:12px; }
+  .seg button{
+    flex:1; border:none; background:transparent; color:#cfcfcf; cursor:pointer;
+    padding:10px 6px; border-radius:9px; font-size:13px; font-weight:700; letter-spacing:.2px;
+  }
+  .seg button.on{ background:var(--amber); color:#1a1200; }
+  .comboRoundLabel.wide{ width:64px; }
+  .exInfo{ min-width:0; }
+  .exName{ font-size:13px; font-weight:600; color:#eee; }
+  .exSub{ font-size:11px; color:var(--muted); margin-top:1px; }
+  .exWhy{ font-size:11px; color:#7d7d7d; margin-top:3px; line-height:1.35; }
+  .contentNote{
+    display:none; margin:8px 0 12px; padding:10px 12px; border-radius:12px;
+    border:1px solid var(--amber); color:var(--amber); font-size:12px; line-height:1.4;
+  }
   .comboHeader{
     display:flex; flex-direction:column; gap:2px;
     margin: 4px 0 10px; padding:0 2px;
@@ -130,6 +148,7 @@
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
   #timer.work{ background:var(--work-bg); color:#fff; }
+  #timer.exercise{ background:var(--ex-bg); color:#fff; }
   #timer.warn{ background:var(--warn-bg); color:#fff; }
   #timer.danger{ background:var(--danger-bg); color:#fff; }
   #timer.danger #clock{ animation: pulse 1s ease-in-out infinite; }
@@ -151,6 +170,9 @@
   #drillTag{ font-size:11px; font-weight:800; letter-spacing:2px; opacity:.55; text-transform:uppercase; margin-bottom:2px; }
   #drillName{ font-size:clamp(15px, 4.5vw, 22px); font-weight:800; letter-spacing:.3px; margin-bottom:8px; }
   #drillIcons{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:8px; }
+  #drillIcons:empty{ display:none; }
+  #drillCue{ font-size:clamp(14px, 4vw, 18px); line-height:1.35; opacity:.9; max-width:30ch; margin-bottom:10px; }
+  #drillCue:empty{ display:none; }
   #shuffleBtn{
     border:none; background:rgba(0,0,0,.12); color:inherit;
     padding:6px 14px; border-radius:999px; font-size:12px; font-weight:700; letter-spacing:.5px; cursor:pointer;
@@ -223,12 +245,17 @@
       <div class="brand"><div class="dot"></div><h1>Round Timer</h1><span>boxing / interval training</span></div>
 
       <div class="row">
-        <div class="label"><b>Warm-up</b><small>then a break before round 1</small></div>
+        <div class="label"><b>Warm-up</b><small>then a break</small></div>
         <div class="stepper">
           <button class="stepbtn" data-adj="warmup" data-delta="-15">−</button>
           <div class="val" id="warmupVal">3:00</div>
           <button class="stepbtn amber" data-adj="warmup" data-delta="15">+</button>
         </div>
+      </div>
+
+      <div class="row">
+        <div class="label"><b>Guided warm-up</b><small>a new move every 30 s or so</small></div>
+        <button class="chip on" id="guidedToggle">On</button>
       </div>
 
       <div class="row">
@@ -258,6 +285,33 @@
         </div>
       </div>
 
+      <div class="row col">
+        <div class="label"><b>Exercises</b><small>strength and cardio that back up the bag work</small></div>
+        <div class="seg" id="condSeg">
+          <button data-mode="off">Off</button>
+          <button data-mode="finisher">Finisher</button>
+          <button data-mode="between">Between rounds</button>
+        </div>
+      </div>
+
+      <div class="row" id="exLenRow">
+        <div class="label"><b>Exercise length</b><small>each exercise</small></div>
+        <div class="stepper">
+          <button class="stepbtn" data-adj="exlen" data-delta="-15">−</button>
+          <div class="val" id="exLenVal">0:45</div>
+          <button class="stepbtn amber" data-adj="exlen" data-delta="15">+</button>
+        </div>
+      </div>
+
+      <div class="row" id="exCountRow">
+        <div class="label"><b>Finisher size</b><small>exercises after the last round</small></div>
+        <div class="stepper">
+          <button class="stepbtn" data-adj="excount" data-delta="-1">−</button>
+          <div class="val" id="exCountVal">3</div>
+          <button class="stepbtn amber" data-adj="excount" data-delta="1">+</button>
+        </div>
+      </div>
+
       <div class="summary" id="summary"></div>
 
       <div class="avoidSection">
@@ -275,6 +329,21 @@
         </div>
         <div class="comboList" id="comboList"></div>
       </div>
+
+      <div class="exSection" id="exSection">
+        <div class="comboHeader">
+          <b>Equipment</b>
+          <span>tap what you have to hand</span>
+        </div>
+        <div class="chips" id="equipChips"></div>
+        <div class="comboHeader" style="margin-top:18px">
+          <b id="exHeading">Exercises</b>
+          <span>tap ⟳ to swap one</span>
+        </div>
+        <div class="comboList" id="exList"></div>
+      </div>
+
+      <div class="contentNote" id="contentNote"></div>
     </div>
 
     <button id="startBtn">Start Session</button>
@@ -292,6 +361,7 @@
         <div id="drillTag"></div>
         <div id="drillName"></div>
         <div id="drillIcons"></div>
+        <div id="drillCue"></div>
         <button id="shuffleBtn">🔀 New drill</button>
       </div>
       <div id="nextUp"></div>
@@ -319,6 +389,8 @@
         <div class="stat"><b id="statPlan">0%</b><span>Of the plan</span></div>
         <div class="stat"><b id="statWork">0:00</b><span>Round time</span></div>
         <div class="stat"><b id="statRest">0:00</b><span>Warm-up &amp; rest</span></div>
+        <div class="stat" id="statExDoneWrap"><b id="statExDone">0 / 0</b><span>Exercises finished</span></div>
+        <div class="stat" id="statExTimeWrap"><b id="statExTime">0:00</b><span>Exercise time</span></div>
       </div>
 
       <div class="comboHeader">
@@ -326,6 +398,14 @@
         <span>the combo you were on and how long you lasted</span>
       </div>
       <div class="comboList" id="doneRounds"></div>
+
+      <div id="doneExHead" style="margin-top:22px">
+        <div class="comboHeader">
+          <b>Exercises</b>
+          <span>what you did and how long you lasted</span>
+        </div>
+      </div>
+      <div class="comboList" id="doneExercises"></div>
       <div style="height:12px"></div>
     </div>
     <button id="restartBtn">Back to setup</button>
@@ -333,47 +413,372 @@
 
 </div>
 
+<!-- =====================================================================
+     CONTENT PACK: the only part of this file meant to be edited for content.
+     It is plain JSON. Add, remove or reword entries here; the timer reads it
+     when the page loads and skips (and reports) anything that is invalid.
+     Rules, field meanings and the checker: see AGENTS.md next to this file.
+     Run  python3 tools/check_content.py round-timer.html  after editing.
+     ===================================================================== -->
+<script type="application/json" id="content-pack">
+{
+  "version": 1,
+
+  "punches": [
+    { "code": 1,      "label": "Jab" },
+    { "code": 2,      "label": "Cross" },
+    { "code": 3,      "label": "Lead Hook",     "easyOn": "Lead hook" },
+    { "code": 4,      "label": "Rear Hook",     "easyOn": "Rear hook" },
+    { "code": 5,      "label": "Lead Uppercut", "easyOn": "Lead uppercut" },
+    { "code": 6,      "label": "Rear Uppercut", "easyOn": "Rear uppercut" },
+    { "code": "slip", "label": "Slip",          "easyOn": "Slips" }
+  ],
+
+  "combos": [
+    { "group": "Jab / cross basics", "seqs": [
+      [1,2], [1,1,2], [1,1,1], [1,2,1], [2,1,2], [1,1,1,2], [1,1,2,2], [1,2,1,2]
+    ]},
+    { "group": "Uppercuts", "seqs": [
+      [1,6], [1,6,2], [1,1,6], [1,2,6], [1,2,6,2], [1,2,1,6], [1,5,2], [1,2,5,2]
+    ]},
+    { "group": "Rear hook", "seqs": [
+      [1,2,4], [1,1,4], [1,1,2,4]
+    ]},
+    { "group": "Slips / movement", "seqs": [
+      ["slip",2], [1,"slip",2], [1,1,"slip",2], [2,"slip",2], [1,2,"slip",2], [1,2,"slip",1], [1,2,"slip",6]
+    ]},
+    { "group": "Lead hook", "seqs": [
+      [1,2,3], [1,3,2], [2,3,2], [3,2,3], [1,2,3,2], [1,6,3], [1,2,3,6], [2,5,3], [1,1,2,3]
+    ]}
+  ],
+
+  "defaultRounds": [
+    [1,1,2], [1,2,1,2], [1,2,4], [1,6,2], [1,1,"slip",2], [1,2,6,2]
+  ],
+
+  "equipment": [
+    { "id": "w1",    "label": "1 kg weights",     "on": true  },
+    { "id": "w3",    "label": "3 kg weights",     "on": false },
+    { "id": "house", "label": "Around the house", "on": true  }
+  ],
+
+  "warmup": [
+    { "name": "Easy jog on the spot",     "cue": "Light and bouncy. Let your heart rate come up gradually." },
+    { "name": "Arm circles",              "cue": "Big, slow circles forward, then back. Loosen the shoulders." },
+    { "name": "Hip circles and leg swings","cue": "Swing each leg front to back, then circle the hips." },
+    { "name": "Torso twists",             "cue": "Feet planted, rotate from the hips with loose arms." },
+    { "name": "Bodyweight squats",        "cue": "Sit back, chest up, push through the heels." },
+    { "name": "Light shadow boxing",      "cue": "Easy jabs and crosses, staying relaxed. No weights yet." }
+  ],
+
+  "focusOrder": ["legs", "core", "shoulders", "cardio", "footwork", "arms", "back"],
+
+  "defaultExercises": [
+    "squat-jab-cross", "plank", "lateral-raises", "skater-steps", "russian-twists", "push-ups"
+  ],
+
+  "exercises": [
+    { "id": "squats", "name": "Squats", "focus": "legs", "bodyweightOk": true,
+      "cue": "Sit back, chest up, push through the heels. Hold a weight at your chest if you have one.",
+      "why": "Leg strength is where punching power starts.",
+      "needs": [ { "eq": "w3", "with": "a 3 kg weight at your chest" },
+                 { "eq": "house", "with": "a backpack at your chest" },
+                 { "eq": "w1", "with": "1 kg weights at your chest" } ] },
+    { "id": "squat-jab-cross", "name": "Squat, then jab-cross", "focus": "legs",
+      "cue": "Squat down, then drive up and throw a jab-cross as you stand.",
+      "why": "Connects your leg drive to the punch." },
+    { "id": "reverse-lunges", "name": "Reverse lunges", "focus": "legs", "bodyweightOk": true,
+      "cue": "Step back, lower the back knee, push through the front heel. Alternate legs.",
+      "why": "Single-leg strength and balance for your stance and footwork.",
+      "needs": [ { "eq": "w3", "with": "3 kg weights" }, { "eq": "w1", "with": "1 kg weights" } ] },
+    { "id": "step-ups", "name": "Step-ups", "focus": "legs",
+      "cue": "Drive through the whole foot onto the step, then step down. Alternate legs.",
+      "why": "Builds the leg drive and stamina you need in the later rounds.",
+      "needs": [ { "eq": "house", "with": "a bottom stair or sturdy step" } ] },
+    { "id": "wall-sit", "name": "Wall sit", "focus": "legs",
+      "cue": "Back flat on the wall, thighs level with the floor. Breathe steadily.",
+      "why": "Leg endurance for holding your stance when you're tired.",
+      "needs": [ { "eq": "house", "with": "a clear wall" } ] },
+    { "id": "calf-raises", "name": "Calf raises", "focus": "legs",
+      "cue": "Rise onto the balls of your feet, then lower slowly.",
+      "why": "Your calves do a lot of work when you bounce on your toes." },
+
+    { "id": "skater-steps", "name": "Skater steps", "focus": "footwork",
+      "cue": "Step wide to one side, sweep the other leg behind, alternate. Stay low.",
+      "why": "Practises moving sideways to circle the bag." },
+    { "id": "boxer-shuffle", "name": "Boxer shuffle", "focus": "footwork",
+      "cue": "In your stance, step and drag forward, back, left and right. Don't cross your feet.",
+      "why": "Moving without crossing your feet keeps you balanced when you punch." },
+
+    { "id": "skipping-no-rope", "name": "Skipping (no rope)", "focus": "cardio",
+      "cue": "Hop lightly on the balls of your feet, wrists turning an imaginary rope.",
+      "why": "The classic boxer's cardio, and it keeps your feet light." },
+    { "id": "high-knees", "name": "High knees", "focus": "cardio",
+      "cue": "Drive the knees up to hip height and pump the arms.",
+      "why": "A quick way to lift your heart rate." },
+    { "id": "jumping-jacks", "name": "Jumping jacks", "focus": "cardio",
+      "cue": "Step one leg out at a time if you want it lower impact.",
+      "why": "Easy full-body cardio with no equipment." },
+    { "id": "step-back-burpees", "name": "Step-back burpees", "focus": "cardio",
+      "cue": "Hands to the floor, step back to a plank, step in, stand and reach up.",
+      "why": "A full-body engine builder. Stepping instead of jumping is kinder on the joints." },
+    { "id": "mountain-climbers", "name": "Mountain climbers", "focus": "cardio",
+      "cue": "From a plank, drive your knees to your chest quickly, hips level.",
+      "why": "Lifts your heart rate while the core stays tight." },
+
+    { "id": "plank", "name": "Plank", "focus": "core",
+      "cue": "Forearms down, body in one line, squeeze your abs and glutes. Keep breathing.",
+      "why": "A braced core carries power from your legs to your fists." },
+    { "id": "plank-shoulder-taps", "name": "Plank shoulder taps", "focus": "core",
+      "cue": "From a high plank, tap each shoulder in turn without rocking the hips.",
+      "why": "Shoulder stability while the core resists twisting." },
+    { "id": "russian-twists", "name": "Russian twists", "focus": "core", "bodyweightOk": true,
+      "cue": "Lean back a little, rotate side to side and tap the weight beside you.",
+      "why": "Rotation is how hooks and crosses get their power.",
+      "needs": [ { "eq": "w3", "with": "a 3 kg weight" },
+                 { "eq": "house", "with": "a water bottle or a book" },
+                 { "eq": "w1", "with": "a 1 kg weight" } ] },
+    { "id": "dead-bugs", "name": "Dead bugs", "focus": "core",
+      "cue": "On your back, arms up and knees over hips. Lower the opposite arm and leg slowly, back flat.",
+      "why": "Teaches the core to stay braced while your limbs move." },
+    { "id": "bicycle-crunches", "name": "Bicycle crunches", "focus": "core",
+      "cue": "Opposite elbow to knee, slow and controlled. Don't pull on your neck.",
+      "why": "Works the twisting muscles of the trunk." },
+    { "id": "woodchops", "name": "Standing woodchops", "focus": "core",
+      "cue": "Hold the weight in both hands. Chop from high on one side to low on the other, pivoting your feet.",
+      "why": "Copies the hip-to-shoulder rotation of a hook.",
+      "needs": [ { "eq": "w3", "with": "a 3 kg weight in both hands" },
+                 { "eq": "house", "with": "a full water bottle or a backpack" },
+                 { "eq": "w1", "with": "a 1 kg weight in both hands" } ] },
+
+    { "id": "shadow-box-weights", "name": "Shadow boxing with weights", "focus": "shoulders",
+      "cue": "Light and fast. Snap each punch back before your elbow locks out.",
+      "why": "Builds shoulder endurance. Keep the weights to 1 kg or less.",
+      "needs": [ { "eq": "w1", "with": "1 kg weights" },
+                 { "eq": "house", "with": "small water bottles (half a litre)" } ] },
+    { "id": "lateral-raises", "name": "Lateral raises", "focus": "shoulders",
+      "cue": "Lift out to the sides to shoulder height, then lower slowly. Soft elbows.",
+      "why": "Your shoulders do most of the work in a long round.",
+      "needs": [ { "eq": "w1", "with": "1 kg weights" },
+                 { "eq": "house", "with": "water bottles" },
+                 { "eq": "w3", "with": "3 kg weights" } ] },
+    { "id": "overhead-press", "name": "Overhead press", "focus": "shoulders",
+      "cue": "Press from your shoulders to overhead, ribs down, lower with control.",
+      "why": "Strength for keeping your hands up late in the round.",
+      "needs": [ { "eq": "w3", "with": "3 kg weights" },
+                 { "eq": "house", "with": "full water bottles" },
+                 { "eq": "w1", "with": "1 kg weights" } ] },
+
+    { "id": "bent-over-rows", "name": "Bent-over rows", "focus": "back",
+      "cue": "Hinge forward with a flat back, pull the weights to your hips, squeeze your shoulder blades.",
+      "why": "Pulling strength balances all the pushing and helps snap punches back to guard.",
+      "needs": [ { "eq": "w3", "with": "3 kg weights" },
+                 { "eq": "house", "with": "a loaded backpack or water bottles" },
+                 { "eq": "w1", "with": "1 kg weights" } ] },
+
+    { "id": "triceps-kickbacks", "name": "Triceps kickbacks", "focus": "arms",
+      "cue": "Hinge forward, elbows by your ribs, straighten your arms behind you.",
+      "why": "Your triceps finish every straight punch.",
+      "needs": [ { "eq": "w3", "with": "3 kg weights" },
+                 { "eq": "w1", "with": "1 kg weights" },
+                 { "eq": "house", "with": "water bottles" } ] },
+    { "id": "hammer-curls", "name": "Hammer curls", "focus": "arms",
+      "cue": "Palms facing in, curl up, lower slowly.",
+      "why": "Arm endurance for holding your guard up.",
+      "needs": [ { "eq": "w3", "with": "3 kg weights" },
+                 { "eq": "w1", "with": "1 kg weights" },
+                 { "eq": "house", "with": "water bottles" } ] },
+    { "id": "push-ups", "name": "Push-ups", "focus": "arms",
+      "cue": "Hands under shoulders, body in one line. Drop to your knees or use a bench or counter to make it easier.",
+      "why": "Pushing strength behind every straight punch." },
+    { "id": "chair-dips", "name": "Chair dips", "focus": "arms",
+      "cue": "Hands on the edge of the chair, lower until your elbows are about 90 degrees, then press up.",
+      "why": "Triceps and shoulder strength with just a chair.",
+      "needs": [ { "eq": "house", "with": "a sturdy chair" } ] }
+  ]
+}
+</script>
+
 <script>
 (function(){
   "use strict";
 
-  var config = { warmup: 180, round: 180, brk: 60, rounds: 6 };
-  var MIN = { warmup: 0, round: 15, brk: 0, rounds: 1 };
-  var MAX = { warmup: 60*30, round: 60*30, brk: 60*10, rounds: 30 };
+  var SWITCH_REST = 15;   // seconds of rest between finisher exercises
+
+  var config = {
+    warmup: 180, round: 180, brk: 60, rounds: 6,
+    guided: true,           // show a warm-up move every ~30 s
+    placement: 'finisher',  // 'off' | 'finisher' | 'between'
+    exLen: 45, exCount: 3
+  };
+  var MIN = { warmup: 0, round: 15, brk: 0, rounds: 1, exLen: 15, exCount: 1 };
+  var MAX = { warmup: 60*30, round: 60*30, brk: 60*10, rounds: 30, exLen: 300, exCount: 8 };
 
   function fmt(s){
     s = Math.max(0, Math.round(s));
     var m = Math.floor(s/60), r = s%60;
     return m + ":" + (r<10?"0":"") + r;
   }
+  function esc(s){
+    return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; });
+  }
 
+  // =====================================================================
+  // CONTENT PACK
+  // Every combo, exercise and warm-up move comes from <script id="content-pack">
+  // (plain JSON, near the bottom of this file). Bad entries are skipped and
+  // reported on the setup page and in the console; they never break the timer.
+  // The same rules are enforced offline by tools/check_content.py.
+  // =====================================================================
+  var contentProblems = [];
+  var FALLBACK_PACK = {
+    punches:[{code:1,label:'Jab'},{code:2,label:'Cross'}],
+    combos:[{group:'Basics',seqs:[[1,2]]}], defaultRounds:[[1,2]]
+  };
+
+  function validatePack(p){
+    function bad(msg){ contentProblems.push(msg); }
+    function str(v){ return typeof v === 'string' && v.trim().length > 0; }
+    function list(v){ return Array.isArray(v) ? v : []; }
+    var out = { punches:[], combos:[], defaultRounds:[], equipment:[], warmup:[],
+                exercises:[], defaultExercises:[], focusOrder:[] };
+
+    var codes = {};
+    list(p.punches).forEach(function(x, i){
+      if(!x || !(typeof x.code === 'number' || str(x.code)) || !str(x.label)){ bad('punches['+i+'] needs a "code" and a "label"'); return; }
+      if(codes[x.code]){ bad('punches['+i+'] repeats code '+x.code); return; }
+      codes[x.code] = true;
+      out.punches.push({ code:x.code, label:x.label, easyOn: str(x.easyOn) ? x.easyOn : null });
+    });
+
+    var seen = {};
+    list(p.combos).forEach(function(g, gi){
+      if(!g || !Array.isArray(g.seqs)){ bad('combos['+gi+'] needs a "seqs" list'); return; }
+      g.seqs.forEach(function(s, si){
+        var where = 'combos['+gi+'].seqs['+si+']';
+        if(!Array.isArray(s) || s.length < 1 || s.length > 8){ bad(where+' must be a list of 1 to 8 punch codes'); return; }
+        var unknown = s.filter(function(c){ return !codes[c]; });
+        if(unknown.length){ bad(where+' uses unknown punch code(s): '+unknown.join(', ')); return; }
+        var key = JSON.stringify(s);
+        if(seen[key]){ bad(where+' duplicates an earlier combo'); return; }
+        seen[key] = true;
+        out.combos.push({ seq:s, group: str(g.group) ? g.group : '' });
+      });
+    });
+    if(!out.combos.length){
+      bad('no usable combos, so the built-in fallback is being used');
+      out.punches = FALLBACK_PACK.punches.slice();
+      out.combos = [{ seq:[1,2], group:'Basics' }];
+      seen = { '[1,2]': true };
+    }
+    list(p.defaultRounds).forEach(function(s, i){
+      if(!Array.isArray(s) || !seen[JSON.stringify(s)]){ bad('defaultRounds['+i+'] is not one of the combos'); return; }
+      out.defaultRounds.push(s);
+    });
+    if(!out.defaultRounds.length) out.defaultRounds.push(out.combos[0].seq);
+
+    var eqIds = {};
+    list(p.equipment).forEach(function(e, i){
+      if(!e || !str(e.id) || !str(e.label)){ bad('equipment['+i+'] needs an "id" and a "label"'); return; }
+      if(eqIds[e.id]){ bad('equipment['+i+'] repeats id "'+e.id+'"'); return; }
+      eqIds[e.id] = true;
+      out.equipment.push({ id:e.id, label:e.label, on: e.on === true });
+    });
+
+    list(p.warmup).forEach(function(w, i){
+      if(!w || !str(w.name) || !str(w.cue)){ bad('warmup['+i+'] needs a "name" and a "cue"'); return; }
+      out.warmup.push({ name:w.name, cue:w.cue });
+    });
+
+    var exIds = {};
+    list(p.exercises).forEach(function(x, i){
+      var tag = 'exercises['+i+']' + (x && x.id ? ' ("'+x.id+'")' : '');
+      if(!x || !str(x.id) || !str(x.name) || !str(x.focus) || !str(x.cue)){ bad(tag+' needs "id", "name", "focus" and "cue"'); return; }
+      if(exIds[x.id]){ bad(tag+' repeats an earlier id'); return; }
+      var needs = [];
+      list(x.needs).forEach(function(n, ni){
+        if(!n || !str(n.eq) || !str(n.with)){ bad(tag+'.needs['+ni+'] needs "eq" and "with"'); return; }
+        if(!eqIds[n.eq]){ bad(tag+'.needs['+ni+'] uses unknown equipment "'+n.eq+'"'); return; }
+        needs.push({ eq:n.eq, with:n.with });
+      });
+      var bwOk = x.bodyweightOk === true;
+      if(x.needs && x.needs.length && !needs.length && !bwOk){ bad(tag+' can never be done (no valid equipment), skipped'); return; }
+      exIds[x.id] = true;
+      out.exercises.push({ id:x.id, name:x.name, focus:x.focus, cue:x.cue, why: str(x.why) ? x.why : '',
+                           needs:needs, bodyweightOk: bwOk || !needs.length });
+    });
+
+    list(p.defaultExercises).forEach(function(id, i){
+      if(!exIds[id]){ bad('defaultExercises['+i+'] ("'+id+'") is not an exercise id'); return; }
+      out.defaultExercises.push(id);
+    });
+    list(p.focusOrder).forEach(function(f){ if(str(f)) out.focusOrder.push(f); });
+    out.exercises.forEach(function(x){ if(out.focusOrder.indexOf(x.focus) < 0) out.focusOrder.push(x.focus); });
+    return out;
+  }
+
+  function loadContent(){
+    var raw;
+    try{ raw = JSON.parse(document.getElementById('content-pack').textContent); }
+    catch(e){
+      contentProblems.push('content-pack is not valid JSON ('+e.message+'), so the built-in fallback is being used');
+      raw = FALLBACK_PACK;
+    }
+    return validatePack(raw);
+  }
+  var content = loadContent();
+  var EX = content.exercises;
+  var CODE_LABEL = {};
+  content.punches.forEach(function(p){ CODE_LABEL[p.code] = p.label; });
+  var equipOn = {};
+  content.equipment.forEach(function(e){ equipOn[e.id] = e.on; });
+
+  function showContentProblems(){
+    var el = document.getElementById('contentNote');
+    if(!contentProblems.length){ el.style.display = 'none'; return; }
+    contentProblems.forEach(function(m){ try{ console.warn('[content-pack] '+m); }catch(e){} });
+    el.textContent = '⚠ ' + contentProblems.length + ' problem' + (contentProblems.length===1?'':'s') +
+                     ' in the content pack; those entries were skipped (details in the console).';
+    el.style.display = 'block';
+  }
+
+  // ---------- Setup screen ----------
   function renderSetup(){
+    var plan = buildPhases();
+    var total = plan.reduce(function(s, p){ return s + p.dur; }, 0);
+    var exN = plan.filter(function(p){ return p.type === 'exercise'; }).length;
     document.getElementById('warmupVal').textContent = fmt(config.warmup);
     document.getElementById('roundVal').textContent = fmt(config.round);
     document.getElementById('breakVal').textContent = fmt(config.brk);
     document.getElementById('roundsVal').textContent = config.rounds;
-    var totalWork = config.warmup + config.rounds*config.round + Math.max(0,config.rounds-1)*config.brk
-                    + (config.warmup>0 ? config.brk : 0);
+    document.getElementById('exLenVal').textContent = fmt(config.exLen);
+    document.getElementById('exCountVal').textContent = config.exCount;
     document.getElementById('summary').innerHTML =
-      config.rounds + ' round' + (config.rounds===1?'':'s') + ' · about <b>' + fmt(totalWork) + '</b> total';
+      config.rounds + ' round' + (config.rounds===1?'':'s') +
+      (exN ? ' + ' + exN + ' exercise' + (exN===1?'':'s') : '') +
+      ' · about <b>' + fmt(total) + '</b> total';
+  }
+
+  function refreshSetup(){
+    ensureRoundDrillIdxLength();
+    ensureSlots();
+    renderSetup();
+    renderRoundCombos();
+    renderConditioning();
   }
 
   document.querySelectorAll('.stepbtn').forEach(function(btn){
     btn.addEventListener('click', function(){
       var key = btn.getAttribute('data-adj');
       var delta = parseInt(btn.getAttribute('data-delta'),10);
-      var map = { warmup:'warmup', round:'round', 'break':'brk', rounds:'rounds' };
+      var map = { warmup:'warmup', round:'round', 'break':'brk', rounds:'rounds', exlen:'exLen', excount:'exCount' };
       var k = map[key];
-      var next = config[k] + delta;
-      config[k] = Math.min(MAX[k], Math.max(MIN[k], next));
-      renderSetup();
-      renderRoundCombos();
+      config[k] = Math.min(MAX[k], Math.max(MIN[k], config[k] + delta));
+      refreshSetup();
     });
   });
 
   // ---------- Punch silhouette icons (a nod to "shadow" boxing) ----------
-  var CODE_LABEL = { 1:'Jab', 2:'Cross', 3:'Lead Hook', 4:'Rear Hook', 5:'Lead Uppercut', 6:'Rear Uppercut', slip:'Slip' };
-
   var BODY = '<circle cx="20" cy="9" r="5"/><rect x="13" y="14" width="14" height="21" rx="5"/>'+
              '<path d="M15 35 L12 58 L18 58 L20 38 Z"/><path d="M25 35 L28 58 L22 58 L20 38 Z"/>';
   var GUARD = '<path d="M13 16 Q8 18 9 24 Q9 27 12 27 L15 25 Q13 22 14 18 Z"/><circle cx="10" cy="25" r="3"/>';
@@ -385,78 +790,33 @@
     5: '<path d="M25 30 L30 14 L34 16 L29 32 Z"/><circle cx="31" cy="15" r="4"/>',
     6: '<path d="M23 32 L29 15 L33 17 L27 34 Z"/><circle cx="30" cy="16" r="4"/>'
   };
+  // A punch code with no drawing here still works: it shows the guard pose and its label.
   function iconSVG(code){
     if(code === 'slip'){
       return '<svg class="picon" viewBox="0 0 40 60"><g transform="rotate(-14 20 34)">'+BODY+GUARD+
         '<path d="M27 16 Q32 18 31 24 Q31 27 28 27 L25 25 Q27 22 26 18 Z"/><circle cx="30" cy="25" r="3"/>'+
         '</g></svg>';
     }
-    return '<svg class="picon" viewBox="0 0 40 60">'+BODY+GUARD+PUNCH[code]+'</svg>';
+    return '<svg class="picon" viewBox="0 0 40 60">'+BODY+GUARD+(PUNCH[code]||'')+'</svg>';
   }
   function iconsHTML(seq, size){
     return seq.map(function(code){
-      return '<div class="picon-wrap '+size+'">'+iconSVG(code)+'<span class="pnum">'+(code==='slip'?'S':code)+'</span></div>';
+      var mark = typeof code === 'string' ? code.charAt(0).toUpperCase() : code;
+      return '<div class="picon-wrap '+size+'">'+iconSVG(code)+'<span class="pnum">'+esc(mark)+'</span></div>';
     }).join('');
   }
   function seqName(seq){
     return seq.map(function(c){ return CODE_LABEL[c]; }).join(', ');
   }
 
-  // Grouped by type so cycling with the ⟳ button walks through similar combos together.
-  // Lead-hook (3) combos are deliberately last, so they're easy to skip past.
-  var DRILLS = [
-    // Jab / cross basics
-    { seq:[1,2] },
-    { seq:[1,1,2] },
-    { seq:[1,1,1] },
-    { seq:[1,2,1] },
-    { seq:[2,1,2] },
-    { seq:[1,1,1,2] },
-    { seq:[1,1,2,2] },
-    { seq:[1,2,1,2] },
-    // Uppercuts
-    { seq:[1,6] },
-    { seq:[1,6,2] },
-    { seq:[1,1,6] },
-    { seq:[1,2,6] },
-    { seq:[1,2,6,2] },
-    { seq:[1,2,1,6] },
-    { seq:[1,5,2] },
-    { seq:[1,2,5,2] },
-    // Rear hook
-    { seq:[1,2,4] },
-    { seq:[1,1,4] },
-    { seq:[1,1,2,4] },
-    // Slips / movement
-    { seq:['slip',2] },
-    { seq:[1,'slip',2] },
-    { seq:[1,1,'slip',2] },
-    { seq:[2,'slip',2] },
-    { seq:[1,2,'slip',2] },
-    { seq:[1,2,'slip',1] },
-    { seq:[1,2,'slip',6] },
-    // Lead hook
-    { seq:[1,2,3] },
-    { seq:[1,3,2] },
-    { seq:[2,3,2] },
-    { seq:[3,2,3] },
-    { seq:[1,2,3,2] },
-    { seq:[1,6,3] },
-    { seq:[1,2,3,6] },
-    { seq:[2,5,3] },
-    { seq:[1,1,2,3] }
-  ];
-  DRILLS.forEach(function(d){ d.name = seqName(d.seq); });
+  // ---------- Combos (from the content pack) ----------
+  var DRILLS = [];
+  content.combos.forEach(function(c){ DRILLS.push({ seq:c.seq, group:c.group, name:seqName(c.seq) }); });
 
   // ---------- "Go easy on" filters ----------
   // Any punch type switched on here is left out of cycling, shuffling and round assignments.
-  var AVOID_OPTIONS = [
-    { code:3, label:'Lead hook' },
-    { code:4, label:'Rear hook' },
-    { code:5, label:'Lead uppercut' },
-    { code:6, label:'Rear uppercut' },
-    { code:'slip', label:'Slips' }
-  ];
+  var AVOID_OPTIONS = content.punches.filter(function(p){ return p.easyOn; })
+                                     .map(function(p){ return { code:p.code, label:p.easyOn }; });
   var avoid = {};
   function isAllowed(d){
     return d.seq.every(function(c){ return !avoid[c]; });
@@ -478,6 +838,7 @@
 
   function randomDrill(exclude){
     var pool = allowedDrills();
+    if(!pool.length) return exclude || DRILLS[0];
     var pick;
     do{ pick = pool[Math.floor(Math.random()*pool.length)]; }
     while(pool.length > 1 && exclude && pick.name === exclude.name);
@@ -485,9 +846,7 @@
   }
 
   // Which combo (index into DRILLS) is assigned to each round, cyclable from setup.
-  // Seeded with this week's cardio/strength set (no lead hooks) — still fully editable with the cycle button.
-  // Seeds are listed as punch sequences rather than list positions, so re-ordering DRILLS can't break them.
-  var initialRoundSeqs = [ [1,1,2], [1,2,1,2], [1,2,4], [1,6,2], [1,1,'slip',2], [1,2,6,2] ];
+  // Seeded from content.defaultRounds (punch sequences, so re-ordering combos can't break them).
   function drillIndexFor(seq){
     var key = JSON.stringify(seq);
     for(var k=0;k<DRILLS.length;k++){ if(JSON.stringify(DRILLS[k].seq) === key) return k; }
@@ -497,7 +856,7 @@
   function ensureRoundDrillIdxLength(){
     while(roundDrillIdx.length < config.rounds){
       var i = roundDrillIdx.length;
-      var seedIdx = drillIndexFor(initialRoundSeqs[i % initialRoundSeqs.length]);
+      var seedIdx = drillIndexFor(content.defaultRounds[i % content.defaultRounds.length]);
       if(!isAllowed(DRILLS[seedIdx])) seedIdx = nextAllowedIdx(seedIdx, roundDrillIdx);
       roundDrillIdx.push(seedIdx);
     }
@@ -517,7 +876,7 @@
     var el = document.getElementById('avoidChips');
     el.innerHTML = AVOID_OPTIONS.map(function(o){
       var on = !!avoid[o.code];
-      return '<button class="chip'+(on?' on':'')+'" data-code="'+o.code+'">'+(on?'✕ ':'')+o.label+'</button>';
+      return '<button class="chip'+(on?' on':'')+'" data-code="'+esc(o.code)+'">'+(on?'✕ ':'')+esc(o.label)+'</button>';
     }).join('');
     el.querySelectorAll('.chip').forEach(function(btn){
       btn.addEventListener('click', function(){
@@ -541,13 +900,13 @@
                '<div class="comboRowMain">'+
                  '<div class="comboRoundLabel">Round '+(i+1)+'</div>'+
                  '<div class="comboIcons">'+iconsHTML(d.seq,'sm')+'</div>'+
-                 '<div class="comboName">'+d.name+'</div>'+
+                 '<div class="comboName">'+esc(d.name)+'</div>'+
                '</div>'+
                '<button class="cycleBtn" data-round="'+i+'" aria-label="Cycle round '+(i+1)+' combo">⟳</button>'+
              '</div>';
     }).join('');
     document.getElementById('comboList').innerHTML = html;
-    document.querySelectorAll('.cycleBtn').forEach(function(btn){
+    document.querySelectorAll('#comboList .cycleBtn').forEach(function(btn){
       btn.addEventListener('click', function(){
         var i = parseInt(btn.getAttribute('data-round'),10);
         roundDrillIdx[i] = nextAllowedIdx(roundDrillIdx[i]);
@@ -555,22 +914,199 @@
       });
     });
   }
-  renderRoundCombos();
+
+  // ---------- Exercises (from the content pack) ----------
+  // An exercise is available if it needs nothing, can be done bodyweight, or one of the
+  // equipment options it lists is switched on.
+  function exAvailable(ex){
+    if(ex.bodyweightOk) return true;
+    return ex.needs.some(function(n){ return equipOn[n.eq]; });
+  }
+  function exUse(ex){
+    for(var i=0;i<ex.needs.length;i++){ if(equipOn[ex.needs[i].eq]) return ex.needs[i].with; }
+    return null;
+  }
+  function exUseLabel(ex){
+    var u = exUse(ex);
+    return u ? 'With ' + u : 'Bodyweight';
+  }
+  function exIndexById(id){
+    for(var i=0;i<EX.length;i++){ if(EX[i].id === id) return i; }
+    return -1;
+  }
+  function availableExIdx(){
+    var out = [];
+    EX.forEach(function(x, i){ if(exAvailable(x)) out.push(i); });
+    return out;
+  }
+
+  var slotIdx = [];   // one entry per exercise slot: an index into EX, or -1 for "none available"
+  function wantedSlots(){
+    if(config.placement === 'finisher') return config.exCount;
+    if(config.placement === 'between') return Math.max(0, config.rounds - 1);
+    return 0;
+  }
+  // Default choice for a slot: the pack's defaultExercises if usable, otherwise rotate through
+  // the muscle groups in focusOrder so a session stays balanced.
+  function pickExercise(slot, taken){
+    var di = content.defaultExercises[slot] != null ? exIndexById(content.defaultExercises[slot]) : -1;
+    if(di >= 0 && exAvailable(EX[di]) && taken.indexOf(di) < 0) return di;
+    var avail = availableExIdx();
+    var free = avail.filter(function(i){ return taken.indexOf(i) < 0; });
+    var focus = content.focusOrder.length ? content.focusOrder[slot % content.focusOrder.length] : null;
+    var pools = [
+      free.filter(function(i){ return EX[i].focus === focus; }),
+      free,
+      avail
+    ];
+    for(var p=0;p<pools.length;p++){ if(pools[p].length) return pools[p][0]; }
+    return -1;
+  }
+  function ensureSlots(){
+    var want = wantedSlots();
+    while(slotIdx.length < want) slotIdx.push(pickExercise(slotIdx.length, slotIdx));
+    while(slotIdx.length > want) slotIdx.pop();
+  }
+  function fixDisallowedSlots(){
+    for(var i=0;i<slotIdx.length;i++){
+      if(slotIdx[i] < 0 || !exAvailable(EX[slotIdx[i]])){
+        var others = slotIdx.filter(function(v, k){ return k !== i; });
+        slotIdx[i] = pickExercise(i, others);
+      }
+    }
+  }
+  function nextAvailableEx(from, taken){
+    var n = EX.length, fallback = -1;
+    for(var step=1; step<=n; step++){
+      var k = ((from < 0 ? -1 : from) + step + n) % n;
+      if(!exAvailable(EX[k])) continue;
+      if(fallback < 0) fallback = k;
+      if(!taken || taken.indexOf(k) < 0) return k;
+    }
+    return fallback < 0 ? from : fallback;
+  }
+  function randomExercise(exclude){
+    var pool = availableExIdx();
+    if(!pool.length) return exclude;
+    var pick;
+    do{ pick = pool[Math.floor(Math.random()*pool.length)]; }
+    while(pool.length > 1 && pick === exclude);
+    return pick;
+  }
+
+  function exSlotLabel(i){
+    return config.placement === 'between' ? 'After R'+(i+1) : 'Ex '+(i+1);
+  }
+
+  function renderConditioning(){
+    var mode = config.placement;
+    document.querySelectorAll('#condSeg button').forEach(function(b){
+      b.classList.toggle('on', b.getAttribute('data-mode') === mode);
+    });
+    document.getElementById('exLenRow').style.display = mode === 'off' ? 'none' : 'flex';
+    document.getElementById('exCountRow').style.display = mode === 'finisher' ? 'flex' : 'none';
+    document.getElementById('exSection').style.display = mode === 'off' ? 'none' : 'block';
+    var g = document.getElementById('guidedToggle');
+    g.classList.toggle('on', config.guided);
+    g.textContent = config.guided ? 'On' : 'Off';
+    if(mode === 'off') return;
+
+    document.getElementById('exHeading').textContent =
+      mode === 'finisher' ? 'Finisher exercises' : 'Exercise after each round';
+
+    document.getElementById('equipChips').innerHTML = content.equipment.map(function(e){
+      var on = !!equipOn[e.id];
+      return '<button class="chip'+(on?' on':'')+'" data-eq="'+esc(e.id)+'">'+(on?'✓ ':'')+esc(e.label)+'</button>';
+    }).join('');
+    document.querySelectorAll('#equipChips .chip').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-eq');
+        equipOn[id] = !equipOn[id];
+        fixDisallowedSlots();
+        renderSetup();
+        renderConditioning();
+      });
+    });
+
+    document.getElementById('exList').innerHTML = slotIdx.map(function(ei, i){
+      if(ei < 0) return '';
+      var ex = EX[ei];
+      return '<div class="comboRow">'+
+               '<div class="comboRowMain">'+
+                 '<div class="comboRoundLabel wide">'+exSlotLabel(i)+'</div>'+
+                 '<div class="exInfo">'+
+                   '<div class="exName">'+esc(ex.name)+'</div>'+
+                   '<div class="exSub">'+esc(ex.focus.charAt(0).toUpperCase()+ex.focus.slice(1))+' · '+esc(exUseLabel(ex).toLowerCase())+'</div>'+
+                   (ex.why ? '<div class="exWhy">'+esc(ex.why)+'</div>' : '')+
+                 '</div>'+
+               '</div>'+
+               '<button class="cycleBtn" data-slot="'+i+'" aria-label="Swap exercise '+(i+1)+'">⟳</button>'+
+             '</div>';
+    }).join('') || '<div class="noRounds">No exercises are available with that equipment.</div>';
+    document.querySelectorAll('#exList .cycleBtn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var i = parseInt(btn.getAttribute('data-slot'),10);
+        var others = slotIdx.filter(function(v, k){ return k !== i; });
+        slotIdx[i] = nextAvailableEx(slotIdx[i], others);
+        renderConditioning();
+      });
+    });
+  }
+
+  document.querySelectorAll('#condSeg button').forEach(function(b){
+    b.addEventListener('click', function(){
+      config.placement = b.getAttribute('data-mode');
+      refreshSetup();
+    });
+  });
+  document.getElementById('guidedToggle').addEventListener('click', function(){
+    config.guided = !config.guided;
+    renderConditioning();
+  });
+
+  showContentProblems();
+  fixDisallowedSlots();
+  refreshSetup();
   renderAvoid();
-  renderSetup();
 
   // ---------- Build phase sequence ----------
+  function exPhase(ei, title){
+    var ex = EX[ei];
+    return { type:'exercise', title:title, dur:config.exLen, ex:ex, use:exUseLabel(ex) };
+  }
+
   function buildPhases(){
     var seq = [];
     if(config.warmup > 0){
-      seq.push({ type:'warmup', label:'Warm-up', dur:config.warmup });
-      if(config.brk > 0) seq.push({ type:'break', label:'Break', dur:config.brk });
+      var w = { type:'warmup', title:'Warm-up', dur:config.warmup };
+      if(config.guided && content.warmup.length){
+        w.steps = content.warmup;
+        w.segCount = Math.min(content.warmup.length, Math.max(1, Math.round(config.warmup/30)));
+        w.segLen = config.warmup / w.segCount;
+        w.curStep = 0;
+      }
+      seq.push(w);
+      if(config.brk > 0) seq.push({ type:'break', title:'Break', dur:config.brk });
     }
     ensureRoundDrillIdxLength();
+    ensureSlots();
     for(var i=1;i<=config.rounds;i++){
-      seq.push({ type:'round', label:'Round', dur:config.round, idx:i, drill: DRILLS[roundDrillIdx[i-1]] });
-      if(i < config.rounds && config.brk > 0){
-        seq.push({ type:'break', label:'Break', dur:config.brk });
+      seq.push({ type:'round', dur:config.round, idx:i, drill: DRILLS[roundDrillIdx[i-1]] });
+      if(i < config.rounds){
+        if(config.placement === 'between' && slotIdx[i-1] >= 0){
+          seq.push(exPhase(slotIdx[i-1], 'Exercise'));
+        }
+        if(config.brk > 0) seq.push({ type:'break', title:'Break', dur:config.brk });
+      }
+    }
+    if(config.placement === 'finisher'){
+      var chosen = slotIdx.filter(function(v){ return v >= 0; });
+      if(chosen.length){
+        if(config.brk > 0) seq.push({ type:'break', title:'Break', dur:config.brk });
+        chosen.forEach(function(ei, k){
+          if(k > 0) seq.push({ type:'break', title:'Switch', dur:SWITCH_REST });
+          seq.push(exPhase(ei, 'Exercise ' + (k+1) + ' of ' + chosen.length));
+        });
       }
     }
     return seq;
@@ -628,12 +1164,13 @@
   var elDrillTag = document.getElementById('drillTag');
   var elDrillName = document.getElementById('drillName');
   var elDrillIcons = document.getElementById('drillIcons');
+  var elDrillCue = document.getElementById('drillCue');
+  var elShuffle = document.getElementById('shuffleBtn');
 
   function phaseText(p){
     if(!p) return '';
     if(p.type === 'round') return 'Round ' + p.idx;
-    if(p.type === 'break') return 'Break';
-    return 'Warm-up';
+    return p.title || 'Break';
   }
 
   function describeNext(){
@@ -644,26 +1181,46 @@
 
   function applyBg(secLeft){
     var p = phases[phaseIdx];
-    elTimer.classList.remove('work','warn','danger');
+    elTimer.classList.remove('work','warn','danger','exercise');
     if(secLeft <= 10){ elTimer.classList.add('danger'); }
     else if(secLeft <= 30){ elTimer.classList.add('warn'); }
     else if(p.type === 'round'){ elTimer.classList.add('work'); }
+    else if(p.type === 'exercise'){ elTimer.classList.add('exercise'); }
+  }
+
+  // The panel under the clock shows: this round's combo, the combo or exercise coming up (in
+  // breaks), the current exercise, or the current warm-up move.
+  function drawPanel(tag, name, iconsHtml, cue, shuffleLabel){
+    elDrillTag.textContent = tag;
+    elDrillName.textContent = name;
+    elDrillIcons.innerHTML = iconsHtml;
+    elDrillCue.textContent = cue;
+    elShuffle.style.display = shuffleLabel ? '' : 'none';
+    if(shuffleLabel) elShuffle.textContent = shuffleLabel;
+    elDrillWrap.classList.add('show');
+  }
+
+  function drawWarmStep(p){
+    var s = p.steps[p.curStep];
+    drawPanel('Warm-up move ' + (p.curStep+1) + ' of ' + p.segCount, s.name, '', s.cue, '');
+    elNextUp.textContent = p.curStep < p.segCount - 1 ? 'Next move: ' + p.steps[p.curStep+1].name : describeNext();
   }
 
   function renderDrill(){
-    var p = phases[phaseIdx];
-    var drillPhase = null, tag = '';
-    if(p.type === 'round' && p.drill){ drillPhase = p; tag = 'This round'; }
-    else if(p.type === 'break'){
-      var nxt = phases[phaseIdx+1];
-      if(nxt && nxt.type === 'round' && nxt.drill){ drillPhase = nxt; tag = 'Up next'; }
+    var p = phases[phaseIdx], nxt = phases[phaseIdx+1], target = null, tag = '';
+    if(p.type === 'round' && p.drill){ target = p; tag = 'This round'; }
+    else if(p.type === 'exercise'){ target = p; tag = p.use; }
+    else if(p.type === 'break' && nxt){
+      if(nxt.type === 'round' && nxt.drill){ target = nxt; tag = 'Up next'; }
+      else if(nxt.type === 'exercise'){ target = nxt; tag = 'Up next · ' + nxt.use; }
     }
-    displayedDrillPhase = drillPhase;
-    if(drillPhase){
-      elDrillTag.textContent = tag;
-      elDrillName.textContent = drillPhase.drill.name;
-      elDrillIcons.innerHTML = iconsHTML(drillPhase.drill.seq, 'lg');
-      elDrillWrap.classList.add('show');
+    displayedDrillPhase = target;
+    if(target && target.type === 'round'){
+      drawPanel(tag, target.drill.name, iconsHTML(target.drill.seq, 'lg'), '', '🔀 New drill');
+    } else if(target){
+      drawPanel(tag, target.ex.name, '', target.ex.cue, '🔀 New exercise');
+    } else if(p.type === 'warmup' && p.steps){
+      drawWarmStep(p);
     } else {
       elDrillWrap.classList.remove('show');
     }
@@ -676,8 +1233,9 @@
     remaining = p.dur;
     endTime = Date.now() + remaining*1000;
     elPhaseLabel.textContent = phaseText(p);
-    elRoundOf.textContent = p.type === 'round' ? ('of ' + config.rounds) : '';
+    elRoundOf.textContent = p.type === 'round' ? ('of ' + config.rounds) : (p.type === 'exercise' ? p.ex.focus : '');
     elNextUp.textContent = describeNext();
+    if(p.steps) p.curStep = 0;
     elClock.textContent = fmt(remaining);
     applyBg(remaining);
     renderDrill();
@@ -696,6 +1254,11 @@
     var secLeft = Math.ceil(left);
     elClock.textContent = fmt(secLeft);
     applyBg(secLeft);
+    var cur = phases[phaseIdx];
+    if(cur.steps){
+      var si = Math.min(cur.segCount - 1, Math.floor((cur.dur - left) / cur.segLen));
+      if(si !== cur.curStep){ cur.curStep = si; drawWarmStep(cur); beep(740, 0.1); }
+    }
     if(secLeft <= 3 && secLeft > 0 && Math.abs(left - secLeft) < 0.06){
       beep(660, 0.12);
     }
@@ -703,7 +1266,8 @@
   }
 
   // ---------- Session stats ----------
-  var stats = { work:0, rest:0, rounds:[] };
+  function freshStats(){ return { work:0, rest:0, exTime:0, rounds:[], exercises:[] }; }
+  var stats = freshStats();
 
   // Seconds actually spent in the current phase (pauses don't count).
   function currentElapsed(){
@@ -722,6 +1286,12 @@
         idx:p.idx, seq:p.drill.seq, name:p.drill.name,
         elapsed:elapsed, dur:p.dur, done: elapsed >= p.dur - 0.5
       });
+    } else if(p.type === 'exercise'){
+      stats.exTime += elapsed;
+      stats.exercises.push({
+        n:stats.exercises.length + 1, name:p.ex.name, use:p.use,
+        elapsed:elapsed, dur:p.dur, done: elapsed >= p.dur - 0.5
+      });
     } else {
       stats.rest += elapsed;
     }
@@ -737,8 +1307,10 @@
   }
 
   function renderStats(early){
-    var total = stats.work + stats.rest;
+    var total = stats.work + stats.rest + stats.exTime;
     var planned = phases.reduce(function(s,p){ return s + p.dur; }, 0);
+    var plannedEx = phases.filter(function(p){ return p.type === 'exercise'; }).length;
+    var doneEx = stats.exercises.filter(function(e){ return e.done; }).length;
     var plannedRounds = phases.filter(function(p){ return p.type === 'round'; }).length;
     var doneRounds = stats.rounds.filter(function(r){ return r.done; }).length;
     var pct = planned ? Math.min(100, Math.round(total/planned*100)) : 0;
@@ -748,11 +1320,14 @@
     document.getElementById('doneTitle').textContent = early ? 'Good effort' : 'Nice work';
     var sub;
     if(!early){
-      sub = 'All ' + plannedRounds + ' round' + (plannedRounds===1?'':'s') + ' done.';
+      sub = 'All ' + plannedRounds + ' round' + (plannedRounds===1?'':'s') + ' done' +
+            (plannedEx ? ', plus ' + plannedEx + ' exercise' + (plannedEx===1?'':'s') : '') + '.';
     } else if(!last){
       sub = 'Stopped before the first round — warming up counts.';
     } else if(last.done && doneRounds === plannedRounds){
-      sub = 'Stopped right at the end — all ' + plannedRounds + ' rounds done.';
+      sub = plannedEx && doneEx < plannedEx
+        ? 'All ' + plannedRounds + ' rounds done. Stopped ' + (stats.exercises.length ? 'partway through' : 'before') + ' the exercises.'
+        : 'Stopped right at the end — all ' + plannedRounds + ' rounds done.';
     } else {
       sub = 'Stopped in round ' + last.idx + ' of ' + plannedRounds + '.';
     }
@@ -763,12 +1338,27 @@
     document.getElementById('statWork').textContent = fmt(stats.work);
     document.getElementById('statRest').textContent = fmt(stats.rest);
 
+    var hasEx = plannedEx > 0;
+    document.getElementById('statExDoneWrap').style.display = hasEx ? '' : 'none';
+    document.getElementById('statExTimeWrap').style.display = hasEx ? '' : 'none';
+    document.getElementById('doneExHead').style.display = hasEx ? '' : 'none';
+    document.getElementById('statExDone').textContent = doneEx + ' / ' + plannedEx;
+    document.getElementById('statExTime').textContent = fmt(stats.exTime);
+    document.getElementById('doneExercises').innerHTML = stats.exercises.map(function(e){
+      return '<div class="comboRow"><div class="comboRowMain">'+
+               '<div class="comboRoundLabel wide">Ex '+e.n+'</div>'+
+               '<div class="exInfo"><div class="exName">'+esc(e.name)+'</div>'+
+               '<div class="exSub">'+esc(e.use)+'</div></div>'+
+             '</div>'+
+             '<div class="rtime'+(e.done?' ok':'')+'">'+(e.done?'✓ ':'')+fmt(e.elapsed)+'</div></div>';
+    }).join('');
+
     document.getElementById('doneRounds').innerHTML = stats.rounds.length
       ? stats.rounds.map(function(r){
           return '<div class="comboRow"><div class="comboRowMain">'+
                    '<div class="comboRoundLabel">Round '+r.idx+'</div>'+
                    '<div class="comboIcons">'+iconsHTML(r.seq,'sm')+'</div>'+
-                   '<div class="comboName">'+r.name+'</div>'+
+                   '<div class="comboName">'+esc(r.name)+'</div>'+
                  '</div>'+
                  '<div class="rtime'+(r.done?' ok':'')+'">'+(r.done?'✓ ':'')+fmt(r.elapsed)+'</div></div>';
         }).join('')
@@ -815,7 +1405,7 @@
     elDone.style.display = 'none';
     elTimer.classList.remove('hidden');
     running = true; paused = false;
-    stats = { work:0, rest:0, rounds:[] };
+    stats = freshStats();
     resetKnackered();
     elPauseBtn.textContent = 'Pause';
     requestWake();
@@ -859,9 +1449,15 @@
     renderSetup();
   }
 
-  document.getElementById('shuffleBtn').addEventListener('click', function(){
-    if(!displayedDrillPhase) return;
-    displayedDrillPhase.drill = randomDrill(displayedDrillPhase.drill);
+  elShuffle.addEventListener('click', function(){
+    var ph = displayedDrillPhase;
+    if(!ph) return;
+    if(ph.type === 'round'){
+      ph.drill = randomDrill(ph.drill);
+    } else if(ph.type === 'exercise'){
+      var next = EX[randomExercise(EX.indexOf(ph.ex))];
+      if(next){ ph.ex = next; ph.use = exUseLabel(next); }
+    }
     renderDrill();
   });
 

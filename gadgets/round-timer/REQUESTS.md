@@ -60,3 +60,15 @@ Also if you could provide some links to resources on footwork
 
 Additionally,  see if it’s possible to access the users microphone to create a hit counter based on the sound of punches landing on the bag
 *(Mon 2026-11-09 18:11)*
+
+**20.** No just merge that into main, forget feature branches. Just have round timer inside its own directory
+*(Mon 2026-11-09 18:16)*
+
+**21.** Yes please
+*(Mon 2026-11-09 18:16; the answer to "delete the branch?")*
+
+**22.** I would like to expand some of the session to include some other workout exercises that would tie in with this in a relevant way. At home I have some 1kg hand weights and possibly some 3kg ones. Consider exercises that require just what might be available around the house
+*(Tue 2026-11-24 17:50)*
+
+**23.** Or make the code usable so that other agents that specialise in this stuff can add/remove from it
+*(Tue 2026-11-24 17:51; sent while 22 was being worked on)*
