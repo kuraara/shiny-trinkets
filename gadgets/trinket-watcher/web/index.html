@@ -135,6 +135,7 @@ function drawRuns() {
     return `<div class="card"><div class="row"><span class="rev">${esc(r.to)}</span><span class="grow ${bad ? 'bad' : 'good'}">${esc(r.result)}</span><span class="muted">${esc(when(r.at))}</span></div>
       <ul class="plain">${r.commits.slice(0, 8).map((c) => `<li class="subject">${esc(c)}</li>`).join('')}${r.commits.length > 8 ? `<li class="muted">and ${r.commits.length - 8} more</li>` : ''}</ul>
       ${Object.keys(r.gadgets).length ? `<ul class="plain">${Object.entries(r.gadgets).map(([g, v]) => `<li><strong>${esc(g)}</strong>: ${esc(v)}</li>`).join('')}</ul>` : ''}
+      ${i === 0 && bad && r.from ? '<div class="row"><button class="retry">Retry</button></div>' : ''}
       <details data-key="${esc(key)}"${opened.has(key) ? ' open' : ''}><summary>Output</summary><pre>${esc(r.log.join('\n\n'))}</pre></details></div>`;
   }).join('');
 }
@@ -143,6 +144,7 @@ document.addEventListener('click', (e) => {
   const card = e.target.closest('.card[data-id]');
   if (e.target.matches('.show') && card) versions(card);
   if (e.target.matches('.use') && card) use(card);
+  if (e.target.matches('.retry')) post('api/retry').then((r) => { $('#msg').textContent = r.message || r.error || ''; setTimeout(load, 1500); });
 });
 document.addEventListener('toggle', (e) => { if (e.target.dataset?.key) (e.target.open ? opened.add : opened.delete).call(opened, e.target.dataset.key); }, true);
 $('#check').onclick = async () => { $('#msg').textContent = (await post('api/check')).message || ''; setTimeout(load, 1500); };

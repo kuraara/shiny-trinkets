@@ -18,7 +18,7 @@ Every 5 minutes (`INTERVAL`) it fetches the repo. If `master` moved since the la
 4. redeploys the registry if needed, and prunes old versions (keeps `rev0`, the running one and
    the newest `KEEP`=10).
 
-A commit that fails isn't retried; the next push is. Skipped on purpose: gadgets whose stack
+A commit that fails isn't retried by itself; the newest failed run has a **Retry** button (for when the PC or the build box was down). Skipped on purpose: gadgets whose stack
 doesn't exist yet (the first deploy is by hand, since a new stack may need secrets) and the
 watcher itself (deploying itself would stop it mid-run).
 

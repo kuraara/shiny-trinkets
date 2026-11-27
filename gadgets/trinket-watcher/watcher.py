@@ -7,7 +7,7 @@ as the version (images are tagged <image>:<commit>). The registry is redeployed 
 services.json or the registry itself changed. Stacks that don't exist yet are left for a first
 deploy by hand, and the watcher never deploys itself (that would stop it mid-run).
 
-The page lists runs with their output, and per gadget its versions with a switch to go back
+The page lists runs with their output (the newest failed one can be retried), and per gadget its versions with a switch to go back
 (`tools/trinket use`). POSTs need the header X-Gadget-Action: 1, as card actions send it.
 
 Env: REPO_URL, BRANCH (master), INTERVAL (300), KEEP (10 versions per image), SITE_LOCAL_JSON
@@ -292,6 +292,15 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/check':
             wake.set()
             return self.reply(200, {'message': 'Checking now' if not state['busy'] else f'Busy: {state["busy"]}'})
+        if path == '/api/retry':
+            # run the newest run's commits again (e.g. after the PC or the build box was down)
+            if state['busy'] or not state['runs'] or not state['runs'][0].get('from'):
+                return self.reply(409, {'error': 'nothing to retry right now'})
+            with lock:
+                state['last'] = git('rev-parse', state['runs'][0]['from'])
+                save()
+            wake.set()
+            return self.reply(200, {'message': f'Retrying {state["runs"][0]["from"]}..{state["runs"][0]["to"]}'})
         if path == '/api/pause':
             state['paused'] = bool(body.get('paused', not state['paused']))
             save()
