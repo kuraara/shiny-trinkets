@@ -146,7 +146,11 @@ func (a *app) search(w http.ResponseWriter, r *http.Request) {
 	if f.Kind != "tv" && f.Kind != "movie" {
 		f.Kind = ""
 	}
-	res, err := a.db.search(q.Get("q"), f, limit)
+	query := q.Get("q")
+	if q.Get("exact") == "1" && !f.Regex {
+		query = exactPhrase(query)
+	}
+	res, err := a.db.search(query, f, limit)
 	var bq badQuery
 	if errors.As(err, &bq) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": bq.msg})

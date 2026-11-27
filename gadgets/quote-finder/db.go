@@ -227,6 +227,19 @@ type searchResult struct {
 
 var wordRe = regexp.MustCompile(`[\p{L}\p{N}']+`)
 
+// exactPhrase makes the whole search one quoted phrase: the words, in order, side by side.
+// Any quote marks typed (straight or curly) are dropped first.
+func exactPhrase(q string) string {
+	q = strings.Map(func(r rune) rune {
+		switch r {
+		case '"', '\u201c', '\u201d', '\u201e', '\u00ab', '\u00bb':
+			return ' '
+		}
+		return r
+	}, q)
+	return `"` + strings.TrimSpace(q) + `"`
+}
+
 // ftsQuery turns what someone typed into an FTS5 query. "Quoted parts" must appear as a
 // phrase; other words must all appear (any=false) or any may appear (any=true).
 func ftsQuery(q string, any bool) string {

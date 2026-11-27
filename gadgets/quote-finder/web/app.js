@@ -36,10 +36,12 @@ let seq = 0;
 async function search(pushHistory) {
   const q = $('#q').value.trim();
   const regex = $('#regex').checked;
+  const exact = $('#exact').checked && !regex;
   const t = $('#title').value;
   const params = new URLSearchParams();
   if (q) params.set('q', q);
   if (regex) params.set('regex', '1');
+  if (exact) params.set('exact', '1');
   if (t) params.set('t', t);
   const url = params.toString() ? `?${params}` : location.pathname;
   if (pushHistory) history.replaceState(null, '', url);
@@ -48,6 +50,7 @@ async function search(pushHistory) {
   $('#hint').hidden = true;
   const api = new URLSearchParams({ q, limit: '60' });
   if (regex) api.set('regex', '1');
+  if (exact) api.set('exact', '1');
   if (t.startsWith('kind:')) api.set('kind', t.slice(5)); else if (t) api.set('title', t);
   const mine = ++seq;
   $('#status').textContent = 'Searching…';
@@ -266,7 +269,9 @@ function showClip(box, jobId, out) {
 
 let timer;
 $('#q').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => search(true), 250); });
-$('#regex').addEventListener('change', () => search(true));
+// exact and regular expression don't mix: ticking one unticks the other
+$('#regex').addEventListener('change', () => { if ($('#regex').checked) $('#exact').checked = false; search(true); });
+$('#exact').addEventListener('change', () => { if ($('#exact').checked) $('#regex').checked = false; search(true); });
 $('#title').addEventListener('change', () => search(true));
 $('#form').addEventListener('submit', (e) => { e.preventDefault(); clearTimeout(timer); search(true); });
 
@@ -296,6 +301,7 @@ async function loadTitles() {
 const params = new URLSearchParams(location.search);
 $('#q').value = params.get('q') || '';
 $('#regex').checked = params.get('regex') === '1';
+$('#exact').checked = params.get('exact') === '1' && !$('#regex').checked;
 const config = fetch('/api/config').then((r) => r.json()).then((c) => { panelsOn = !!c.panels; }).catch(() => {});
 Promise.all([loadTitles(), config]).then(() => {
   if (params.get('t')) $('#title').value = params.get('t');

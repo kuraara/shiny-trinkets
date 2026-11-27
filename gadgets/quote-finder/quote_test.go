@@ -152,3 +152,20 @@ func TestRequiredWords(t *testing.T) {
 		}
 	}
 }
+
+func TestExactPhrase(t *testing.T) {
+	for in, want := range map[string]string{
+		"you know what":     `"you know what"`,
+		`“you know what”`:   `"you know what"`,
+		` "what" you know `: `"what  you know"`,
+		"«qué pasa»":        `"qué pasa"`,
+	} {
+		if got := exactPhrase(in); got != want {
+			t.Errorf("exactPhrase(%q) = %q, want %q", in, got, want)
+		}
+	}
+	// a phrase becomes one FTS phrase, so the words must be side by side and in order
+	if got := ftsQuery(exactPhrase("what you know"), false); got != `"what you know"` {
+		t.Errorf("ftsQuery(exact) = %q", got)
+	}
+}

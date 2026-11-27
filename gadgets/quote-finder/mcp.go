@@ -19,7 +19,7 @@ var mcpVersions = []string{"2025-06-18", "2025-03-26", "2024-11-05"}
 
 const mcpInstructions = `Quote Finder searches the dialogue (subtitles) of the Plex library: TV episodes and movies.
 
-- search_quotes finds where a line is said. Words can be in any order and partly remembered; "exact words" in quotes; regex=true for a regular expression (case-insensitive). Filter with title (a show or movie name from list_titles) or kind (tv|movie). Each hit gives media_id and at_ms.
+- search_quotes finds where a line is said. Words can be in any order and partly remembered; "exact words" in quotes, or exact=true for the whole query; regex=true for a regular expression (case-insensitive). Filter with title (a show or movie name from list_titles) or kind (tv|movie). Each hit gives media_id and at_ms.
 - get_scene shows the lines around a moment (media_id + at_ms), each with its start time in ms.
 - make_panel_script turns the lines from from_ms to to_ms (start times of the first and last line, from get_scene) into a Panel Script job in video-tools: the scene is cut from the file and the subtitle lines become the transcript. It returns the job id and a review link. Then either give the user the link to name the speakers, or use the video-tools MCP (get_job with include_images, then render_panel_transcript) to name them yourself: mouth movement in each line's contact sheet first, voice pitch as a hint, and only name characters you're confident about.
 - make_clip cuts the same kind of range out as a video (MP4, plays anywhere), optionally with the subtitles burned in.
@@ -166,6 +166,7 @@ func mcpTools() []map[string]any {
 				"title": str("Only this show or movie (exact name from list_titles)."),
 				"kind":  map[string]any{"type": "string", "enum": []string{"tv", "movie"}},
 				"regex": map[string]any{"type": "boolean", "description": "Treat query as a regular expression (case-insensitive)."},
+				"exact": map[string]any{"type": "boolean", "description": "Match the whole query as one exact phrase: these words, in this order."},
 				"limit": map[string]any{"type": "integer", "minimum": 1, "maximum": 100, "description": "Most hits to return (default 20)."},
 			}, "query"),
 		},
@@ -252,7 +253,7 @@ func (m *mcpServer) call(ctx context.Context, name string, raw json.RawMessage) 
 	case "search_quotes":
 		var a struct {
 			Query, Title, Kind string
-			Regex              bool
+			Regex, Exact       bool
 			Limit              int
 		}
 		if err := dec(&a); err != nil {
@@ -263,6 +264,9 @@ func (m *mcpServer) call(ctx context.Context, name string, raw json.RawMessage) 
 		}
 		if a.Kind != "tv" && a.Kind != "movie" {
 			a.Kind = ""
+		}
+		if a.Exact && !a.Regex {
+			a.Query = exactPhrase(a.Query)
 		}
 		res, err := m.a.db.search(a.Query, filter{Kind: a.Kind, Title: a.Title, Regex: a.Regex}, a.Limit)
 		if err != nil {

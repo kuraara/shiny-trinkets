@@ -4,7 +4,8 @@ Search the dialogue of everything in Plex: type the bits of a line you remember 
 show, episode and time, with the lines around it. Filter by show or movie.
 
 - Words can be in any order and partly remembered ("likes" finds "like"); the last word
-  matches as you type. `"exact words"` in quotes must appear together. If nothing has all the
+  matches as you type. `"exact words"` in quotes must appear together; tap **“ ”** to treat
+  the whole search that way (`exact=1` in the API, `exact` in MCP). If nothing has all the
   words, it shows matches with some of them.
 - Tick **.\*** for a regular expression (case-insensitive), e.g. `just a little.*uneven`.
 - A quote that's split across two subtitles still matches.
