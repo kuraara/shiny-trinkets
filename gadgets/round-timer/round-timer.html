@@ -120,6 +120,17 @@
     font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
   }
   .cycleBtn:active{ background:rgba(245,166,35,.15); transform:scale(.92); }
+  .wkBox{ display:none; margin:2px 0 16px; }
+  .wkCard{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:14px;
+    padding:10px; display:flex; align-items:center; gap:10px;
+  }
+  .wkCard .cycleBtn{ width:40px; height:40px; font-size:22px; line-height:1; padding:0 0 3px; }
+  .wkMid{ flex:1; min-width:0; text-align:center; }
+  .wkName{ font-size:15px; font-weight:700; color:#eee; }
+  .wkNote{ font-size:11.5px; color:var(--muted); margin-top:3px; line-height:1.35; }
+  .wkMeta{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin:8px 2px 0; font-size:11.5px; color:var(--muted); }
+  .wkMeta a{ color:var(--amber); }
 
   #startBtn{
     flex-shrink:0; margin-top:8px;
@@ -243,6 +254,26 @@
   <div id="setup" class="screen">
     <div id="setupScroll">
       <div class="brand"><div class="dot"></div><h1>Round Timer</h1><span>boxing / interval training</span></div>
+
+      <div class="wkBox" id="wkBox">
+        <div class="comboHeader">
+          <b>Workout</b>
+          <span>step through ready-made sessions, or tweak anything below</span>
+        </div>
+        <div class="wkCard">
+          <button class="cycleBtn" id="wkPrev" aria-label="Previous workout">‹</button>
+          <div class="wkMid">
+            <div class="wkName" id="wkName"></div>
+            <div class="wkNote" id="wkNote"></div>
+          </div>
+          <button class="cycleBtn" id="wkNext" aria-label="Next workout">›</button>
+        </div>
+        <div class="wkMeta">
+          <span id="wkCount"></span>
+          <span id="wkSource"></span>
+          <button class="chip" id="wkRandom">Surprise me</button>
+        </div>
+      </div>
 
       <div class="row">
         <div class="label"><b>Warm-up</b><small>then a break</small></div>
@@ -477,6 +508,33 @@
     "squat-jab-cross", "plank", "lateral-raises", "skater-steps", "russian-twists", "push-ups"
   ],
 
+  "workouts": [
+    { "id": "jab-foundations", "name": "Jab foundations",
+      "note": "Straight punches only. Nothing fancy, just clean repetition and breathing.",
+      "rounds": [ [1,2], [1,1,2], [1,2,1], [1,1,1,2], [1,2,1,2], [2,1,2] ],
+      "exercises": ["squats", "plank", "lateral-raises"] },
+    { "id": "slip-and-counter", "name": "Slip and counter",
+      "note": "Practice getting your head off the line, then firing back.",
+      "rounds": [ [1,2], ["slip",2], [1,"slip",2], [1,1,"slip",2], [1,2,"slip",1], [1,2,"slip",2] ],
+      "exercises": ["skater-steps", "dead-bugs", "high-knees"] },
+    { "id": "rear-side-power", "name": "Rear-side power",
+      "note": "Cross and rear hook, driving from the back leg. No lead hooks.",
+      "rounds": [ [1,2,4], [1,1,4], [1,1,2,4], [1,2,"slip",2], [1,2,1,2], [1,2,4] ],
+      "exercises": ["reverse-lunges", "russian-twists", "push-ups"] },
+    { "id": "uppercut-intro", "name": "Uppercut intro",
+      "note": "Short rear uppercuts slotted into familiar jab-cross work.",
+      "rounds": [ [1,2], [1,6], [1,6,2], [1,2,6], [1,2,6,2], [1,1,6] ],
+      "exercises": ["squat-jab-cross", "plank-shoulder-taps", "calf-raises"] },
+    { "id": "lead-hand-easy", "name": "Lead hand easy",
+      "note": "No lead hooks or lead uppercuts, for the days that hand needs a rest.",
+      "rounds": [ [2,"slip",2], [1,2], [1,2,6], [1,1,2,4], [1,2,"slip",2], [1,2,6,2] ],
+      "exercises": ["boxer-shuffle", "bicycle-crunches", "wall-sit"] },
+    { "id": "mixed-bag", "name": "Mixed bag",
+      "note": "A bit of everything, finishing with a lead hook.",
+      "rounds": [ [1,2], [1,1,2], [1,2,3], [1,6,2], [1,2,"slip",2], [1,2,3,2] ],
+      "exercises": ["step-ups", "woodchops", "jumping-jacks"] }
+  ],
+
   "exercises": [
     { "id": "squats", "name": "Squats", "focus": "legs", "bodyweightOk": true,
       "cue": "Sit back, chest up, push through the heels. Hold a weight at your chest if you have one.",
@@ -641,7 +699,7 @@
     function str(v){ return typeof v === 'string' && v.trim().length > 0; }
     function list(v){ return Array.isArray(v) ? v : []; }
     var out = { punches:[], combos:[], defaultRounds:[], equipment:[], warmup:[],
-                exercises:[], defaultExercises:[], focusOrder:[] };
+                exercises:[], defaultExercises:[], focusOrder:[], workouts:[] };
 
     var codes = {};
     list(p.punches).forEach(function(x, i){
@@ -712,6 +770,29 @@
       if(!exIds[id]){ bad('defaultExercises['+i+'] ("'+id+'") is not an exercise id'); return; }
       out.defaultExercises.push(id);
     });
+    // A workout is a whole session: one combo per round, plus optional exercises.
+    // Any bad reference skips that whole workout (a half-applied one would be confusing).
+    var wkIds = {};
+    list(p.workouts).forEach(function(w, i){
+      var tag = 'workouts['+i+']' + (w && w.id ? ' ("'+w.id+'")' : '');
+      if(!w || !str(w.id) || !str(w.name) || !Array.isArray(w.rounds)){ bad(tag+' needs "id", "name" and a "rounds" list'); return; }
+      if(wkIds[w.id]){ bad(tag+' repeats an earlier id'); return; }
+      if(w.rounds.length < 1 || w.rounds.length > MAX.rounds){ bad(tag+' needs 1 to '+MAX.rounds+' rounds'); return; }
+      for(var r=0;r<w.rounds.length;r++){
+        if(!Array.isArray(w.rounds[r]) || !seen[JSON.stringify(w.rounds[r])]){ bad(tag+'.rounds['+r+'] is not one of the combos'); return; }
+      }
+      var exs = [];
+      var exList = list(w.exercises);
+      for(var e=0;e<exList.length;e++){
+        if(!exIds[exList[e]]){ bad(tag+'.exercises['+e+'] ("'+exList[e]+'") is not an exercise id'); return; }
+        exs.push(exList[e]);
+      }
+      wkIds[w.id] = true;
+      out.workouts.push({ id:w.id, name:w.name, note: str(w.note) ? w.note : '',
+                          source: (typeof w.source === 'string' && /^https:\/\//.test(w.source)) ? w.source : '',
+                          rounds:w.rounds, exercises:exs });
+    });
+
     list(p.focusOrder).forEach(function(f){ if(str(f)) out.focusOrder.push(f); });
     out.exercises.forEach(function(x){ if(out.focusOrder.indexOf(x.focus) < 0) out.focusOrder.push(x.focus); });
     return out;
@@ -765,6 +846,7 @@
     renderSetup();
     renderRoundCombos();
     renderConditioning();
+    renderWorkout();
   }
 
   document.querySelectorAll('.stepbtn').forEach(function(btn){
@@ -774,6 +856,7 @@
       var map = { warmup:'warmup', round:'round', 'break':'brk', rounds:'rounds', exlen:'exLen', excount:'exCount' };
       var k = map[key];
       config[k] = Math.min(MAX[k], Math.max(MIN[k], config[k] + delta));
+      if(k === 'rounds' || k === 'exCount') markCustom();
       refreshSetup();
     });
   });
@@ -910,6 +993,7 @@
       btn.addEventListener('click', function(){
         var i = parseInt(btn.getAttribute('data-round'),10);
         roundDrillIdx[i] = nextAllowedIdx(roundDrillIdx[i]);
+        markCustom();
         renderRoundCombos();
       });
     });
@@ -1048,6 +1132,7 @@
         var i = parseInt(btn.getAttribute('data-slot'),10);
         var others = slotIdx.filter(function(v, k){ return k !== i; });
         slotIdx[i] = nextAvailableEx(slotIdx[i], others);
+        markCustom();
         renderConditioning();
       });
     });
@@ -1063,6 +1148,69 @@
     config.guided = !config.guided;
     renderConditioning();
   });
+
+  // ---------- Ready-made workouts (from the content pack) ----------
+  // A workout sets the rounds, each round's combo and (if exercises are on) the exercise slots.
+  // -1 means "your own mix": the page's defaults, and what you've tweaked by hand.
+  var WK = content.workouts;
+  var DEFAULT_ROUNDS = config.rounds, DEFAULT_EXCOUNT = config.exCount;
+  var activeWk = -1, wkEdited = false, wkSwapped = 0;
+
+  function markCustom(){
+    if(activeWk >= 0 && !wkEdited){ wkEdited = true; renderWorkout(); }
+  }
+  function applyWorkout(i){
+    activeWk = i; wkEdited = false; wkSwapped = 0;
+    slotIdx = [];
+    if(i < 0){
+      config.rounds = DEFAULT_ROUNDS; config.exCount = DEFAULT_EXCOUNT;
+      roundDrillIdx = [];
+    } else {
+      var w = WK[i];
+      config.rounds = Math.min(MAX.rounds, w.rounds.length);
+      roundDrillIdx = w.rounds.map(drillIndexFor);
+      var before = roundDrillIdx.slice();
+      fixDisallowedRounds();                       // respects "Go easy on"
+      roundDrillIdx.forEach(function(v, k){ if(v !== before[k]) wkSwapped++; });
+      if(w.exercises.length){
+        if(config.placement === 'finisher') config.exCount = Math.min(MAX.exCount, w.exercises.length);
+        slotIdx = w.exercises.map(exIndexById);
+      }
+    }
+    ensureSlots();
+    fixDisallowedSlots();                          // swaps anything the equipment can't do
+    refreshSetup();
+  }
+  function stepWorkout(dir){
+    var n = WK.length + 1;                          // "your own mix" plus each workout
+    applyWorkout(((activeWk + 1 + dir + n) % n) - 1);
+  }
+  function surpriseWorkout(){
+    var pool = [];
+    WK.forEach(function(w, i){ if(i !== activeWk) pool.push(i); });
+    if(pool.length) applyWorkout(pool[Math.floor(Math.random()*pool.length)]);
+  }
+  function renderWorkout(){
+    var box = document.getElementById('wkBox');
+    if(!WK.length){ box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    var w = activeWk >= 0 ? WK[activeWk] : null;
+    document.getElementById('wkName').textContent = w ? w.name + (wkEdited ? ' (edited)' : '') : 'Your own mix';
+    var note = w ? w.note : 'The standard session. Tap › to try a ready-made workout.';
+    if(w && wkSwapped) note += ' ' + wkSwapped + ' combo' + (wkSwapped===1?' was':'s were') + ' swapped to fit your "Go easy on" choices.';
+    document.getElementById('wkNote').textContent = note;
+    document.getElementById('wkCount').textContent = w ? 'Workout ' + (activeWk+1) + ' of ' + WK.length : WK.length + ' workouts';
+    var src = document.getElementById('wkSource');
+    src.textContent = '';
+    if(w && w.source){
+      var a = document.createElement('a');
+      a.href = w.source; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'Source';
+      src.appendChild(a);
+    }
+  }
+  document.getElementById('wkPrev').addEventListener('click', function(){ stepWorkout(-1); });
+  document.getElementById('wkNext').addEventListener('click', function(){ stepWorkout(1); });
+  document.getElementById('wkRandom').addEventListener('click', surpriseWorkout);
 
   showContentProblems();
   fixDisallowedSlots();

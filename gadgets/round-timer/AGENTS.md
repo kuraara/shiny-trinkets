@@ -42,6 +42,7 @@ bag work: leg drive, core rotation, shoulder endurance, cardio and footwork.
 | `focusOrder` | The order muscle groups are rotated through when the app picks exercises for you. |
 | `defaultExercises` | Exercise ids used for slot 1, 2, 3… when the page opens (this is "this week's" finisher). If one isn't available with the chosen equipment, the app picks another. |
 | `exercises` | The exercise bank (below). |
+| `workouts` | Ready-made whole sessions (below). The owner steps through them with the Workout picker at the top of the setup screen. |
 
 ### An exercise
 
@@ -70,6 +71,32 @@ How the app uses these: an exercise is offered if it has no `needs`, or `bodywei
 at least one of its `needs` is switched on. The timer shows the first switched-on option, or
 "Bodyweight". Everything is displayed as plain text: **no HTML** in any string.
 
+### A workout
+
+    { "id": "slip-and-counter", "name": "Slip and counter",
+      "note": "Practice getting your head off the line, then firing back.",
+      "source": "https://…",
+      "rounds": [ [1,2], ["slip",2], [1,"slip",2] ],
+      "exercises": ["skater-steps", "dead-bugs", "high-knees"] }
+
+- `id`: lowercase with hyphens, unique. `name`: short, it is the headline in the picker.
+- `note`: one line on what it trains (about 140 characters or fewer). Plain, no hype.
+- `source` (optional): an `https://` page the workout was drawn from. The page shows it as a
+  "Source" link and ignores anything that isn't https. Leave it off for one you composed.
+- `rounds`: one combo per round, 1 to 30 of them, each **exactly** a sequence that is in
+  `combos`. Repeating a combo within a workout is fine. A beginner workout is 5 to 8 rounds.
+- `exercises` (optional): exercise ids. They fill the exercise slots when the owner has
+  Exercises set to Finisher or Between rounds, in that order. One that the switched-on equipment
+  can't do is swapped for another automatically.
+
+Choosing a workout sets the number of rounds, each round's combo and the exercises. It respects
+"Go easy on" (a combo the owner has switched off is swapped, and the picker says how many).
+Anything the owner then changes by hand shows as "(edited)". Any bad reference (a round that isn't
+in `combos`, an unknown exercise id) skips the **whole** workout and shows the amber note.
+
+To research and add workouts, use the **round-timer-workouts** agent
+(`.claude/agents/round-timer-workouts.md` at the repo root), which follows these rules.
+
 ### Adding
 
 1. Pick the `focus` and write the entry (copy a neighbour).
@@ -81,7 +108,7 @@ at least one of its `needs` is switched on. The timer shows the first switched-o
 ### Removing
 
 Delete the object. Then check `defaultExercises` (or, for combos, `defaultRounds`) for the id or
-sequence: the checker flags anything left dangling. Keep at least 8 exercises that need no
+sequence, and every workout that uses it: the checker flags anything left dangling. Keep at least 8 exercises that need no
 equipment (the checker warns below that), or someone with nothing to hand gets a short list.
 
 ## Safety and tone

@@ -16,7 +16,8 @@
   "intents": [
     { "phrase": "…time a heavy-bag session", "desc": "Rounds, breaks and a combo for each round, with the clock filling the screen.", "group": "training" },
     { "phrase": "…get a combo to work on each round", "desc": "A bank of 35 heavy-bag combos, one per round, with the ones that hurt left out.", "group": "training" },
-    { "phrase": "…add some strength and cardio to my boxing session", "desc": "Exercises that back up the bag work, from bodyweight to light weights, as a finisher or between rounds.", "group": "training" }
+    { "phrase": "…add some strength and cardio to my boxing session", "desc": "Exercises that back up the bag work, from bodyweight to light weights, as a finisher or between rounds.", "group": "training" },
+    { "phrase": "…try a different boxing workout", "desc": "Ready-made sessions to step through: a combo for every round and the exercises to go with them.", "group": "training" }
   ],
   "deploy": {
     "stacks": [

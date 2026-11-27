@@ -71,6 +71,11 @@ this. This phase moves it behind the server.
 
 The timer must still work with nothing else running (request 11).
 
+- **Workouts** (24): a routine can also be a named, ready-made workout, and the page steps through
+  them. Already in the content pack, added by the `round-timer-workouts` agent. In this phase the
+  server hands the page the list (and can rotate it week to week); the page keeps its built-in
+  ones as the fallback.
+
 - A routine is: warm-up, round and break lengths, the number of rounds, the combo for each round,
   an optional "go easy on" list, and a short reason for each combo (request 10).
 - The timer page asks the server for the current routine and falls back to its built-in defaults

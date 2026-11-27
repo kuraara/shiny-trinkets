@@ -10,6 +10,11 @@ also works on its own from the Files app on an iPhone. The request log is in
 inside the page. [AGENTS.md](AGENTS.md) says how to add or remove them, and
 `python3 tools/check_content.py round-timer.html` checks the result.
 
+**Workouts.** The Workout picker at the top of the setup screen steps through ready-made whole
+sessions (a combo per round plus finisher exercises), so there's no swapping drills one round at
+a time. The `round-timer-workouts` agent (`.claude/agents/` at the repo root) researches new ones
+and adds them to the content pack.
+
 **Now:** phase 1, on the Pi at `http://<pi>:8107` (plain HTTP, its own port). Because it isn't
 HTTPS, the phone may not keep the screen awake (browsers only allow the wake lock on secure pages).
 That and the microphone (phase 4) wait for the move behind the registry's HTTPS on the PC.

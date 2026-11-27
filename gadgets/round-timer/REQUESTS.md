@@ -72,3 +72,6 @@ Additionally,  see if it’s possible to access the users microphone to create a
 
 **23.** Or make the code usable so that other agents that specialise in this stuff can add/remove from it
 *(Tue 2026-11-24 17:51; sent while 22 was being worked on)*
+
+**24.** Can we set up some sort of agent that can research full workouts to cycle through rather than me having to press the new drill button each round when it’s something I don’t want to do
+*(Fri 2026-11-27 17:52)*
