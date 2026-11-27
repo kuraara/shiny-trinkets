@@ -10,9 +10,13 @@ const epCode = (h) => h.kind !== 'tv' ? (h.year ? `(${h.year})` : '')
   : `S${String(h.season).padStart(2, '0')}E${String(h.episode).padStart(2, '0')}${h.episode2 ? `-E${String(h.episode2).padStart(2, '0')}` : ''}`;
 
 // Highlight what was searched for, without ever inserting HTML from the data.
-function highlighter(q, regex) {
+function highlighter(q, regex, exact) {
   if (regex) {
     try { return new RegExp(q, 'gi'); } catch { return null; }
+  }
+  if (exact) {   // the words in order, as the server matched them
+    const ws = (q.match(/[\p{L}\p{N}']+/gu) || []).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    return ws.length ? new RegExp(`\\b${ws.join('\\s+')}\\b`, 'giu') : null;
   }
   const words = (q.match(/[\p{L}\p{N}']+/gu) || []).filter((w) => w.length > 1)
     .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
@@ -67,7 +71,7 @@ async function search(pushHistory) {
   const n = res.hits.length;
   $('#status').textContent = n === 0 ? 'No matches.'
     : `${n}${res.more ? '+' : ''} match${n === 1 ? '' : 'es'}${res.mode === 'any' ? ' with some of the words (none had all of them)' : ''} · ${res.tookMs} ms`;
-  const re = highlighter(q, regex);
+  const re = highlighter(q, regex, exact);
   list.replaceChildren(...res.hits.map((h) => result(h, re)));
 }
 

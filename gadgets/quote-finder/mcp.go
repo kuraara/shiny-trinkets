@@ -265,10 +265,7 @@ func (m *mcpServer) call(ctx context.Context, name string, raw json.RawMessage) 
 		if a.Kind != "tv" && a.Kind != "movie" {
 			a.Kind = ""
 		}
-		if a.Exact && !a.Regex {
-			a.Query = exactPhrase(a.Query)
-		}
-		res, err := m.a.db.search(a.Query, filter{Kind: a.Kind, Title: a.Title, Regex: a.Regex}, a.Limit)
+		res, err := m.a.db.search(a.Query, filter{Kind: a.Kind, Title: a.Title, Regex: a.Regex, Exact: a.Exact}, a.Limit)
 		if err != nil {
 			return mcpFail("%v", err)
 		}

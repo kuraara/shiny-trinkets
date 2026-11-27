@@ -142,15 +142,11 @@ func (a *app) search(w http.ResponseWriter, r *http.Request) {
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
-	f := filter{Kind: q.Get("kind"), Title: q.Get("title"), Regex: q.Get("regex") == "1"}
+	f := filter{Kind: q.Get("kind"), Title: q.Get("title"), Regex: q.Get("regex") == "1", Exact: q.Get("exact") == "1"}
 	if f.Kind != "tv" && f.Kind != "movie" {
 		f.Kind = ""
 	}
-	query := q.Get("q")
-	if q.Get("exact") == "1" && !f.Regex {
-		query = exactPhrase(query)
-	}
-	res, err := a.db.search(query, f, limit)
+	res, err := a.db.search(q.Get("q"), f, limit)
 	var bq badQuery
 	if errors.As(err, &bq) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": bq.msg})

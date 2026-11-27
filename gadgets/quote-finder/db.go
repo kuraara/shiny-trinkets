@@ -227,17 +227,19 @@ type searchResult struct {
 
 var wordRe = regexp.MustCompile(`[\p{L}\p{N}']+`)
 
-// exactPhrase makes the whole search one quoted phrase: the words, in order, side by side.
-// Any quote marks typed (straight or curly) are dropped first.
-func exactPhrase(q string) string {
-	q = strings.Map(func(r rune) rune {
-		switch r {
-		case '"', '\u201c', '\u201d', '\u201e', '\u00ab', '\u00bb':
-			return ' '
-		}
-		return r
-	}, q)
-	return `"` + strings.TrimSpace(q) + `"`
+// exactQuery turns a search into an exact match: these words, in this order, with nothing but
+// spaces (or the gap between two subtitles) between them, so "what you know" doesn't match
+// "What? / You know". Returns the regex and the full-text phrase that narrows it down first.
+func exactQuery(q string) (pattern, phrase string) {
+	words := wordRe.FindAllString(q, -1)
+	if len(words) == 0 {
+		return "", ""
+	}
+	quoted := make([]string, len(words))
+	for i, w := range words {
+		quoted[i] = regexp.QuoteMeta(w)
+	}
+	return `\b` + strings.Join(quoted, `\s+`) + `\b`, `"` + strings.Join(words, " ") + `"`
 }
 
 // ftsQuery turns what someone typed into an FTS5 query. "Quoted parts" must appear as a
@@ -281,6 +283,7 @@ type filter struct {
 	Kind  string // tv | movie | ""
 	Title string // exact show/movie title, or ""
 	Regex bool   // q is a regular expression (case-insensitive)
+	Exact bool   // q's words exactly, in order (see exactQuery)
 }
 
 type badQuery struct{ msg string }
@@ -345,9 +348,16 @@ func (s *store) search(q string, f filter, limit int) (searchResult, error) {
 	if strings.TrimSpace(q) == "" {
 		return res, nil
 	}
-	if f.Regex {
+	if f.Regex || f.Exact {
+		pattern, prefilter := q, ""
 		res.Mode = "regex"
-		hits, err := s.matchRegex(q, f, limit)
+		if f.Exact && !f.Regex {
+			res.Mode = "exact"
+			if pattern, prefilter = exactQuery(q); pattern == "" {
+				return res, nil
+			}
+		}
+		hits, err := s.matchRegex(pattern, f, limit, prefilter)
 		if err != nil {
 			return res, err
 		}
@@ -436,8 +446,8 @@ func (s *store) match(fq string, f filter, limit int) ([]hit, error) {
 }
 
 // matchRegex runs a case-insensitive regular expression over pairs of neighbouring lines,
-// using the full-text index first when the pattern contains whole words it needs.
-func (s *store) matchRegex(pattern string, f filter, limit int) ([]hit, error) {
+// using the full-text index first: prefilter if given, else whole words the pattern needs.
+func (s *store) matchRegex(pattern string, f filter, limit int, prefilter string) ([]hit, error) {
 	if _, err := regexp.Compile(pattern); err != nil {
 		return nil, badQuery{"That regular expression doesn't work: " + strings.TrimPrefix(err.Error(), "error parsing regexp: ")}
 	}
@@ -445,7 +455,10 @@ func (s *store) matchRegex(pattern string, f filter, limit int) ([]hit, error) {
 	sqlq := `SELECT win.media_id, win.idx, m.kind, m.title, m.year, m.season, m.episode, m.episode2, m.ep_title
 	         FROM win JOIN media m ON m.id = win.media_id WHERE regexp(?, win.text)`
 	args := []any{pat}
-	if words := requiredWords(pattern); len(words) > 0 {
+	if prefilter != "" {
+		sqlq += ` AND win MATCH ?`
+		args = append(args, prefilter)
+	} else if words := requiredWords(pattern); len(words) > 0 {
 		var q []string
 		for _, w := range words {
 			q = append(q, `"`+strings.Trim(w, "'")+`"`)

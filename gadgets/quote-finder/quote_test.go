@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -153,19 +154,24 @@ func TestRequiredWords(t *testing.T) {
 	}
 }
 
-func TestExactPhrase(t *testing.T) {
-	for in, want := range map[string]string{
-		"you know what":     `"you know what"`,
-		`“you know what”`:   `"you know what"`,
-		` "what" you know `: `"what  you know"`,
-		"«qué pasa»":        `"qué pasa"`,
+func TestExactQuery(t *testing.T) {
+	pattern, phrase := exactQuery(`“what you know”`)
+	if pattern != `\bwhat\s+you\s+know\b` || phrase != `"what you know"` {
+		t.Fatalf("exactQuery = %q, %q", pattern, phrase)
+	}
+	re := regexp.MustCompile("(?i)" + pattern)
+	for text, want := range map[string]bool{
+		"I want to know what you know.": true,
+		"What you know, ah":             true,
+		"What? You know -- happy hour.": false, // punctuation in between: not exact
+		"What, you know him?":           false,
+		"So what you knowing?":          false,
 	} {
-		if got := exactPhrase(in); got != want {
-			t.Errorf("exactPhrase(%q) = %q, want %q", in, got, want)
+		if re.MatchString(text) != want {
+			t.Errorf("%q: got %v, want %v", text, !want, want)
 		}
 	}
-	// a phrase becomes one FTS phrase, so the words must be side by side and in order
-	if got := ftsQuery(exactPhrase("what you know"), false); got != `"what you know"` {
-		t.Errorf("ftsQuery(exact) = %q", got)
+	if p, _ := exactQuery(`""`); p != "" {
+		t.Errorf("no words should give no pattern, got %q", p)
 	}
 }
