@@ -75,3 +75,6 @@ Additionally,  see if it’s possible to access the users microphone to create a
 
 **24.** Can we set up some sort of agent that can research full workouts to cycle through rather than me having to press the new drill button each round when it’s something I don’t want to do
 *(Fri 2026-11-27 17:52)*
+
+**25.** Oh and another change request, with the pause button, add an extra unpause button that gives me a grace period of 10s (but make it configurable) so I can glove up before continuing the round timer
+*(Fri 2026-11-27 18:11)*

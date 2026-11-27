@@ -31,6 +31,12 @@ in REQUESTS.md).
 - **Content for other agents** (23): every combo, exercise, warm-up move and equipment item is
   plain JSON in one block of the page, with a checker and [AGENTS.md](AGENTS.md), so a specialist
   agent can add or remove them without touching the code.
+- **Glove-up countdown** (25): when paused, a second button ("Resume in 10s") gives a "Gloves on"
+  countdown before the clock restarts where it stopped, with beeps over the last three seconds.
+  The length is set on the setup page (5 to 60 s, default 10). "Resume now" skips the wait and
+  "Cancel" goes back to plain paused.
+- **Workouts** (24): the setup page has a picker that steps through ready-made whole sessions
+  (a combo per round plus exercises); the `round-timer-workouts` agent researches new ones.
 - **Ending** (17): an "I'm knackered" button ends the session early, and a stats page follows
   (total time, rounds finished, share of the plan, round time versus rest, each round's combo and
   how long it lasted). Finishing normally shows the same page.

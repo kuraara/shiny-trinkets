@@ -190,7 +190,9 @@
   }
   #shuffleBtn:active{ transform:scale(.95); }
   #nextUp{ font-size:clamp(12px, 3vw, 14px); letter-spacing:1px; opacity:.65; text-transform:uppercase; margin-bottom:26px; }
-  #controls{ display:flex; align-items:center; gap:18px; }
+  #controls{ display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:14px 18px; }
+  #gloveBtn{ flex:0 0 min(86vw, 340px); border-width:3px; padding:16px 22px; font-size:16px; }
+  #gloveBtn[hidden]{ display:none; }
   .ctrlbtn{
     border:2px solid currentColor; background:transparent; color:inherit;
     padding:14px 22px; border-radius:999px;
@@ -316,6 +318,15 @@
         </div>
       </div>
 
+      <div class="row">
+        <div class="label"><b>Glove-up time</b><small>countdown when you resume</small></div>
+        <div class="stepper">
+          <button class="stepbtn" data-adj="glove" data-delta="-5">−</button>
+          <div class="val" id="gloveVal">10s</div>
+          <button class="stepbtn amber" data-adj="glove" data-delta="5">+</button>
+        </div>
+      </div>
+
       <div class="row col">
         <div class="label"><b>Exercises</b><small>strength and cardio that back up the bag work</small></div>
         <div class="seg" id="condSeg">
@@ -397,6 +408,7 @@
       </div>
       <div id="nextUp"></div>
       <div id="controls">
+        <button class="ctrlbtn" id="gloveBtn" hidden>Resume in 10s</button>
         <button class="ctrlbtn" id="pauseBtn">Pause</button>
         <button class="ctrlbtn" id="skipBtn">Skip</button>
       </div>
@@ -667,10 +679,11 @@
     warmup: 180, round: 180, brk: 60, rounds: 6,
     guided: true,           // show a warm-up move every ~30 s
     placement: 'finisher',  // 'off' | 'finisher' | 'between'
-    exLen: 45, exCount: 3
+    exLen: 45, exCount: 3,
+    glove: 10               // seconds of "get your gloves on" before a paused clock restarts
   };
-  var MIN = { warmup: 0, round: 15, brk: 0, rounds: 1, exLen: 15, exCount: 1 };
-  var MAX = { warmup: 60*30, round: 60*30, brk: 60*10, rounds: 30, exLen: 300, exCount: 8 };
+  var MIN = { warmup: 0, round: 15, brk: 0, rounds: 1, exLen: 15, exCount: 1, glove: 5 };
+  var MAX = { warmup: 60*30, round: 60*30, brk: 60*10, rounds: 30, exLen: 300, exCount: 8, glove: 60 };
 
   function fmt(s){
     s = Math.max(0, Math.round(s));
@@ -834,6 +847,7 @@
     document.getElementById('roundsVal').textContent = config.rounds;
     document.getElementById('exLenVal').textContent = fmt(config.exLen);
     document.getElementById('exCountVal').textContent = config.exCount;
+    document.getElementById('gloveVal').textContent = config.glove + 's';
     document.getElementById('summary').innerHTML =
       config.rounds + ' round' + (config.rounds===1?'':'s') +
       (exN ? ' + ' + exN + ' exercise' + (exN===1?'':'s') : '') +
@@ -853,7 +867,7 @@
     btn.addEventListener('click', function(){
       var key = btn.getAttribute('data-adj');
       var delta = parseInt(btn.getAttribute('data-delta'),10);
-      var map = { warmup:'warmup', round:'round', 'break':'brk', rounds:'rounds', exlen:'exLen', excount:'exCount' };
+      var map = { warmup:'warmup', round:'round', 'break':'brk', rounds:'rounds', exlen:'exLen', excount:'exCount', glove:'glove' };
       var k = map[key];
       config[k] = Math.min(MAX[k], Math.max(MIN[k], config[k] + delta));
       if(k === 'rounds' || k === 'exCount') markCustom();
@@ -1321,6 +1335,10 @@
     return p.title || 'Break';
   }
 
+  function roundOfText(p){
+    return p.type === 'round' ? ('of ' + config.rounds) : (p.type === 'exercise' ? p.ex.focus : '');
+  }
+
   function describeNext(){
     var n = phases[phaseIdx+1];
     if(!n) return 'Last one — finish strong';
@@ -1381,7 +1399,7 @@
     remaining = p.dur;
     endTime = Date.now() + remaining*1000;
     elPhaseLabel.textContent = phaseText(p);
-    elRoundOf.textContent = p.type === 'round' ? ('of ' + config.rounds) : (p.type === 'exercise' ? p.ex.focus : '');
+    elRoundOf.textContent = roundOfText(p);
     elNextUp.textContent = describeNext();
     if(p.steps) p.curStep = 0;
     elClock.textContent = fmt(remaining);
@@ -1517,6 +1535,8 @@
   function finish(early){
     running = false;
     paused = false;
+    dropGrace();
+    syncPauseUI();
     cancelAnimationFrame(rafId);
     releaseWake();
     resetKnackered();
@@ -1553,9 +1573,10 @@
     elDone.style.display = 'none';
     elTimer.classList.remove('hidden');
     running = true; paused = false;
+    dropGrace();
     stats = freshStats();
     resetKnackered();
-    elPauseBtn.textContent = 'Pause';
+    syncPauseUI();
     requestWake();
     startPhase(0);
     rafId = requestAnimationFrame(tick);
@@ -1563,31 +1584,90 @@
 
   document.getElementById('startBtn').addEventListener('click', startSession);
 
-  document.getElementById('pauseBtn').addEventListener('click', function(){
+  // ---------- Pause, and the glove-up countdown ----------
+  // Paused = the clock is frozen. "Resume in Ns" starts a countdown (the clock stays frozen, the
+  // screen says "Gloves on") and when it hits zero the clock carries on from where it stopped.
+  // "Resume" restarts at once; during the countdown that button reads "Resume now", and the other
+  // one becomes "Cancel", which goes back to plain paused.
+  var grace = false, graceEnd = 0, graceRaf = null, graceLastSec = 0;
+  var elGlove = document.getElementById('gloveBtn');
+
+  function syncPauseUI(){
+    if(!paused){ elPauseBtn.textContent = 'Pause'; elGlove.hidden = true; return; }
+    elGlove.hidden = false;
+    if(grace){ elPauseBtn.textContent = 'Resume now'; elGlove.textContent = 'Cancel'; }
+    else { elPauseBtn.textContent = 'Resume'; elGlove.textContent = 'Resume in ' + config.glove + 's'; }
+  }
+  function dropGrace(){            // stop the countdown without touching the screen
+    grace = false;
+    cancelAnimationFrame(graceRaf);
+  }
+  function cancelGrace(){          // stop it and put the real label and clock back
+    if(!grace) return;
+    dropGrace();
+    var p = phases[phaseIdx];
+    elPhaseLabel.textContent = phaseText(p);
+    elRoundOf.textContent = roundOfText(p);
+    elClock.textContent = fmt(Math.ceil(remaining));
+  }
+  function resumeNow(){
+    cancelGrace();
+    paused = false;
+    endTime = Date.now() + remaining*1000;
+    syncPauseUI();
+    beep(880, 0.18);
+    rafId = requestAnimationFrame(tick);
+  }
+  function graceTick(){
+    if(!grace) return;
+    var left = (graceEnd - Date.now())/1000;
+    if(left <= 0){ resumeNow(); return; }
+    var sec = Math.ceil(left);
+    elClock.textContent = sec;
+    if(sec !== graceLastSec){ graceLastSec = sec; if(sec <= 3) beep(660, 0.12); }
+    graceRaf = requestAnimationFrame(graceTick);
+  }
+  function startGrace(){
+    if(!running || !paused || grace) return;
+    grace = true;
+    graceEnd = Date.now() + config.glove*1000;
+    graceLastSec = 0;
+    elPhaseLabel.textContent = 'Gloves on';
+    elRoundOf.textContent = 'resuming ' + phaseText(phases[phaseIdx]);
+    syncPauseUI();
+    graceTick();
+  }
+
+  elPauseBtn.addEventListener('click', function(){
     if(!running) return;
-    paused = !paused;
-    if(paused){
+    if(!paused){
+      paused = true;
       remaining = (endTime - Date.now())/1000;
-      this.textContent = 'Resume';
       cancelAnimationFrame(rafId);
-    } else {
-      endTime = Date.now() + remaining*1000;
-      this.textContent = 'Pause';
-      rafId = requestAnimationFrame(tick);
+      syncPauseUI();
+      return;
     }
+    resumeNow();                   // "Resume", or "Resume now" during the countdown
+  });
+  elGlove.addEventListener('click', function(){
+    if(!running || !paused) return;
+    if(grace){ cancelGrace(); syncPauseUI(); } else startGrace();
   });
 
   document.getElementById('skipBtn').addEventListener('click', function(){
     if(!running) return;
     cancelAnimationFrame(rafId);
     var spent = currentElapsed();
+    dropGrace();
     paused = false;
-    elPauseBtn.textContent = 'Pause';
+    syncPauseUI();
     advancePhase(spent);
   });
 
   function endSession(){
     running = false; paused = false;
+    dropGrace();
+    syncPauseUI();
     cancelAnimationFrame(rafId);
     releaseWake();
     resetKnackered();
