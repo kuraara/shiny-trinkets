@@ -20,6 +20,7 @@
     { "phrase": "…try a different boxing workout", "desc": "Ready-made sessions to step through: a combo for every round and the exercises to go with them.", "group": "training" }
   ],
   "deploy": {
+    "test": "python3 tools/check_content.py round-timer.html",
     "stacks": [
       { "name": "round-timer", "host": "pi", "compose": "docker-compose.yml",
         "build": { "image": "round-timer:latest", "context": "." } }

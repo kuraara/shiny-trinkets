@@ -12,8 +12,19 @@ the registry.
                                    start a gadget from a template, with the next free port
   trinket icons                    (re)draw icons from each manifest's iconSpec
   trinket assemble --out DIR       write DIR/registry.json + DIR/icons/ (the registry image does this)
-  trinket deploy <id>|registry [--stack NAME] [--no-build]
-                                   build on the build box and create/update the Portainer stack(s)
+  trinket deploy <id>|registry [--stack NAME] [--no-build] [--existing-only]
+                                   build on the build box and create/update the Portainer stack(s);
+                                   --existing-only skips stacks that don't exist yet
+  trinket prune <id>|registry [--keep N]
+                                   delete old versions, keeping rev0, the running one and the newest N
+  trinket versions <id>|registry [--json]
+                                   the built versions of its images (tags) and which one runs now
+  trinket use <id>|registry <rev>  switch a gadget to an earlier (or later) built version
+  trinket baseline                 tag what runs now as "rev0" (the oldest version to go back to)
+
+Versions: every build is also tagged <image>:<rev>, where rev is $TRINKET_REV or the short commit
+id (with -dirty if the gadget's folder has uncommitted changes). `use` points :latest back at one
+of them and redeploys without building.
 
 Standard library only (Python 3.9+). Deploying needs: ~/portainer-mcp.env (PORTAINER_URL,
 PORTAINER_API_KEY), and `ssh buildbox` working (see infra/buildbox). Secrets for a brand-new
@@ -497,10 +508,30 @@ def strip_build(compose):
     return '\n'.join(out) + '\n'
 
 
+def rev_of(path):
+    """The version a build from this folder gets: $TRINKET_REV, else the short commit id."""
+    if os.environ.get('TRINKET_REV'):
+        return os.environ['TRINKET_REV']
+    git = lambda *a: subprocess.run(['git', '-C', ROOT, *a], capture_output=True, text=True).stdout.strip()
+    rev = git('rev-parse', '--short=7', 'HEAD') or 'local'
+    return rev + ('-dirty' if git('status', '--porcelain', '--', path) else '')
+
+
+def image_repo(image):
+    return image.rsplit(':', 1)[0] if ':' in image.split('/')[-1] else image
+
+
+def image_tag(image):
+    """The tag the stack runs (usually latest; video-tools pins 0.1.0)."""
+    return image.rsplit(':', 1)[1] if ':' in image.split('/')[-1] else 'latest'
+
+
 def build(m, s, st):
     b = s.get('build')
     if not b:
         return
+    rev = rev_of(m['_dir'])
+    tagged = f'{image_repo(b["image"])}:{rev}'
     host = st['hosts'][s['host']]
     ctx = os.path.join(m['_dir'], b.get('context', '.'))
     work = f'/work/trinkets/{m["id"]}/{s["name"]}'
@@ -522,14 +553,15 @@ def build(m, s, st):
     if host.get('buildbox'):   # the build box shares this host's Docker
         print(f'  building {b["image"]} on the build box')
         ssh(f'rm -rf {work}/ctx && mkdir -p {work}/ctx && cd {work}/ctx && tar -xf - && '
-            f'docker build -q {args} {dockerfile} -t {b["image"]} . >/dev/null', stdin=tar_dir(ctx))
+            f'docker build -q {args} {dockerfile} -t {b["image"]} -t {tagged} . >/dev/null', stdin=tar_dir(ctx))
     else:                      # build through Portainer on that host (images are prebuilt for it)
         print(f'  building {b["image"]} on {s["host"]} through Portainer')
-        q = f'?t={b["image"]}&rm=1' + ''.join(f'&buildargs={json.dumps(b["args"])}' for _ in [0] if b.get('args'))
+        q = f'?t={b["image"]}&t={tagged}&rm=1' + ''.join(f'&buildargs={json.dumps(b["args"])}' for _ in [0] if b.get('args'))
         out = api('POST', f'/api/endpoints/{host["portainerEndpoint"]}/docker/build{q}', raw=tar_dir(ctx),
                   ctype='application/x-tar').decode(errors='replace')
         if '"error' in out:
             sys.exit(f'build failed: {out[-800:]}')
+    print(f'  version {rev} ({tagged})')
 
 
 def env_file(stack):
@@ -544,10 +576,13 @@ def env_file(stack):
     return env
 
 
-def deploy_stack(m, s, st, do_build):
+def deploy_stack(m, s, st, do_build, existing_only=False):
     host = st['hosts'][s['host']]
     ep = host['portainerEndpoint']
     print(f'{m["id"]}: stack {s["name"]} on {s["host"]}')
+    if existing_only and not any(x['Name'] == s['name'] and x['EndpointId'] == ep for x in json.loads(api('GET', '/api/stacks'))):
+        print(f'  skipped: stack {s["name"]} doesn\'t exist yet (first deploy is by hand)')
+        return
     if do_build:
         build(m, s, st)
     compose = strip_build(open(os.path.join(m['_dir'], s.get('compose', 'docker-compose.yml'))).read())
@@ -574,16 +609,108 @@ def deploy_stack(m, s, st, do_build):
         print(f'  created stack {out.get("Id")}')
 
 
+REGISTRY_STACK = {'name': 'gadget-registry', 'host': 'pc', 'compose': 'registry/docker-compose.yml',
+                  'build': {'image': 'gadget-registry:latest', 'context': '.', 'dockerfile': 'registry/Dockerfile'}}
+
+
+def built_stacks(gid):
+    """(manifest, stacks with a build) for a gadget id or 'registry'."""
+    if gid == 'registry':
+        return {'id': 'registry', '_dir': ROOT}, [REGISTRY_STACK]
+    m = next((x for x in manifests() if x['id'] == gid), None)
+    if not m:
+        sys.exit(f'no gadget "{gid}" (tools/trinket list)')
+    return m, [s for s in m.get('deploy', {}).get('stacks', []) if s.get('build')]
+
+
+def image_versions(ep, image):
+    """[(rev, created, is_current)] for one image on one host, newest first."""
+    from urllib.parse import quote
+    repo, run_tag = image_repo(image), image_tag(image)
+    imgs = json.loads(api('GET', f'/api/endpoints/{ep}/docker/images/json?filters=' +
+                          quote(json.dumps({'reference': [repo]}))))
+    out = []
+    for i in imgs:
+        tags = [t.rsplit(':', 1)[1] for t in (i.get('RepoTags') or []) if t.rsplit(':', 1)[0] == repo]
+        current = run_tag in tags
+        for t in tags:
+            if t != run_tag:
+                out.append((t, i.get('Created', 0), current))
+    return sorted(out, key=lambda v: -v[1])
+
+
+def cmd_versions(a):
+    st = site()
+    m, stacks = built_stacks(a.id)
+    res = []
+    for s in stacks:
+        ep = st['hosts'][s['host']]['portainerEndpoint']
+        res.append({'stack': s['name'], 'host': s['host'], 'image': s['build']['image'],
+                    'versions': [{'rev': r, 'created': c, 'current': cur} for r, c, cur in image_versions(ep, s['build']['image'])]})
+    if a.json:
+        print(json.dumps(res))
+        return
+    for r in res:
+        print(f'{a.id}: {r["stack"]} on {r["host"]} ({r["image"]})')
+        for v in r['versions']:
+            print(f'  {"*" if v["current"] else " "} {v["rev"]}')
+        if not r['versions']:
+            print('    (no versions yet: deploy it, or run trinket baseline)')
+
+
+def cmd_use(a):
+    from urllib.parse import quote
+    st = site()
+    m, stacks = built_stacks(a.id)
+    if not stacks:
+        sys.exit(f'{a.id}: nothing built to switch')
+    for s in stacks:
+        ep = st['hosts'][s['host']]['portainerEndpoint']
+        repo = image_repo(s['build']['image'])
+        if a.rev not in [r for r, _, _ in image_versions(ep, s['build']['image'])]:
+            sys.exit(f'{s["name"]}: no version {a.rev} of {repo} on {s["host"]} (trinket versions {a.id})')
+        tag = image_tag(s['build']['image'])
+        api('POST', f'/api/endpoints/{ep}/docker/images/{quote(repo + ":" + a.rev, safe="")}/tag?repo={quote(repo)}&tag={tag}')
+        print(f'{a.id}: {repo}:{tag} is now {a.rev}')
+        deploy_stack(m, s, st, False)
+
+
+def cmd_baseline(_a):
+    """Tag every gadget's running image as rev0, once: the oldest version `use` can go back to."""
+    from urllib.parse import quote
+    st = site()
+    for gid in ['registry'] + [x['id'] for x in manifests()]:
+        m, stacks = built_stacks(gid)
+        for s in stacks:
+            ep = st['hosts'][s['host']]['portainerEndpoint']
+            repo = image_repo(s['build']['image'])
+            try:
+                have = [r for r, _, _ in image_versions(ep, s['build']['image'])]
+                if 'rev0' in have:
+                    print(f'{gid}: {repo} already has rev0'); continue
+                # the image the stack's container runs now (its tag may have moved on, or be gone)
+                cs = json.loads(api('GET', f'/api/endpoints/{ep}/docker/containers/json?filters=' + quote(json.dumps(
+                    {'label': [f'com.docker.compose.project={s["name"]}']}))))
+                if not cs:
+                    print(f'{gid}: {repo}: skipped (stack {s["name"]} isn\'t running)'); continue
+                img = cs[0]['ImageID']
+                api('POST', f'/api/endpoints/{ep}/docker/images/{img}/tag?repo={quote(repo)}&tag=rev0')
+                tag = image_tag(s['build']['image'])
+                if tag not in [t.rsplit(':', 1)[1] for t in (json.loads(api('GET', f'/api/endpoints/{ep}/docker/images/{img}/json')).get('RepoTags') or []) if t.rsplit(':', 1)[0] == repo]:
+                    api('POST', f'/api/endpoints/{ep}/docker/images/{img}/tag?repo={quote(repo)}&tag={tag}')
+                    print(f'{gid}: {repo}:{tag} pointed at the running image too')
+                print(f'{gid}: running {repo} image tagged rev0 on {s["host"]}')
+            except Exception as e:
+                print(f'{gid}: {repo}: skipped ({e})')
+
+
 def cmd_deploy(a):
     st = site()
     if a.id == 'registry':   # the registry is built from the whole repo (it reads every manifest)
         errs = problems()
         if errs:
             sys.exit('fix these first (tools/trinket check):\n' + '\n'.join(errs))
-        m = {'id': 'registry', '_dir': ROOT}
-        s = {'name': 'gadget-registry', 'host': 'pc', 'compose': 'registry/docker-compose.yml',
-             'build': {'image': 'gadget-registry:latest', 'context': '.', 'dockerfile': 'registry/Dockerfile'}}
-        return deploy_stack(m, s, st, not a.no_build)
+        return deploy_stack({'id': 'registry', '_dir': ROOT}, REGISTRY_STACK, st, not a.no_build, a.existing_only)
     m = next((x for x in manifests() if x['id'] == a.id), None)
     if not m:
         sys.exit(f'no gadget "{a.id}" (tools/trinket list)')
@@ -593,7 +720,22 @@ def cmd_deploy(a):
     if not stacks:
         sys.exit(f'{a.id}: nothing to deploy (no deploy.stacks in its gadget.json)')
     for s in stacks:
-        deploy_stack(m, s, st, not a.no_build)
+        deploy_stack(m, s, st, not a.no_build, a.existing_only)
+
+
+def cmd_prune(a):
+    from urllib.parse import quote
+    st = site()
+    m, stacks = built_stacks(a.id)
+    for s in stacks:
+        ep = st['hosts'][s['host']]['portainerEndpoint']
+        repo = image_repo(s['build']['image'])
+        vs = image_versions(ep, s['build']['image'])          # newest first
+        keep = {r for r, _, cur in vs if cur or r == 'rev0'} | {r for r, _, _ in vs[:a.keep]}
+        for r, _, _ in vs:
+            if r not in keep:
+                api('DELETE', f'/api/endpoints/{ep}/docker/images/{quote(repo + ":" + r, safe="")}')
+                print(f'{a.id}: removed {repo}:{r}')
 
 
 # ---------------------------------------------------------------- main
@@ -609,7 +751,12 @@ def main():
     p = sub.add_parser('new'); p.add_argument('id'); p.add_argument('--name'); p.add_argument('--template', default='go')
     p.add_argument('--host', default='pc'); p.set_defaults(fn=cmd_new)
     p = sub.add_parser('deploy'); p.add_argument('id'); p.add_argument('--stack'); p.add_argument('--no-build', action='store_true')
+    p.add_argument('--existing-only', action='store_true')
     p.set_defaults(fn=cmd_deploy)
+    p = sub.add_parser('versions'); p.add_argument('id'); p.add_argument('--json', action='store_true'); p.set_defaults(fn=cmd_versions)
+    p = sub.add_parser('use'); p.add_argument('id'); p.add_argument('rev'); p.set_defaults(fn=cmd_use)
+    sub.add_parser('baseline').set_defaults(fn=cmd_baseline)
+    p = sub.add_parser('prune'); p.add_argument('id'); p.add_argument('--keep', type=int, default=10); p.set_defaults(fn=cmd_prune)
     a = ap.parse_args()
     a.fn(a)
 

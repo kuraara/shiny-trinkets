@@ -163,6 +163,15 @@ browser ──► registry :8104 ─┬─ TLS handshake? ──► https server
 | `trinket assemble --out DIR` | what the registry image runs |
 | `trinket deploy <id>\|registry` | for each stack: build (on the build box; Go binaries cross-compiled there for the Pi, whose image is then built through Portainer), strip `build:` from the compose file, then update the Portainer stack found **by name** (keeping its environment, so secrets stay put) or create it (secrets from `~/.config/shiny-trinkets/<stack>.env`) |
 
+| `trinket versions <id>` / `use <id> <rev>` | every build is also tagged `<image>:<commit>` (or `$TRINKET_REV`); `versions` lists them and which runs, `use` points `:latest` back at one and redeploys without building |
+| `trinket baseline` / `prune <id>` | tag what runs now as `rev0`, the oldest version to go back to / delete old versions, keeping rev0, the running one and the newest 10 |
+
+**Automatic deploys.** [Trinket Watcher](../gadgets/trinket-watcher) (on the PC) checks master
+every 5 minutes. For new commits it runs `trinket check`, each changed gadget's `deploy.test` on
+the build box, then `trinket deploy <id> --existing-only` with the commit as the version, and the
+registry when a manifest changed. A new gadget's first deploy is by hand (its stack may need
+secrets), and the watcher never deploys itself. Its page lists runs and switches versions.
+
 Rules that come from experience: the Pi never compiles or hosts development work (it ran out of
 memory once); builds happen on the build box ([infra/buildbox](../infra/buildbox)), which shares
 the PC's Docker; secrets never go in git.

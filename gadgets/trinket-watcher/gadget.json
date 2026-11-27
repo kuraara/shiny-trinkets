@@ -1,0 +1,57 @@
+{
+  "$schema": "../../docs/gadget.schema.json",
+  "id": "trinket-watcher",
+  "name": "Trinket Watcher",
+  "kind": "gadget",
+  "host": "pc",
+  "desc": "Deploys what lands on master, with a version switch to go back.",
+  "about": "Every five minutes it checks shiny-trinkets on GitHub. When another agent pushes, it checks the manifests, runs the changed gadgets' tests, and deploys them, tagging each build with its commit. Pick an older version of any gadget to switch back to it.",
+  "icon": "web/icon.svg",
+  "iconSpec": {
+    "top": "#5b7bd5",
+    "bottom": "#36509c",
+    "glyph": "<path d=\"M20 22a14 14 0 0 1 24 0\" {S}/><path d=\"M44 22l1-6M44 22l-6-1\" {S}/><path d=\"M44 42a14 14 0 0 1-24 0\" {S}/><path d=\"M20 42l-1 6M20 42l6 1\" {S}/><circle cx=\"32\" cy=\"32\" r=\"4\" {F}/>"
+  },
+  "proxy": {
+    "port": 8109,
+    "upstream": "http://trinket-watcher:8080"
+  },
+  "intents": [
+    {
+      "phrase": "…go back to an earlier version of a gadget",
+      "desc": "Each deploy is kept by its commit; switch any gadget back in one tap.",
+      "group": "making"
+    },
+    {
+      "phrase": "…see what the agents deployed",
+      "desc": "Recent pushes, what they changed, test output and the deploy result.",
+      "group": "making"
+    }
+  ],
+  "actions": [
+    {
+      "id": "check",
+      "label": "Check now",
+      "upstream": "http://trinket-watcher:8080/api/check",
+      "title": "Look for new commits on master now"
+    }
+  ],
+  "deploy": {
+    "stacks": [
+      {
+        "name": "trinket-watcher",
+        "host": "pc",
+        "compose": "docker-compose.yml",
+        "build": {
+          "image": "trinket-watcher:latest",
+          "context": "."
+        },
+        "secrets": [
+          "PORTAINER_URL",
+          "PORTAINER_API_KEY",
+          "SITE_LOCAL_JSON"
+        ]
+      }
+    ]
+  }
+}

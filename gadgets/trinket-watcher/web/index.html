@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trinket Watcher</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root {
+  --bg: #f3f4f1; --card: #ffffff; --ink: #1d2320; --muted: #5d6762; --line: #dde2dd;
+  --accent: #2f6f5e; --accent-ink: #ffffff; --chip: #e7efeb; --warn: #9a3412; --ok: #2f6f5e;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #121614; --card: #1b201d; --ink: #e5ebe7; --muted: #9aa69f; --line: #2b322e;
+    --accent: #6cc3a6; --accent-ink: #0d1411; --chip: #23302a; --warn: #f0a07a; --ok: #6cc3a6; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-size: 16px; line-height: 1.45; }
+.page { max-width: 760px; margin: 0 auto; padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right));
+  display: grid; gap: 24px; }
+h1 { margin: 0 0 4px; font-size: 1.8rem; letter-spacing: -.01em; }
+h2 { margin: 0 0 10px; font-size: 1rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.muted { color: var(--muted); margin: 0; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; }
+.stack { display: grid; gap: 10px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.grow { flex: 1 1 auto; min-width: 0; }
+button, select { font: inherit; border-radius: 10px; }
+button { cursor: pointer; background: var(--chip); color: var(--ink); border: 1px solid var(--line); padding: 8px 14px; font-weight: 600; }
+button.primary { background: var(--accent); color: var(--accent-ink); border: 0; }
+button:disabled { opacity: .55; cursor: default; }
+select { padding: 8px 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); max-width: 100%; min-width: 0; flex: 1 1 220px; }
+.name { font-weight: 700; }
+.rev { font-family: ui-monospace, Menlo, monospace; background: var(--chip); border-radius: 6px; padding: 0 6px; font-size: .9rem; }
+.subject { overflow-wrap: anywhere; }
+.bad { color: var(--warn); }
+.good { color: var(--ok); }
+details summary { cursor: pointer; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin: 6px 0 0; max-height: 360px; overflow: auto; }
+ul.plain { margin: 0; padding-left: 18px; }
+.msg { font-size: .9rem; min-height: 1.2em; margin: 0; }
+button:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main class="page">
+  <header>
+    <h1>Trinket Watcher</h1>
+    <p class="muted">Deploys whatever lands on master in shiny-trinkets, once its checks pass, and keeps the versions so you can go back.</p>
+  </header>
+
+  <section class="card" aria-labelledby="st-h">
+    <h2 id="st-h">Status</h2>
+    <p id="status" class="muted">Loading…</p>
+    <div class="row">
+      <button class="primary" id="check">Check now</button>
+      <button id="pause">Pause</button>
+    </div>
+    <p class="msg" id="msg" role="status"></p>
+  </section>
+
+  <section aria-labelledby="g-h">
+    <h2 id="g-h">Versions</h2>
+    <p class="muted" style="margin-bottom:10px">Pick a version to switch a gadget to it. Every deploy is a version, named by its commit; <span class="rev">rev0</span> is what was running when the watcher started.</p>
+    <div class="stack" id="gadgets"></div>
+  </section>
+
+  <section aria-labelledby="r-h">
+    <h2 id="r-h">Recent runs</h2>
+    <div class="stack" id="runs"></div>
+    <p class="muted" id="noruns">No deploys yet. Push something to master and it shows up here within five minutes.</p>
+  </section>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const when = (iso) => iso ? new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
+const post = (path, body) => fetch(path, { method: 'POST', headers: { 'X-Gadget-Action': '1', 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }).then(async (r) => ({ ok: r.ok, ...(await r.json().catch(() => ({}))) }));
+let st = null; const opened = new Set();
+
+async function load() {
+  st = await fetch('api/state').then((r) => r.json());
+  const s = [];
+  s.push(st.paused ? '<strong class="bad">Paused</strong>: new commits wait until you resume.' : 'Watching <span class="rev">' + esc(st.branch) + '</span> every ' + Math.round(st.interval / 60) + ' min.');
+  if (st.busy) s.push('Now: ' + esc(st.busy) + '…');
+  if (st.last) s.push('Deployed up to <span class="rev">' + esc(st.last.slice(0, 7)) + '</span>.');
+  if (st.checked) s.push('Last checked ' + esc(when(st.checked)) + '.');
+  if (st.error) s.push('<span class="bad">Problem: ' + esc(st.error) + '</span>');
+  $('#status').innerHTML = s.join(' ');
+  $('#pause').textContent = st.paused ? 'Resume' : 'Pause';
+  drawGadgets(); drawRuns();
+}
+
+function drawGadgets() {
+  const box = $('#gadgets');
+  if (box.dataset.ids === st.gadgets.map((g) => g.id).join()) return;
+  box.dataset.ids = st.gadgets.map((g) => g.id).join();
+  box.innerHTML = st.gadgets.map((g) => {
+    const last = (st.history[g.id] || [])[0];
+    return `<div class="card" data-id="${esc(g.id)}"><div class="row"><span class="name grow">${esc(g.name)}</span>
+      ${last ? `<span class="muted">${esc(last.result)} <span class="rev">${esc(last.rev)}</span></span>` : ''}</div>
+      ${g.self ? '<p class="muted">The watcher itself: deploy it by hand.</p>' : `<div class="row"><select aria-label="Version of ${esc(g.name)}"><option>Tap “Show versions”</option></select>
+      <button class="show">Show versions</button><button class="primary use" disabled>Switch</button></div><p class="msg"></p>`}</div>`;
+  }).join('');
+}
+
+async function versions(card) {
+  const id = card.dataset.id, sel = card.querySelector('select'), msg = card.querySelector('.msg');
+  msg.textContent = 'Looking…';
+  const r = await fetch('api/versions?id=' + encodeURIComponent(id)).then((x) => x.json());
+  if (r.error) { msg.textContent = r.error; return; }
+  const vs = r.stacks.flatMap((s) => s.versions);
+  const seen = new Set(), list = vs.filter((v) => !seen.has(v.rev) && seen.add(v.rev));
+  sel.innerHTML = list.length ? list.map((v) => `<option value="${esc(v.rev)}"${v.current ? ' selected' : ''}>${esc(v.rev)}${v.current ? ' (running)' : ''} · ${esc(v.subject || '')}</option>`).join('')
+    : '<option>No versions yet</option>';
+  card.querySelector('.use').disabled = !list.length;
+  msg.textContent = list.length ? '' : 'No versions yet: the next deploy makes one.';
+}
+
+async function use(card) {
+  const id = card.dataset.id, rev = card.querySelector('select').value, msg = card.querySelector('.msg');
+  if (!confirm(`Switch ${id} to ${rev}?`)) return;
+  msg.textContent = 'Switching…';
+  const r = await post('api/use', { id, rev });
+  msg.innerHTML = r.ok ? '<span class="good">Now running ' + esc(rev) + '</span>' : '<span class="bad">' + esc(r.error || 'Failed') + '</span>';
+  load(); versions(card);
+}
+
+function drawRuns() {
+  $('#noruns').hidden = !!st.runs.length;
+  $('#runs').innerHTML = st.runs.map((r, i) => {
+    const key = r.at + r.to, bad = /fail|error/.test(r.result);
+    return `<div class="card"><div class="row"><span class="rev">${esc(r.to)}</span><span class="grow ${bad ? 'bad' : 'good'}">${esc(r.result)}</span><span class="muted">${esc(when(r.at))}</span></div>
+      <ul class="plain">${r.commits.slice(0, 8).map((c) => `<li class="subject">${esc(c)}</li>`).join('')}${r.commits.length > 8 ? `<li class="muted">and ${r.commits.length - 8} more</li>` : ''}</ul>
+      ${Object.keys(r.gadgets).length ? `<ul class="plain">${Object.entries(r.gadgets).map(([g, v]) => `<li><strong>${esc(g)}</strong>: ${esc(v)}</li>`).join('')}</ul>` : ''}
+      <details data-key="${esc(key)}"${opened.has(key) ? ' open' : ''}><summary>Output</summary><pre>${esc(r.log.join('\n\n'))}</pre></details></div>`;
+  }).join('');
+}
+
+document.addEventListener('click', (e) => {
+  const card = e.target.closest('.card[data-id]');
+  if (e.target.matches('.show') && card) versions(card);
+  if (e.target.matches('.use') && card) use(card);
+});
+document.addEventListener('toggle', (e) => { if (e.target.dataset?.key) (e.target.open ? opened.add : opened.delete).call(opened, e.target.dataset.key); }, true);
+$('#check').onclick = async () => { $('#msg').textContent = (await post('api/check')).message || ''; setTimeout(load, 1500); };
+$('#pause').onclick = async () => { $('#msg').textContent = (await post('api/pause', { paused: !st.paused })).message || ''; load(); };
+load(); setInterval(load, 15000);
+</script>
+</body>
+</html>

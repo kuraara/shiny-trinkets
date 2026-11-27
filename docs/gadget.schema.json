@@ -89,6 +89,7 @@
     "deploy": {
       "type": "object",
       "properties": {
+        "test": { "type": "string", "description": "Shell command run in the gadget's folder on the build box before Trinket Watcher deploys it; a non-zero exit stops the deploy." },
         "stacks": {
           "type": "array",
           "items": {

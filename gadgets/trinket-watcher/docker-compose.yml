@@ -1,0 +1,29 @@
+# Trinket Watcher on the PC: deploys what lands on master and keeps versions to go back to.
+# Reached through the gadget registry on its port. PORTAINER_API_KEY and BUILDBOX_* come from the
+# stack's environment; SITE_LOCAL_JSON is registry/site.local.json (not in git).
+services:
+  trinket-watcher:
+    image: trinket-watcher:latest
+    build: .
+    container_name: trinket-watcher
+    restart: unless-stopped
+    environment:
+      - REPO_URL=https://github.com/kuraara/shiny-trinkets.git
+      - BRANCH=master
+      - INTERVAL=300
+      - KEEP=10
+      - PORTAINER_URL=${PORTAINER_URL}
+      - PORTAINER_API_KEY=${PORTAINER_API_KEY}
+      - BUILDBOX_HOST=${PC_ADDR:?set PC_ADDR}
+      - BUILDBOX_PORT=2223
+      - SITE_LOCAL_JSON=${SITE_LOCAL_JSON}
+      - START=${START:-}
+    volumes:
+      - trinket-watcher-data:/data
+    networks: [gadgets]
+    mem_limit: 256m
+volumes:
+  trinket-watcher-data:
+networks:
+  gadgets:
+    external: true
