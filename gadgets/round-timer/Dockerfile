@@ -1,9 +1,14 @@
-# Round Timer: the single-file timer (round-timer.html) served unchanged by nginx, as "/".
-# round-timer.html stays the one copy in the repo; it also runs on its own from the Files app.
-FROM nginx:1.30-alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY round-timer.html /usr/share/nginx/html/index.html
-COPY round-timer.html /usr/share/nginx/html/round-timer.html
-COPY web/icon.svg /usr/share/nginx/html/icon.svg
+# Round Timer: the single-file timer (round-timer.html, still the one copy in the repo, which also
+# runs on its own from the Files app) plus the little server that keeps the shared session.
+# Built on the Pi from a binary cross-compiled on the build box (tools/trinket deploy does it:
+# GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o round-timer .), so the Pi compiles nothing.
+FROM alpine:3.22
+RUN mkdir /data && chown 1000:1000 /data
+COPY round-timer /app
 # The source, easy to find inside the container.
-COPY . /src
+COPY go.mod *.go round-timer.html *.md /src/
+COPY web /src/web
+COPY tools /src/tools
+EXPOSE 8080
+HEALTHCHECK --interval=60s --timeout=3s CMD wget -qO- http://127.0.0.1:8080/healthz || exit 1
+ENTRYPOINT ["/app"]

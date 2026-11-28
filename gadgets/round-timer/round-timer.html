@@ -1307,7 +1307,9 @@
     if(wakeLock){ wakeLock.release().catch(function(){}); wakeLock = null; }
   }
   document.addEventListener('visibilitychange', function(){
-    if(document.visibilityState === 'visible' && running) requestWake();
+    if(document.visibilityState !== 'visible') return;
+    if(running) requestWake();
+    resync();
   });
 
   // ---------- Timer engine ----------
@@ -1392,20 +1394,41 @@
     }
   }
 
+  // Draw the current phase with `left` seconds on the clock (no sound, no timing changes).
+  function paintPhase(left){
+    var p = phases[phaseIdx];
+    if(p.steps) p.curStep = Math.min(p.segCount - 1, Math.max(0, Math.floor((p.dur - left) / p.segLen)));
+    elPhaseLabel.textContent = phaseText(p);
+    elRoundOf.textContent = roundOfText(p);
+    elNextUp.textContent = describeNext();
+    elClock.textContent = fmt(Math.ceil(left));
+    applyBg(Math.ceil(left));
+    renderDrill();
+  }
+
   function startPhase(idx){
     phaseIdx = idx;
     var p = phases[phaseIdx];
     if(!p){ finish(); return; }
     remaining = p.dur;
     endTime = Date.now() + remaining*1000;
-    elPhaseLabel.textContent = phaseText(p);
-    elRoundOf.textContent = roundOfText(p);
-    elNextUp.textContent = describeNext();
-    if(p.steps) p.curStep = 0;
-    elClock.textContent = fmt(remaining);
-    applyBg(remaining);
-    renderDrill();
+    paintPhase(remaining);
     beep(880, 0.18);
+    saveSoon();
+  }
+
+  // The clock runs on the wall clock, so after time away (another app, a reloaded page) the
+  // phases that ended in the meantime are counted as done and the current one picks up where it
+  // would be. Phases chain off each other's end time, so nothing drifts.
+  function catchUp(){
+    var guard = 0;
+    while(running && !paused && Date.now() >= endTime && guard++ < 1000){
+      recordPhase(phases[phaseIdx].dur);
+      if(phaseIdx + 1 >= phases.length){ finish(false); return; }
+      phaseIdx++;
+      endTime += phases[phaseIdx].dur * 1000;
+    }
+    if(running && !paused) remaining = (endTime - Date.now())/1000;
   }
 
   function tick(){
@@ -1434,6 +1457,7 @@
   // ---------- Session stats ----------
   function freshStats(){ return { work:0, rest:0, exTime:0, rounds:[], exercises:[] }; }
   var stats = freshStats();
+  var doneEarly = null;     // null = no finished session on show; otherwise whether it ended early
 
   // Seconds actually spent in the current phase (pauses don't count).
   function currentElapsed(){
@@ -1535,6 +1559,7 @@
   function finish(early){
     running = false;
     paused = false;
+    doneEarly = !!early;
     dropGrace();
     syncPauseUI();
     cancelAnimationFrame(rafId);
@@ -1543,6 +1568,7 @@
     renderStats(early);
     elTimer.classList.add('hidden');
     elDone.style.display = 'flex';
+    saveSoon();
   }
 
   // "I'm knackered": first tap arms it, second tap within 3s ends the session.
@@ -1573,6 +1599,8 @@
     elDone.style.display = 'none';
     elTimer.classList.remove('hidden');
     running = true; paused = false;
+    doneEarly = null;
+    Sync.userActed = true;
     dropGrace();
     stats = freshStats();
     resetKnackered();
@@ -1617,6 +1645,7 @@
     syncPauseUI();
     beep(880, 0.18);
     rafId = requestAnimationFrame(tick);
+    saveSoon();
   }
   function graceTick(){
     if(!grace) return;
@@ -1645,6 +1674,7 @@
       remaining = (endTime - Date.now())/1000;
       cancelAnimationFrame(rafId);
       syncPauseUI();
+      saveSoon();
       return;
     }
     resumeNow();                   // "Resume", or "Resume now" during the countdown
@@ -1664,8 +1694,10 @@
     advancePhase(spent);
   });
 
-  function endSession(){
+  // Back to the setup page with no session on show (also what another device ending it does).
+  function leaveSession(){
     running = false; paused = false;
+    doneEarly = null;
     dropGrace();
     syncPauseUI();
     cancelAnimationFrame(rafId);
@@ -1675,6 +1707,11 @@
     elDone.style.display = 'none';
     elSetup.classList.remove('hidden');
     renderSetup();
+  }
+  function endSession(){
+    Sync.userActed = true;
+    leaveSession();
+    saveSoon();
   }
 
   elShuffle.addEventListener('click', function(){
@@ -1687,14 +1724,267 @@
       if(next){ ph.ex = next; ph.use = exUseLabel(next); }
     }
     renderDrill();
+    saveSoon();
   });
 
   document.getElementById('endBtn').addEventListener('click', endSession);
   document.getElementById('restartBtn').addEventListener('click', function(){
+    Sync.userActed = true;
+    doneEarly = null;
     elDone.style.display = 'none';
     elSetup.classList.remove('hidden');
     renderSetup();
+    saveSoon();
   });
+
+  // ---------- Keeping the session across app switches and reloads ----------
+  // The session is saved as a small snapshot (its phases, where it is, the stats). It goes to the
+  // browser's own storage, and, when the page is served by the Round Timer server, to that too
+  // (GET/PUT api/state), so a phone that switches apps or reloads the page lands back in the same
+  // session, and a second device can follow it. The clock runs on the wall clock: time spent away
+  // counts. With no server (the Files app, or as an artifact) only the browser copy is used.
+  var STORE_KEY = 'roundTimer.session.v1';
+  var STALE_RUNNING = 10*60*1000;   // a running session this long past its planned end is dropped
+  var STALE_IDLE = 12*3600*1000;    // a paused or finished one this old is dropped
+  var Sync = { mode:'none',         // none | local (browser only) | server
+               rev:0, skew:0,       // the server's revision; server time minus this device's
+               busy:false, dirty:false, timer:null, poller:null, userActed:false };
+
+  function packPhase(p){
+    var o = { type:p.type, title:p.title, dur:p.dur };
+    if(p.type === 'round'){ o.idx = p.idx; o.seq = p.drill.seq; }
+    if(p.type === 'exercise'){ o.exId = p.ex.id; o.exName = p.ex.name; o.exFocus = p.ex.focus; o.exCue = p.ex.cue; o.use = p.use; }
+    if(p.steps){ o.segCount = p.segCount; o.segLen = p.segLen; }
+    return o;
+  }
+  function unpackPhase(o){
+    var p = { type:o.type, title:o.title, dur:o.dur };
+    if(o.type === 'round'){
+      p.idx = o.idx;
+      var key = JSON.stringify(o.seq), found = null;
+      for(var k=0;k<DRILLS.length;k++){ if(JSON.stringify(DRILLS[k].seq) === key){ found = DRILLS[k]; break; } }
+      p.drill = found || { seq:o.seq, group:'', name:seqName(o.seq) };
+    } else if(o.type === 'exercise'){
+      var ei = exIndexById(o.exId);
+      p.ex = ei >= 0 ? EX[ei] : { id:o.exId, name:o.exName, focus:o.exFocus, cue:o.exCue, needs:[], bodyweightOk:true };
+      p.use = o.use;
+    } else if(o.type === 'warmup' && o.segCount && content.warmup.length){
+      p.steps = content.warmup; p.segCount = Math.min(o.segCount, content.warmup.length); p.segLen = o.segLen; p.curStep = 0;
+    }
+    return p;
+  }
+
+  function snapshot(){
+    var st;
+    if(running){
+      st = { status: paused ? 'paused' : 'running' };
+      if(paused) st.remaining = remaining; else st.endAt = Math.round(endTime + Sync.skew);
+    } else if(doneEarly !== null){
+      st = { status:'done', early:doneEarly };
+    } else {
+      return null;
+    }
+    st.v = 1;
+    st.savedAt = Math.round(Date.now() + Sync.skew);
+    st.config = {};
+    for(var k in config) st.config[k] = config[k];
+    st.phases = phases.map(packPhase);
+    st.phaseIdx = phaseIdx;
+    st.stats = stats;
+    return st;
+  }
+
+  function isNum(x){ return typeof x === 'number' && isFinite(x); }
+  function validSnapshot(st){
+    if(!st || typeof st !== 'object' || st.v !== 1) return false;
+    if(['running','paused','done'].indexOf(st.status) < 0) return false;
+    if(!Array.isArray(st.phases) || st.phases.length < 1 || st.phases.length > 500) return false;
+    if(!isNum(st.phaseIdx) || st.phaseIdx < 0 || st.phaseIdx >= st.phases.length || st.phaseIdx % 1) return false;
+    if(!isNum(st.savedAt) || !st.config || typeof st.config !== 'object') return false;
+    if(st.status === 'running' && !isNum(st.endAt)) return false;
+    if(st.status === 'paused' && !isNum(st.remaining)) return false;
+    var s = st.stats;
+    if(!s || !isNum(s.work) || !isNum(s.rest) || !isNum(s.exTime) || !Array.isArray(s.rounds) || !Array.isArray(s.exercises)) return false;
+    return st.phases.every(function(p){
+      if(!p || ['warmup','break','round','exercise'].indexOf(p.type) < 0 || !isNum(p.dur) || p.dur <= 0 || p.dur > 7200) return false;
+      if(p.type === 'round') return isNum(p.idx) && Array.isArray(p.seq) && p.seq.length > 0 && p.seq.length <= 12;
+      if(p.type === 'exercise') return typeof p.exId === 'string' && typeof p.exName === 'string' && typeof p.use === 'string';
+      return true;
+    });
+  }
+  function isStale(st){
+    var now = Date.now() + Sync.skew;
+    if(st.status === 'running'){
+      var end = st.endAt;
+      for(var i = st.phaseIdx + 1; i < st.phases.length; i++) end += st.phases[i].dur*1000;
+      return now - end > STALE_RUNNING;
+    }
+    return now - st.savedAt > STALE_IDLE;
+  }
+
+  // Put the page into the session a snapshot describes.
+  function restoreSession(st){
+    cancelAnimationFrame(rafId);
+    dropGrace();
+    resetKnackered();
+    for(var k in config){ if(typeof st.config[k] === typeof config[k]) config[k] = st.config[k]; }
+    phases = st.phases.map(unpackPhase);
+    phaseIdx = st.phaseIdx;
+    stats = { work:st.stats.work, rest:st.stats.rest, exTime:st.stats.exTime, rounds:st.stats.rounds, exercises:st.stats.exercises };
+    elSetup.classList.add('hidden');
+    if(st.status === 'done'){
+      running = false; paused = false; doneEarly = !!st.early;
+      syncPauseUI();
+      releaseWake();
+      renderStats(doneEarly);
+      elTimer.classList.add('hidden');
+      elDone.style.display = 'flex';
+      return;
+    }
+    doneEarly = null;
+    running = true;
+    paused = st.status === 'paused';
+    elDone.style.display = 'none';
+    elTimer.classList.remove('hidden');
+    if(paused){ remaining = st.remaining; endTime = 0; }
+    else { endTime = st.endAt - Sync.skew; remaining = (endTime - Date.now())/1000; }
+    syncPauseUI();
+    catchUp();
+    if(!running) return;                           // it ended while we were away: the stats page is up
+    requestWake();
+    paintPhase(remaining);
+    if(!paused) rafId = requestAnimationFrame(tick);
+  }
+
+  function readLocal(){
+    try{ var v = JSON.parse(localStorage.getItem(STORE_KEY)); return v && v.state ? v.state : null; }
+    catch(e){ return null; }
+  }
+  function writeLocal(st){
+    try{
+      if(st) localStorage.setItem(STORE_KEY, JSON.stringify({ state:st }));
+      else localStorage.removeItem(STORE_KEY);
+    }catch(e){}
+  }
+
+  // What another device (or the server) says the state is: follow it.
+  function applyRemote(st){
+    var have = running || doneEarly !== null, broke = false;
+    if(st && validSnapshot(st) && !isStale(st)){
+      try{ restoreSession(st); writeLocal(st); return; }
+      catch(e){ broke = true; if(window.console) console.warn('Could not restore the shared session:', e); }
+    }
+    if(have || broke) leaveSession();
+    writeLocal(null);
+    if(st) saveSoon();                             // it was junk or too old: clear it everywhere
+  }
+
+  function api(method, body, ms){
+    var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = setTimeout(function(){ if(ctl) ctl.abort(); }, ms);
+    var opts = { method:method, cache:'no-store' };
+    if(ctl) opts.signal = ctl.signal;
+    if(body){ opts.headers = { 'Content-Type':'application/json' }; opts.body = JSON.stringify(body); }
+    return fetch('api/state', opts).then(function(res){
+      clearTimeout(timer);
+      if((res.headers.get('content-type') || '').indexOf('application/json') < 0) throw new Error('not the timer server');
+      return res.json().then(function(j){
+        if((!res.ok && res.status !== 409) || !isNum(j.rev) || !isNum(j.now)) throw new Error('HTTP ' + res.status);
+        return j;
+      });
+    }, function(e){ clearTimeout(timer); throw e; });
+  }
+  function noteServerTime(r, sentAt){
+    Sync.skew = r.now - Math.round((sentAt + Date.now())/2);
+  }
+
+  function saveSoon(){
+    writeLocal(snapshot());
+    if(Sync.mode === 'local') return;
+    Sync.dirty = true;                             // 'none' = still asking the server; sent once it answers
+    if(Sync.mode === 'server' && !Sync.timer) Sync.timer = setTimeout(flush, 150);
+  }
+  function flush(){
+    Sync.timer = null;
+    if(Sync.mode !== 'server' || Sync.busy || !Sync.dirty) return;
+    Sync.busy = true; Sync.dirty = false;
+    var sentAt = Date.now();
+    api('PUT', { rev:Sync.rev, state:snapshot() }, 3000).then(function(r){
+      Sync.busy = false;
+      noteServerTime(r, sentAt);
+      if(r.conflict){
+        if(r.rev < Sync.rev){ Sync.rev = r.rev; Sync.dirty = true; }       // the server was reset: send ours again
+        else { Sync.rev = r.rev; applyRemote(r.state); }                    // someone got there first: follow them
+      } else {
+        Sync.rev = r.rev;
+      }
+      if(Sync.dirty && !Sync.timer) Sync.timer = setTimeout(flush, 150);
+    }, function(){
+      Sync.busy = false; Sync.dirty = true;
+      if(!Sync.timer) Sync.timer = setTimeout(flush, 5000);                 // server away: try again shortly
+    });
+  }
+  function poll(){
+    if(Sync.mode !== 'server' || Sync.busy || Sync.dirty || document.visibilityState === 'hidden') return;
+    var sentAt = Date.now();
+    api('GET', null, 2500).then(function(r){
+      if(Sync.busy || Sync.dirty) return;
+      noteServerTime(r, sentAt);
+      if(r.rev > Sync.rev){ Sync.rev = r.rev; applyRemote(r.state); }
+      else if(r.rev < Sync.rev){ Sync.rev = r.rev; if(running || doneEarly !== null) saveSoon(); }   // server was reset
+    }, function(){});
+  }
+
+  // Back on screen: catch the clock up with the time away, then look for changes elsewhere.
+  function resync(){
+    if(running && !paused){
+      var before = phaseIdx;
+      cancelAnimationFrame(rafId);
+      catchUp();
+      if(running){
+        paintPhase(remaining);
+        rafId = requestAnimationFrame(tick);
+        if(phaseIdx !== before) saveSoon();
+      }
+    }
+    poll();
+  }
+
+  function bootSync(){
+    var canFetch = typeof fetch === 'function' && /^https?:$/.test(location.protocol);
+    var local = readLocal(), restored = false;
+    if(local && validSnapshot(local) && !isStale(local)){
+      try{ restoreSession(local); restored = true; }catch(e){ leaveSession(); writeLocal(null); }
+    } else if(local){
+      writeLocal(null);                                  // junk or too old: forget it
+    }
+    if(!canFetch){ Sync.mode = 'local'; return; }
+    if(!restored) elSetup.style.visibility = 'hidden';   // don't flash the setup page if a session is about to appear
+    var sentAt = Date.now();
+    api('GET', null, 1200).then(function(r){
+      noteServerTime(r, sentAt);
+      Sync.rev = r.rev;
+      Sync.mode = 'server';
+      try{
+        var serverAt = r.state && isNum(r.state.savedAt) ? r.state.savedAt : 0;
+        if(Sync.userActed || (restored && local.savedAt > serverAt && local.savedAt > (r.updated || 0))){
+          Sync.dirty = true;                             // this device is the newer one: send ours
+        } else {
+          Sync.dirty = false;                            // the server's copy is the truth now
+          applyRemote(r.state);
+        }
+      }catch(e){ if(window.console) console.warn('Session sync:', e); }
+    }, function(){
+      Sync.mode = 'local';
+    }).then(function(){
+      elSetup.style.visibility = '';
+      if(Sync.mode === 'server'){
+        Sync.poller = setInterval(poll, 3000);
+        if(Sync.dirty) flush();
+      }
+    });
+  }
+  bootSync();
 
   // prevent accidental pull-to-refresh / bounce, but allow scrolling inside #setupScroll
   document.body.addEventListener('touchmove', function(e){

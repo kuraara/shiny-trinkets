@@ -21,7 +21,17 @@ A skipped entry is still a mistake, so check your work:
 Exit 0 = fine (warnings are advice). Exit 1 = errors, i.e. entries the page would skip. Python
 standard library only. Then open the page: the setup screen should show no amber note.
 
-If you touch anything outside the content block, also run `node test/e2e.js` (see README).
+If you touch anything outside the content block, also run `go test ./...` and `node test/e2e.js`
+(see README; the e2e test clears the shared session, so point it at a scratch server).
+
+## The session is saved (so keep it that way)
+
+The page saves the running session so a reload or app switch lands back in it, and a second device
+can follow it (README, "Switching apps"). Content edits never touch this. If you change the
+**code**: every place that changes the session (a phase starting, pause, resume, shuffle, finish,
+back to setup) calls `saveSoon()`; what a snapshot holds is built by `snapshot()` and read back by
+`restoreSession()`, and `v` must change if the shape does. The page must keep working with no
+server at all (the Files app), falling back to browser storage.
 
 ## Who it is for
 

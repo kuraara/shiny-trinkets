@@ -78,3 +78,6 @@ Additionally,  see if it’s possible to access the users microphone to create a
 
 **25.** Oh and another change request, with the pause button, add an extra unpause button that gives me a grace period of 10s (but make it configurable) so I can glove up before continuing the round timer
 *(Fri 2026-11-27 18:11)*
+
+**26.** Can you add some server side logic so the workout state is shared, ie let me switch apps and not have to restart the session when I switch back
+*(Sat 2026-11-28 13:03)*

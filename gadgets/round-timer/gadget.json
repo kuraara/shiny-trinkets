@@ -5,7 +5,7 @@
   "kind": "gadget",
   "host": "pi",
   "desc": "Heavy-bag round timer: warm-up, rounds and breaks, a combo for each round, and optional exercises.",
-  "about": "Set a warm-up, the number of rounds and the round and break lengths in 15-second steps. The clock fills the screen and turns green for a round, orange with 30 seconds left and red at 10. Each round gets a heavy-bag combo, shown during the break before it. Add a guided warm-up and a few strength and cardio exercises (a finisher, or one between rounds) chosen from what you have at home, and a stats page follows the session.",
+  "about": "Set a warm-up, the number of rounds and the round and break lengths in 15-second steps. The clock fills the screen and turns green for a round, orange with 30 seconds left and red at 10. Each round gets a heavy-bag combo, shown during the break before it. Add a guided warm-up and a few strength and cardio exercises (a finisher, or one between rounds) chosen from what you have at home, and a stats page follows the session. Switch apps or reload the page and the session carries on where it was, and a second device can follow it.",
   "icon": "web/icon.svg",
   "iconSpec": {
     "top": "#34b36b",
@@ -20,10 +20,11 @@
     { "phrase": "…try a different boxing workout", "desc": "Ready-made sessions to step through: a combo for every round and the exercises to go with them.", "group": "training" }
   ],
   "deploy": {
-    "test": "python3 tools/check_content.py round-timer.html",
+    "test": "python3 tools/check_content.py round-timer.html && go vet ./... && go test ./...",
     "stacks": [
       { "name": "round-timer", "host": "pi", "compose": "docker-compose.yml",
-        "build": { "image": "round-timer:latest", "context": "." } }
+        "build": { "image": "round-timer:latest", "context": ".",
+                   "go": { "dir": ".", "binary": "round-timer", "goarch": "arm64" } } }
     ]
   }
 }

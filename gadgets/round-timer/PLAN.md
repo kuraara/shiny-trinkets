@@ -37,6 +37,11 @@ in REQUESTS.md).
   "Cancel" goes back to plain paused.
 - **Workouts** (24): the setup page has a picker that steps through ready-made whole sessions
   (a combo per round plus exercises); the `round-timer-workouts` agent researches new ones.
+- **Shared session** (26): switching apps or reloading the page doesn't restart the session, and a
+  second device follows it. The session is saved in the browser always and on the server when there
+  is one (`GET`/`PUT /api/state`, optimistic revisions, a file in the data volume). The clock runs on
+  the wall clock, so time away counts: phases that ended meanwhile are counted as done, and a
+  session left more than 10 minutes past its end is dropped rather than credited.
 - **Ending** (17): an "I'm knackered" button ends the session early, and a stats page follows
   (total time, rounds finished, share of the plan, round time versus rest, each round's combo and
   how long it lasted). Finishing normally shows the same page.
@@ -58,7 +63,11 @@ Each phase leaves a working app. Follow [../../docs/ADDING-A-GADGET.md](../../do
 and the rules in [../../CLAUDE.md](../../CLAUDE.md): build on the build box, test at 390 px and
 1280 px, no addresses in the repo.
 
-### 1. Serve the artifact unchanged  [done]
+### 1. Serve the artifact unchanged  [done; now a small Go server]
+
+(It started as nginx. It is now a Go server that still serves the page byte for byte and also
+keeps the shared session, request 26. Later phases build on it.)
+
 
 - Scaffold the gadget (`tools/trinket new round-timer`); the template choice is open.
 - Serve `round-timer.html` as the page, byte for byte. Add `/healthz`.
