@@ -1,0 +1,50 @@
+{
+  "$schema": "../../docs/gadget.schema.json",
+  "id": "secret-drop",
+  "name": "Secret Drop",
+  "kind": "gadget",
+  "host": "pi",
+  "desc": "Hand Claude a password, API key or picture without a terminal.",
+  "about": "Type the details (NAME=value lines) or paste pictures, give them a name, and Save: they become files only Claude can read, in its home on the Pi. The page never shows them again, just the names, the keys in each and when they changed. HTTPS only.",
+  "icon": "web/icon.svg",
+  "iconSpec": {
+    "top": "#c08a3e",
+    "bottom": "#8a5a1f",
+    "glyph": "<rect x=\"18\" y=\"28\" width=\"28\" height=\"20\" rx=\"4\" {S}/><path d=\"M24 28v-6a8 8 0 0 1 16 0v6\" {S}/><path d=\"M32 35v6\" {S}/>"
+  },
+  "proxy": {
+    "port": 8107,
+    "upstream": "http://{pi}:8132",
+    "protocols": [
+      "https"
+    ]
+  },
+  "intents": [
+    {
+      "phrase": "…give Claude a password or API key",
+      "desc": "Type it or paste a screenshot; it becomes a file only Claude can read.",
+      "group": "documents"
+    }
+  ],
+  "deploy": {
+    "stacks": [
+      {
+        "name": "secret-drop",
+        "host": "pi",
+        "compose": "docker-compose.yml",
+        "build": {
+          "image": "secret-drop:latest",
+          "context": ".",
+          "go": {
+            "dir": ".",
+            "binary": "secret-drop",
+            "goarch": "arm64"
+          }
+        },
+        "secrets": [
+          "SECRETDROP_TOKEN"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+# Secret Drop (tools/trinket deploy secret-drop), on the Pi because it writes into Claude's home
+# there: SECRETS_DIR is that folder's path on the Pi (from registry/site.local.json "env").
+# People use it through the gadget registry over HTTPS only; this port is the registry's upstream.
+services:
+  secret-drop:
+    image: secret-drop:latest
+    build: .
+    container_name: secret-drop
+    restart: unless-stopped
+    user: "${SECRETS_UID:-1000}:${SECRETS_GID:-1500}"
+    ports:
+      - "8132:8080"
+    volumes:
+      - ${SECRETS_DIR:?set SECRETS_DIR}:/secrets
+    environment:
+      # a browser opens /?key=<token> once; scripts send "Authorization: Bearer <token>"
+      - TOKEN=${SECRETDROP_TOKEN:?set SECRETDROP_TOKEN}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 32m

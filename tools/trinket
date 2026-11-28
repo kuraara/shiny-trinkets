@@ -189,6 +189,7 @@ def registry_entries(st=None):
             px.pop('$comment', None)
             if 'protocols' in px:
                 px['protocols'] = https_ok(px['protocols'])
+            px['upstream'] = resolve(px['upstream'], st)   # a gadget on another host: http://{pi}:8132
             base['proxy'] = px
         if 'url' in m:
             base['url'] = resolve(m['url'], st)

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Secret Drop</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root {
+  --bg: #f3f4f1; --card: #ffffff; --ink: #1d2320; --muted: #5d6762; --line: #dde2dd;
+  --accent: #2f6f5e; --accent-ink: #ffffff; --chip: #e7efeb; --warn: #9a3412; --ok: #2f6f5e;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #121614; --card: #1b201d; --ink: #e5ebe7; --muted: #9aa69f; --line: #2b322e;
+    --accent: #6cc3a6; --accent-ink: #0d1411; --chip: #23302a; --warn: #f0a07a; --ok: #6cc3a6; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-size: 16px; line-height: 1.45; }
+.page { max-width: 640px; margin: 0 auto; padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right));
+  display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr); }
+h1 { margin: 0 0 4px; font-size: 1.8rem; letter-spacing: -.01em; }
+h2 { margin: 0 0 10px; font-size: 1rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.muted { color: var(--muted); margin: 0; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+label { font-weight: 600; display: grid; gap: 6px; }
+input, textarea { font: inherit; width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bg); color: var(--ink); }
+textarea { font-family: ui-monospace, Menlo, monospace; font-size: .95rem; min-height: 9em; resize: vertical; }
+button { font: inherit; border-radius: 10px; cursor: pointer; font-weight: 700; }
+.save { background: var(--accent); color: var(--accent-ink); border: 0; padding: 11px 18px; justify-self: start; }
+.del { background: none; border: 1px solid var(--line); color: var(--warn); padding: 6px 12px; font-weight: 600; }
+.msg { margin: 0; min-height: 1.4em; }
+.msg.ok { color: var(--ok); } .msg.bad { color: var(--warn); }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.pick { display: inline-block; background: var(--chip); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; font-weight: 600; cursor: pointer; }
+.thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+.thumb { position: relative; }
+.thumb img { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); display: block; }
+.thumb button { position: absolute; top: -6px; right: -6px; width: 26px; height: 26px; border-radius: 50%; border: 0; background: var(--ink); color: var(--bg); font-size: 14px; line-height: 1; padding: 0; }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.list li { display: flex; gap: 10px; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.list .grow { flex: 1 1 auto; min-width: 0; }
+.name { font-weight: 700; font-family: ui-monospace, Menlo, monospace; }
+.keys { color: var(--muted); font-size: .9rem; overflow-wrap: anywhere; }
+code { font-family: ui-monospace, Menlo, monospace; background: var(--chip); border-radius: 6px; padding: 0 5px; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main class="page">
+  <header>
+    <h1>Secret Drop</h1>
+    <p class="muted">Hand Claude a password, API key, token or a picture without a terminal. It's saved as a file only Claude can read, and this page never shows it again.</p>
+  </header>
+
+  <form class="card" id="form" autocomplete="off">
+    <label>Name <span class="muted" style="font-weight:400">what it's for, e.g. <code>hydrawise</code></span>
+      <input id="name" list="names" required pattern="[a-z][a-z0-9\-]{0,40}" placeholder="hydrawise"
+             autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="url">
+      <datalist id="names"></datalist>
+    </label>
+    <label>The details <span class="muted" style="font-weight:400">one per line, as <code>NAME=value</code></span>
+      <textarea id="text" autocapitalize="none" autocorrect="off" spellcheck="false"
+                placeholder="USERNAME=you@example.com&#10;PASSWORD=…&#10;API_KEY=…"></textarea>
+    </label>
+    <div class="pics">
+      <div class="row"><label class="pick">Add pictures<input id="files" type="file" accept="image/*" multiple hidden></label>
+        <span class="muted">or paste them here</span></div>
+      <div class="thumbs" id="thumbs"></div>
+    </div>
+    <button class="save" type="submit">Save</button>
+    <p class="msg" id="msg" role="status"></p>
+  </form>
+
+  <section aria-labelledby="saved-h">
+    <h2 id="saved-h">Saved</h2>
+    <ul class="list" id="list"></ul>
+    <p class="muted" id="none">Nothing saved yet.</p>
+    <p class="muted" style="margin-top:14px">Claude reads these in <code>~/secrets/</code>: <code>&lt;name&gt;.env</code> and its pictures. Saving details under a name again replaces them; pictures are added.</p>
+  </section>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const when = (iso) => new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+let names = [], pics = [];
+
+function drawPics() {
+  $('#thumbs').replaceChildren(...pics.map((f, i) => {
+    const d = document.createElement('div'); d.className = 'thumb';
+    const img = document.createElement('img'); img.src = f.url; img.alt = f.file.name || 'pasted picture';
+    const x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', 'Remove');
+    x.onclick = () => { URL.revokeObjectURL(f.url); pics.splice(i, 1); drawPics(); };
+    d.append(img, x); return d;
+  }));
+}
+function addPics(files) {
+  for (const file of files) if (file.type.startsWith('image/') || /\.hei[cf]$/i.test(file.name)) pics.push({ file, url: URL.createObjectURL(file) });
+  drawPics();
+}
+$('#files').addEventListener('change', (e) => { addPics(e.target.files); e.target.value = ''; });
+document.addEventListener('paste', (e) => {
+  const files = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith('image/'));
+  if (files.length) { e.preventDefault(); addPics(files); }
+});
+
+async function load() {
+  const r = await fetch('api/secrets');
+  if (!r.ok) { $('#msg').className = 'msg bad'; $('#msg').textContent = 'Locked: open the sign-in link once on this device.'; return; }
+  const { secrets } = await r.json();
+  names = secrets.map((s) => s.name);
+  $('#names').innerHTML = names.map((n) => `<option value="${esc(n)}">`).join('');
+  $('#none').hidden = secrets.length > 0;
+  $('#list').innerHTML = secrets.map((s) => {
+    const parts = [];
+    if (s.keys.length) parts.push(esc(s.keys.join(', '))); else if (s.lines) parts.push(`${s.lines} line${s.lines === 1 ? '' : 's'}`);
+    if (s.images) parts.push(`${s.images} picture${s.images === 1 ? '' : 's'}`);
+    return `<li><div class="grow"><div class="name">${esc(s.name)}</div>
+    <div class="keys">${parts.join(' · ')} · ${esc(when(s.updated))}</div></div>
+    <button class="del" data-name="${esc(s.name)}">Delete</button></li>`;
+  }).join('');
+}
+
+$('#form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = $('#name').value.trim().toLowerCase(), text = $('#text').value.trim();
+  const say = (ok, t) => { $('#msg').className = 'msg ' + (ok ? 'ok' : 'bad'); $('#msg').textContent = t; };
+  if (!text && !pics.length) return say(false, 'Type the details or add a picture.');
+  const done = [];
+  if (text) {
+    if (names.includes(name) && !confirm(`Replace the details saved as ${name}?`)) return;
+    say(true, 'Saving…');
+    const r = await fetch('api/secrets/' + encodeURIComponent(name), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+    const out = await r.json().catch(() => ({}));
+    if (!r.ok) return say(false, out.error || 'Saving failed');
+    done.push(`${out.saved}${out.keys.length ? ` (${out.keys.join(', ')})` : ''}`);
+    $('#text').value = '';
+  }
+  if (pics.length) {
+    say(true, `Sending ${pics.length} picture${pics.length === 1 ? '' : 's'}…`);
+    const fd = new FormData();
+    for (const p of pics) fd.append('image', p.file, p.file.name || 'pasted.png');
+    const r = await fetch('api/secrets/' + encodeURIComponent(name) + '/images', { method: 'POST', body: fd });
+    const out = await r.json().catch(() => ({}));
+    if (!r.ok) { load(); return say(false, (done.length ? `Saved ${done.join(', ')}, but the pictures failed: ` : '') + (out.error || 'Sending the pictures failed')); }
+    done.push(`${out.saved.length} picture${out.saved.length === 1 ? '' : 's'}`);
+    pics.forEach((p) => URL.revokeObjectURL(p.url)); pics = []; drawPics();
+  }
+  say(true, `Saved ${done.join(' and ')} as ${name}. You can tell Claude it's there.`);
+  load();
+});
+
+$('#list').addEventListener('click', async (e) => {
+  const b = e.target.closest('.del');
+  if (!b || !confirm(`Delete ${b.dataset.name}.env?`)) return;
+  const r = await fetch('api/secrets/' + encodeURIComponent(b.dataset.name), { method: 'DELETE' });
+  $('#msg').className = 'msg ' + (r.ok ? 'ok' : 'bad');
+  $('#msg').textContent = r.ok ? `Deleted ${b.dataset.name}.env` : 'Deleting failed';
+  load();
+});
+load();
+</script>
+</body>
+</html>
